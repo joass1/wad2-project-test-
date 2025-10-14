@@ -1,11 +1,11 @@
 import { createRouter, createWebHistory } from "vue-router";
-import LoginPage from "@/views/LoginPage.vue";
-import Dashboard from "@/views/Dashboard.vue";
-import Timer from "@/views/Timer.vue";
-import TaskTracker from "@/views/TaskTracker.vue"; // Fixed the import path
-import Profile from "@/views/Profile.vue";
-import Progress from "@/views/Progress.vue";
-import Checkin from "@/views/Checkin.vue";
+import LoginPage from "@/views/loginpage.vue";
+import Dashboard from "@/views/dashboard.vue";
+import Timer from "@/views/timer.vue";
+import TaskTracker from "@/views/tasktracker.vue"; // Fixed the import path
+import Profile from "@/views/profile.vue";
+import Progress from "@/views/progress.vue";
+import Checkin from "@/views/checkin.vue";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
