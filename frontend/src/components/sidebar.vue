@@ -13,9 +13,9 @@
     <v-list nav density="comfortable">
       <v-list-item to="/dashboard" prepend-icon="mdi-home-outline" title="Dashboard" rounded="lg" />
       <v-list-item to="/timer" prepend-icon="mdi-timer-outline" title="Study Timer" rounded="lg" />
-      <v-list-item to="/task-tracker" prepend-icon="mdi-checkbox-marked-outline" title="Tasks" rounded="lg" />
+      <v-list-item to="/task-tracker" prepend-icon="mdi-checkbox-marked-outline" title="Task Tracker" rounded="lg" />
       <v-list-item to="/progress" prepend-icon="mdi-chart-line" title="Progress" rounded="lg" />
-      <v-list-item to="/checkin" prepend-icon="mdi-heart-outline" title="Daily Check-in" rounded="lg" />
+      <v-list-item to="/checkin" prepend-icon="mdi-heart-outline" title="Wellness Check-in" rounded="lg" />
       <v-list-item prepend-icon="mdi-account-group-outline" title="Social" rounded="lg" />
       <v-list-item to="/profile" prepend-icon="mdi-account-outline" title="Profile" rounded="lg" />
     </v-list>
