@@ -21,6 +21,8 @@
         <router-view @toggle-fullscreen="handleFullscreen" />
       </v-main>
     </template>
+       <!-- NEW: Global floating pet - Always visible on all pages -->
+    <GlobalDesktopPet v-if="!isLogin" />
   </v-app>
 </template>
 
@@ -28,6 +30,8 @@
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from '@/components/sidebar.vue'
+import GlobalDesktopPet from '@/components/GlobalDesktopPet.vue'
+
 
 const route = useRoute()
 const isLogin = computed(() => route.name === 'Login')
