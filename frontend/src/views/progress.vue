@@ -99,7 +99,7 @@
             <v-col cols="12" md="6">
               <v-card class="pa-4">
                 <v-card-title>Daily Study Time (Last 7 Days)</v-card-title>
-                <v-card-subtitle>Minutes spent studying each day</v-card-subtitle>
+                <v-card-subtitle>Hours spent studying each day</v-card-subtitle>
                 <apexchart
                   type="bar"
                   height="250"
