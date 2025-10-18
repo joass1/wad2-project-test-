@@ -10,35 +10,35 @@
 
       <!-- Tab Navigation -->
       <div class="tab-navigation">
-        <div 
-          class="tab-item" 
+        <div
+          class="tab-item"
           :class="{ active: activeTab === 'overview' }"
           @click="activeTab = 'overview'"
         >
           Overview
         </div>
-        <div 
-          class="tab-item" 
+        <div
+          class="tab-item"
           :class="{ active: activeTab === 'pet' }"
           @click="activeTab = 'pet'"
         >
           Pet
         </div>
-        <div 
-          class="tab-item" 
+        <div
+          class="tab-item"
           :class="{ active: activeTab === 'achievements' }"
           @click="activeTab = 'achievements'"
         >
           Achievements
         </div>
-        <div 
-          class="tab-item" 
+        <div
+          class="tab-item"
           :class="{ active: activeTab === 'settings' }"
           @click="activeTab = 'settings'"
         >
           Settings
-          </div>
         </div>
+      </div>
 
       <!-- Tab Content -->
       <div class="tab-content">
@@ -48,34 +48,43 @@
           <div class="profile-card">
             <div class="profile-avatar-section">
               <div class="avatar-container">
-              <div class="profile-avatar">
-                <img 
-                  v-if="user.avatar" 
-                  :src="user.avatar" 
-                  alt="Profile Avatar" 
-                  class="avatar-image"
+                <div class="profile-avatar">
+                  <img
+                    v-if="user.avatar"
+                    :src="user.avatar"
+                    alt="Profile Avatar"
+                    class="avatar-image"
+                  />
+                  <span v-else class="avatar-text">{{
+                    user.name?.charAt(0)?.toUpperCase() || "S"
+                  }}</span>
+                  <div class="camera-icon" @click="triggerAvatarUpload">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97c0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1c0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.08.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.61-.25 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <input
+                  ref="avatarInput"
+                  type="file"
+                  accept="image/*"
+                  style="display: none"
+                  @change="handleAvatarChange"
                 />
-                <span v-else class="avatar-text">{{ user.name?.charAt(0)?.toUpperCase() || 'S' }}</span>
-                <div class="camera-icon" @click="triggerAvatarUpload">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97c0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1c0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.08.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.61-.25 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z"/>
-                  </svg>
-                </div>
-              </div>
-              <input
-                ref="avatarInput"
-                type="file"
-                accept="image/*"
-                style="display: none"
-                @change="handleAvatarChange"
-              />
-                <div class="level-badge">
-                  Level 1
-                </div>
+                <div class="level-badge">Level 1</div>
               </div>
               <div class="profile-info">
-                <h2 class="profile-name">{{ user.name || 'sandra' }}</h2>
-                <p class="profile-email">{{ user.email || 'sandra@gmail.com' }}</p>
+                <h2 class="profile-name">{{ user.name || "sandra" }}</h2>
+                <p class="profile-email">
+                  {{ user.email || "sandra@gmail.com" }}
+                </p>
                 <p class="profile-member-since">Member since October 2025</p>
                 <div class="experience-section">
                   <div class="xp-header">
@@ -84,7 +93,10 @@
                   </div>
                   <div class="xp-progress">
                     <div class="progress-bar">
-                      <div class="progress-fill" :style="{ width: `${(stats.xp / 1000) * 100}%` }"></div>
+                      <div
+                        class="progress-fill"
+                        :style="{ width: `${(stats.xp / 1000) * 100}%` }"
+                      ></div>
                     </div>
                     <div class="xp-until-next">
                       {{ 1000 - stats.xp }} XP until next level
@@ -105,7 +117,7 @@
               <div class="stat-icon blue">🕐</div>
               <div class="stat-value">{{ stats.studyHours }}</div>
               <div class="stat-label">Study Hours</div>
-        </div>
+            </div>
             <div class="stat-card">
               <div class="stat-icon green">🎯</div>
               <div class="stat-value">{{ stats.studyStreak }}</div>
@@ -144,7 +156,9 @@
               <div class="activity-item">
                 <div class="activity-icon purple">🏆</div>
                 <div class="activity-content">
-                  <div class="activity-title">Unlocked "Early Bird" achievement</div>
+                  <div class="activity-title">
+                    Unlocked "Early Bird" achievement
+                  </div>
                   <div class="activity-time">3 days ago</div>
                 </div>
               </div>
@@ -211,7 +225,9 @@
               <div class="crown-icon">👑</div>
               <h3 class="achievements-title">Achievements (1/8)</h3>
             </div>
-            <p class="achievements-subtitle">Track your progress and unlock rewards</p>
+            <p class="achievements-subtitle">
+              Track your progress and unlock rewards
+            </p>
           </div>
           <div class="achievements-grid">
             <div class="achievement-card unlocked">
@@ -271,7 +287,9 @@
               <div class="achievement-icon locked-icon">🐾</div>
               <div class="achievement-info">
                 <h4 class="achievement-title">Pet Lover</h4>
-                <p class="achievement-desc">Take care of your pet for 30 days</p>
+                <p class="achievement-desc">
+                  Take care of your pet for 30 days
+                </p>
               </div>
             </div>
           </div>
@@ -284,15 +302,19 @@
               <span class="section-icon">🔔</span>
               Notifications
             </h3>
-            <p class="section-subtitle">Manage your notification preferences.</p>
+            <p class="section-subtitle">
+              Manage your notification preferences.
+            </p>
             <div class="settings-list">
               <div class="setting-item">
                 <div class="setting-info">
                   <div class="setting-title">Notifications</div>
-                  <div class="setting-desc">Manage your notification preferences.</div>
+                  <div class="setting-desc">
+                    Manage your notification preferences.
+                  </div>
                 </div>
-                <div 
-                  class="toggle-switch" 
+                <div
+                  class="toggle-switch"
                   :class="{ active: notificationSettings.notifications }"
                   @click="toggleNotification('notifications')"
                 ></div>
@@ -300,10 +322,12 @@
               <div class="setting-item">
                 <div class="setting-info">
                   <div class="setting-title">Study Reminders</div>
-                  <div class="setting-desc">Get reminded to start your study sessions.</div>
+                  <div class="setting-desc">
+                    Get reminded to start your study sessions.
+                  </div>
                 </div>
-                <div 
-                  class="toggle-switch" 
+                <div
+                  class="toggle-switch"
                   :class="{ active: notificationSettings.studyReminders }"
                   @click="toggleNotification('studyReminders')"
                 ></div>
@@ -311,10 +335,12 @@
               <div class="setting-item">
                 <div class="setting-info">
                   <div class="setting-title">Daily Check-in</div>
-                  <div class="setting-desc">Reminder for daily wellness check-in.</div>
+                  <div class="setting-desc">
+                    Reminder for daily wellness check-in.
+                  </div>
                 </div>
-                <div 
-                  class="toggle-switch" 
+                <div
+                  class="toggle-switch"
                   :class="{ active: notificationSettings.dailyCheckin }"
                   @click="toggleNotification('dailyCheckin')"
                 ></div>
@@ -322,21 +348,27 @@
               <div class="setting-item">
                 <div class="setting-info">
                   <div class="setting-title">Achievement Notifications</div>
-                  <div class="setting-desc">Get notified when you unlock achievements.</div>
+                  <div class="setting-desc">
+                    Get notified when you unlock achievements.
+                  </div>
                 </div>
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: notificationSettings.achievementNotifications }"
+                <div
+                  class="toggle-switch"
+                  :class="{
+                    active: notificationSettings.achievementNotifications,
+                  }"
                   @click="toggleNotification('achievementNotifications')"
                 ></div>
               </div>
               <div class="setting-item">
                 <div class="setting-info">
                   <div class="setting-title">Social Updates</div>
-                  <div class="setting-desc">Notifications from friends and challenges.</div>
+                  <div class="setting-desc">
+                    Notifications from friends and challenges.
+                  </div>
                 </div>
-                <div 
-                  class="toggle-switch" 
+                <div
+                  class="toggle-switch"
                   :class="{ active: notificationSettings.socialUpdates }"
                   @click="toggleNotification('socialUpdates')"
                 ></div>
@@ -351,14 +383,14 @@
             </h3>
             <div class="preference-item">
               <label class="preference-label">Daily Study Goal (minutes)</label>
-              <input 
-                type="number" 
-                class="preference-input" 
-                v-model="preferences.dailyStudyGoal" 
+              <input
+                type="number"
+                class="preference-input"
+                v-model="preferences.dailyStudyGoal"
                 placeholder="120"
                 min="1"
                 max="1440"
-              >
+              />
             </div>
             <div class="preference-item">
               <label class="preference-label">Theme</label>
@@ -439,7 +471,9 @@
             </div>
             <div class="modal-actions">
               <button type="submit" class="btn-save">Save Changes</button>
-              <button type="button" class="btn-cancel" @click="closeEditModal">Cancel</button>
+              <button type="button" class="btn-cancel" @click="closeEditModal">
+                Cancel
+              </button>
             </div>
           </form>
         </div>
@@ -456,13 +490,15 @@
         <div class="modal-body">
           <div class="avatar-preview">
             <div class="preview-avatar">
-              <img 
-                v-if="previewAvatar" 
-                :src="previewAvatar" 
-                alt="Preview" 
+              <img
+                v-if="previewAvatar"
+                :src="previewAvatar"
+                alt="Preview"
                 class="preview-image"
               />
-              <span v-else class="preview-initials">{{ user.name?.charAt(0)?.toUpperCase() || 'S' }}</span>
+              <span v-else class="preview-initials">{{
+                user.name?.charAt(0)?.toUpperCase() || "S"
+              }}</span>
             </div>
           </div>
           <div class="avatar-options">
@@ -495,27 +531,27 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 
-const router = useRouter()
-const activeTab = ref('overview')
-const showEditModal = ref(false)
-const showSuccessToast = ref(false)
-const showAvatarModal = ref(false)
-const avatarInput = ref(null)
-const previewAvatar = ref(null)
+const router = useRouter();
+const activeTab = ref("overview");
+const showEditModal = ref(false);
+const showSuccessToast = ref(false);
+const showAvatarModal = ref(false);
+const avatarInput = ref(null);
+const previewAvatar = ref(null);
 
-const user = reactive({ 
-  name: 'sandra', 
-  email: 'sandra@gmail.com',
-  avatar: null
-})
+const user = reactive({
+  name: "sandra",
+  email: "sandra@gmail.com",
+  avatar: null,
+});
 
 const editForm = reactive({
-  name: '',
-  email: ''
-})
+  name: "",
+  email: "",
+});
 
 const stats = reactive({
   studyHours: 0,
@@ -523,8 +559,8 @@ const stats = reactive({
   checkinStreak: 0,
   wellnessStreak: 0,
   achievements: 1,
-  xp: 0
-})
+  xp: 0,
+});
 
 // Notification settings
 const notificationSettings = reactive({
@@ -532,151 +568,160 @@ const notificationSettings = reactive({
   studyReminders: true,
   dailyCheckin: true,
   achievementNotifications: false,
-  socialUpdates: false
-})
+  socialUpdates: false,
+});
 
 // Preferences settings
 const preferences = reactive({
   dailyStudyGoal: 120,
-  theme: 'system'
-})
+  theme: "system",
+});
 
 onMounted(() => {
   try {
-    const data = JSON.parse(localStorage.getItem('demo_user') || '{}')
-    if (data?.email) user.email = data.email
-    if (data?.name) user.name = data.name
-    if (data?.avatar) user.avatar = data.avatar
+    const data = JSON.parse(localStorage.getItem("demo_user") || "{}");
+    if (data?.email) user.email = data.email;
+    if (data?.name) user.name = data.name;
+    if (data?.avatar) user.avatar = data.avatar;
   } catch {}
-  
+
   // Load notification settings
   try {
-    const settings = JSON.parse(localStorage.getItem('notification_settings') || '{}')
-    Object.assign(notificationSettings, settings)
+    const settings = JSON.parse(
+      localStorage.getItem("notification_settings") || "{}"
+    );
+    Object.assign(notificationSettings, settings);
   } catch {}
-  
+
   // Load preferences
   try {
-    const prefs = JSON.parse(localStorage.getItem('user_preferences') || '{}')
-    Object.assign(preferences, prefs)
+    const prefs = JSON.parse(localStorage.getItem("user_preferences") || "{}");
+    Object.assign(preferences, prefs);
   } catch {}
-})
+});
 
 function openEditModal() {
-  editForm.name = user.name
-  editForm.email = user.email
-  showEditModal.value = true
+  editForm.name = user.name;
+  editForm.email = user.email;
+  showEditModal.value = true;
 }
 
 function closeEditModal() {
-  showEditModal.value = false
-  editForm.name = ''
-  editForm.email = ''
+  showEditModal.value = false;
+  editForm.name = "";
+  editForm.email = "";
 }
 
 function saveProfile() {
-  user.name = editForm.name
-  user.email = editForm.email
-  
-  // Save to localStorage
-  const userData = {
-    name: user.name,
-    email: user.email
-  }
-  localStorage.setItem('demo_user', JSON.stringify(userData))
-  
-  closeEditModal()
-  showSuccessNotification()
-}
+  user.name = editForm.name;
+  user.email = editForm.email;
 
-function showSuccessNotification() {
-  showSuccessToast.value = true
-  setTimeout(() => {
-    showSuccessToast.value = false
-  }, 3000) // Hide after 3 seconds
-}
-
-function triggerAvatarUpload() {
-  showAvatarModal.value = true
-  previewAvatar.value = user.avatar
-}
-
-function triggerFileUpload() {
-  avatarInput.value.click()
-}
-
-function closeAvatarModal() {
-  showAvatarModal.value = false
-  previewAvatar.value = null
-}
-
-function useDefaultAvatar() {
-  user.avatar = null
-  previewAvatar.value = null
   // Save to localStorage
   const userData = {
     name: user.name,
     email: user.email,
-    avatar: user.avatar
-  }
-  localStorage.setItem('demo_user', JSON.stringify(userData))
-  closeAvatarModal()
-  showSuccessNotification()
+  };
+  localStorage.setItem("demo_user", JSON.stringify(userData));
+
+  closeEditModal();
+  showSuccessNotification();
+}
+
+function showSuccessNotification() {
+  showSuccessToast.value = true;
+  setTimeout(() => {
+    showSuccessToast.value = false;
+  }, 3000); // Hide after 3 seconds
+}
+
+function triggerAvatarUpload() {
+  showAvatarModal.value = true;
+  previewAvatar.value = user.avatar;
+}
+
+function triggerFileUpload() {
+  avatarInput.value.click();
+}
+
+function closeAvatarModal() {
+  showAvatarModal.value = false;
+  previewAvatar.value = null;
+}
+
+function useDefaultAvatar() {
+  user.avatar = null;
+  previewAvatar.value = null;
+  // Save to localStorage
+  const userData = {
+    name: user.name,
+    email: user.email,
+    avatar: user.avatar,
+  };
+  localStorage.setItem("demo_user", JSON.stringify(userData));
+  closeAvatarModal();
+  showSuccessNotification();
 }
 
 function handleAvatarChange(event) {
-  const file = event.target.files[0]
+  const file = event.target.files[0];
   if (file) {
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file')
-      return
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image file");
+      return;
     }
-    
+
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image size should be less than 5MB')
-      return
+      alert("Image size should be less than 5MB");
+      return;
     }
-    
+
     // Create a preview URL
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (e) => {
-      previewAvatar.value = e.target.result
-      user.avatar = e.target.result
+      previewAvatar.value = e.target.result;
+      user.avatar = e.target.result;
       // Save to localStorage
       const userData = {
         name: user.name,
         email: user.email,
-        avatar: user.avatar
-      }
-      localStorage.setItem('demo_user', JSON.stringify(userData))
-      closeAvatarModal()
-      showSuccessNotification()
-    }
-    reader.readAsDataURL(file)
+        avatar: user.avatar,
+      };
+      localStorage.setItem("demo_user", JSON.stringify(userData));
+      closeAvatarModal();
+      showSuccessNotification();
+    };
+    reader.readAsDataURL(file);
   }
 }
 
 function toggleNotification(setting) {
-  notificationSettings[setting] = !notificationSettings[setting]
+  notificationSettings[setting] = !notificationSettings[setting];
   // Note: Individual toggles no longer auto-save, user must click Save Settings
 }
 
 function saveSettings() {
   // Save notification settings
-  localStorage.setItem('notification_settings', JSON.stringify(notificationSettings))
-  
+  localStorage.setItem(
+    "notification_settings",
+    JSON.stringify(notificationSettings)
+  );
+
   // Save preferences
-  localStorage.setItem('user_preferences', JSON.stringify(preferences))
-  
+  localStorage.setItem("user_preferences", JSON.stringify(preferences));
+
   // Show success notification
-  showSuccessNotification()
+  showSuccessNotification();
 }
 
+import { useAuth } from "@/composables/useAuth.js";
+
+const { logout: baseLogout } = useAuth();
+
 function logout() {
-  localStorage.removeItem('demo_user')
-  router.push('/login')
+  baseLogout();
+  router.push("/login");
 }
 </script>
 
@@ -747,7 +792,7 @@ function logout() {
 }
 
 .tab-item.active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -4px;
   left: 50%;
@@ -769,7 +814,7 @@ function logout() {
   background: var(--surface);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--surface-lighter);
 }
 
@@ -822,7 +867,7 @@ function logout() {
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   border: 2px solid var(--surface);
   z-index: 10;
   cursor: pointer;
@@ -952,7 +997,7 @@ function logout() {
   border-radius: 12px;
   padding: 24px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--surface-lighter);
 }
 
@@ -967,10 +1012,18 @@ function logout() {
   margin: 0 auto 12px;
 }
 
-.stat-icon.blue { background-color: #e3f2fd; }
-.stat-icon.green { background-color: #e8f5e8; }
-.stat-icon.red { background-color: #ffebee; }
-.stat-icon.purple { background-color: #f3e5f5; }
+.stat-icon.blue {
+  background-color: #e3f2fd;
+}
+.stat-icon.green {
+  background-color: #e8f5e8;
+}
+.stat-icon.red {
+  background-color: #ffebee;
+}
+.stat-icon.purple {
+  background-color: #f3e5f5;
+}
 
 .stat-value {
   font-size: 24px;
@@ -988,7 +1041,7 @@ function logout() {
   background: var(--surface);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--surface-lighter);
 }
 
@@ -1024,9 +1077,15 @@ function logout() {
   font-size: 16px;
 }
 
-.activity-icon.blue { background-color: #e3f2fd; }
-.activity-icon.green { background-color: #e8f5e8; }
-.activity-icon.purple { background-color: #f3e5f5; }
+.activity-icon.blue {
+  background-color: #e3f2fd;
+}
+.activity-icon.green {
+  background-color: #e8f5e8;
+}
+.activity-icon.purple {
+  background-color: #f3e5f5;
+}
 
 .activity-content {
   flex: 1;
@@ -1055,7 +1114,7 @@ function logout() {
   background: var(--surface);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--surface-lighter);
 }
 
@@ -1182,7 +1241,7 @@ function logout() {
   background: var(--surface);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--surface-lighter);
 }
 
@@ -1354,7 +1413,7 @@ function logout() {
   background: var(--surface);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--surface-lighter);
 }
 
@@ -1428,7 +1487,7 @@ function logout() {
 }
 
 .toggle-switch::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   left: 2px;
@@ -1625,11 +1684,11 @@ function logout() {
   .main-content {
     padding: 16px;
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .achievements-grid {
     grid-template-columns: 1fr;
   }
