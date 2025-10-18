@@ -2,12 +2,14 @@ import { createRouter, createWebHistory } from "vue-router";
 import LoginPage from "@/views/loginpage.vue";
 import Dashboard from "@/views/dashboard.vue";
 import Timer from "@/views/timer.vue";
-import TaskTracker from "@/views/tasktracker.vue"; // Fixed the import path
+import TaskTracker from "@/views/tasktracker.vue";
 import Profile from "@/views/profile.vue";
 import Progress from "@/views/progress.vue";
 import Checkin from "@/views/checkin.vue";
+import SocialHub from '@/views/socialhub.vue'
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
+
 
 const routes = [
   { path: "/", redirect: { name: "Login" } },
@@ -53,6 +55,11 @@ const routes = [
     component: Checkin,
     meta: { requiresAuth: true },
   },
+  { path: '/social-hub',
+    name: 'SocialHub', 
+    component: SocialHub,
+    meta: { requiresAuth: true }, 
+  },
 ];
 
 const router = createRouter({ history: createWebHistory(), routes });
@@ -74,7 +81,7 @@ router.beforeEach(async (to, from, next) => {
   const currentUser = await getCurrentUser();
 
   if (to.meta.requiresAuth && !currentUser) {
-    next({ name: "Login" }); // Fixed: removed extra space in "Login "
+    next({ name: "Login" }); 
   } else {
     next();
   }

@@ -263,3 +263,20 @@ a:hover {
   border: 1px solid var(--surface-lighter) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
+
+.socialhub-tabs {
+  background: var(--surface-light) !important; /* darker tone for dark mode */
+  border-radius: 12px;
+  padding: 8px;
+}
+
+[data-theme="dark"] .socialhub-tabs {
+  background: var(--surface-lighter) !important; /* extra dark for contrast */
+}
+
+/* Optional: highlight the active tab */
+.socialhub-tabs .v-tab--selected {
+  background: var(--primary) !important;
+  color: white !important;
+  border-radius: 8px;
+}
