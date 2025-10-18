@@ -115,6 +115,18 @@
         </v-window-item>
       </v-window>
 
+      <!-- Error message display -->
+      <v-alert
+        v-if="errorMsg"
+        type="error"
+        variant="tonal"
+        class="mt-4"
+        closable
+        @click:close="errorMsg = ''"
+      >
+        {{ errorMsg }}
+      </v-alert>
+
       <p class="text-caption mt-4 text-disabled">
         Demo App — Use any email/password combination
       </p>
@@ -126,6 +138,7 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { auth } from "@/lib/firebase";
+import { api } from "@/lib/api";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -139,63 +152,92 @@ const fullName = ref("");
 const confirm = ref("");
 const errorMsg = ref("");
 
+// firebase errors
+function getFirebaseErrorMessage(error) {
+  switch (error.code) {
+    // sign up errors
+    case "auth/email-already-in-use":
+      return "This email is already registered. Please try logging in instead.";
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/weak-password":
+      return "Password should be at least 6 characters long.";
+    case "auth/operation-not-allowed":
+      return "Email/password accounts are not enabled.";
+
+    // sign in errors
+    case "auth/user-not-found":
+      return "No account found with this email address.";
+    case "auth/wrong-password":
+      return "Incorrect password. Please try again.";
+    case "auth/invalid-credential":
+      return "Invalid email or password. Please check your credentials.";
+    case "auth/user-disabled":
+      return "This account has been disabled.";
+    case "auth/too-many-requests":
+      return "Too many failed attempts. Please try again later.";
+
+    // general
+    case "auth/network-request-failed":
+      return "Network error. Please check your connection.";
+    default:
+      return error.message || "An unexpected error occurred. Please try again.";
+  }
+}
+
 async function submit(mode) {
-  const apiUrl = process.env.VUE_APP_API_URL;
+  // clear previous error messages
+  errorMsg.value = "";
+
   try {
     // https://firebase.google.com/docs/auth/web/manage-users
     if (mode === "signup") {
       // check if password and confirm password are the same
       if (password.value !== confirm.value) {
-        throw new Error("Passwords do not match");
+        errorMsg.value = "Passwords do not match";
+        return;
       }
 
-      const userCredentials = await createUserWithEmailAndPassword(
-        auth,
-        email.value,
-        password.value
-      );
+      await createUserWithEmailAndPassword(auth, email.value, password.value);
 
-      const idToken = await userCredentials.user.getIdToken();
-
-      const response = await fetch(`${apiUrl}/api/profile`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          name: fullName.value,
-          email: email.value,
-        }),
+      await api.post("/api/profile", {
+        name: fullName.value,
+        email: email.value,
       });
-
-      if (!response.ok) {
-        throw new Error("failed to sign up");
-      }
     } else {
-      const userCredentials = await signInWithEmailAndPassword(
-        auth,
-        email.value,
-        password.value
-      );
-      const idToken = await userCredentials.user.getIdToken();
-
-      const response = await fetch(`${apiUrl}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("login failed");
+      if (!email.value || !password.value) {
+        errorMsg.value = "Please enter both email and password";
+        return;
       }
+
+      await signInWithEmailAndPassword(auth, email.value, password.value);
+
+      await api.post("/api/auth/login");
     }
+
+    // clear form
+    email.value = "";
+    password.value = "";
+    fullName.value = "";
+    confirm.value = "";
+    errorMsg.value = "";
 
     router.push("/dashboard");
   } catch (err) {
-    console.log(err);
+    console.error("Authentication error:", err);
+
+    // handle firebase auth errors
+    if (err?.code?.startsWith("auth/")) {
+      errorMsg.value = getFirebaseErrorMessage(err);
+    }
+    // handle api errors
+    else if (err?.message) {
+      errorMsg.value = err.message;
+    }
+    // handle other errors
+    else {
+      errorMsg.value = "An unexpected error occurred. Please try again.";
+    }
   }
 }
 </script>

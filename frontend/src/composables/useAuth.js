@@ -1,6 +1,6 @@
-import { ref, computed } from "vue";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
+import { computed, ref } from "vue";
 import { auth, db } from "@/lib/firebase";
 
 const _user = ref(null);
@@ -9,13 +9,29 @@ const _loading = ref(true);
 
 // listen to auth state changes
 let unsubscribe = null;
+let unsubscribeProfile = null;
 
 async function loadUserProfile(firebaseUser) {
+  if (unsubscribeProfile) {
+    unsubscribeProfile();
+    unsubscribeProfile = null;
+  }
+
   try {
-    const snapshot = await getDoc(doc(db, "users", firebaseUser.uid));
-    _userProfile.value = snapshot.exists() ? snapshot.data() : null;
+    const docRef = doc(db, "users", firebaseUser.uid);
+
+    unsubscribeProfile = onSnapshot(
+      docRef,
+      (snapshot) => {
+        _userProfile.value = snapshot.exists() ? snapshot.data() : null;
+      },
+      (error) => {
+        console.log("error fetching user profile: ", error);
+        _userProfile.value = null;
+      }
+    );
   } catch (error) {
-    console.log("error fetching user profile: ", error);
+    console.log("error setting up user profile listener: ", error);
     _userProfile.value = null;
   }
 }
@@ -32,6 +48,10 @@ if (!unsubscribe) {
     } else {
       _user.value = null;
       _userProfile.value = null;
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
     }
 
     _loading.value = false;
