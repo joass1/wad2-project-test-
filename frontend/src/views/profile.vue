@@ -81,9 +81,9 @@
                 <div class="level-badge">Level 1</div>
               </div>
               <div class="profile-info">
-                <h2 class="profile-name">{{ user.name || "sandra" }}</h2>
+                <h2 class="profile-name">{{ user.name || "User" }}</h2>
                 <p class="profile-email">
-                  {{ user.email || "sandra@gmail.com" }}
+                  {{ user.email || "user@example.com" }}
                 </p>
                 <p class="profile-member-since">Member since October 2025</p>
                 <div class="experience-section">
@@ -531,8 +531,13 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+
+import { useAuth } from "@/composables/useAuth.js";
+import { api } from "@/lib/api.js";
+
+const { userProfile, user: authUser, logout: baseLogout } = useAuth();
 
 const router = useRouter();
 const activeTab = ref("overview");
@@ -543,8 +548,8 @@ const avatarInput = ref(null);
 const previewAvatar = ref(null);
 
 const user = reactive({
-  name: "sandra",
-  email: "sandra@gmail.com",
+  name: "",
+  email: "",
   avatar: null,
 });
 
@@ -562,20 +567,38 @@ const stats = reactive({
   xp: 0,
 });
 
-// Notification settings
-const notificationSettings = reactive({
+const defaultNotificationSettings = {
   notifications: true,
   studyReminders: true,
   dailyCheckin: true,
   achievementNotifications: false,
   socialUpdates: false,
-});
+};
+
+const defaultPreferences = {
+  dailyStudyGoal: 120,
+  theme: "system",
+  timezone: "UTC+8",
+  timer: {
+    focusDuration: 25,
+    breakDuration: 5,
+    longBreakDuration: 15,
+  },
+};
+
+// Notification settings
+const notificationSettings = reactive({ ...defaultNotificationSettings });
 
 // Preferences settings
 const preferences = reactive({
-  dailyStudyGoal: 120,
-  theme: "system",
+  dailyStudyGoal: defaultPreferences.dailyStudyGoal,
+  theme: defaultPreferences.theme,
+  timezone: defaultPreferences.timezone,
+  timer: { ...defaultPreferences.timer },
 });
+
+const isLoadingSettings = ref(false);
+let shouldRehydrate = false;
 
 onMounted(() => {
   try {
@@ -583,20 +606,6 @@ onMounted(() => {
     if (data?.email) user.email = data.email;
     if (data?.name) user.name = data.name;
     if (data?.avatar) user.avatar = data.avatar;
-  } catch {}
-
-  // Load notification settings
-  try {
-    const settings = JSON.parse(
-      localStorage.getItem("notification_settings") || "{}"
-    );
-    Object.assign(notificationSettings, settings);
-  } catch {}
-
-  // Load preferences
-  try {
-    const prefs = JSON.parse(localStorage.getItem("user_preferences") || "{}");
-    Object.assign(preferences, prefs);
   } catch {}
 });
 
@@ -701,27 +710,183 @@ function toggleNotification(setting) {
   // Note: Individual toggles no longer auto-save, user must click Save Settings
 }
 
-function saveSettings() {
-  // Save notification settings
-  localStorage.setItem(
-    "notification_settings",
-    JSON.stringify(notificationSettings)
-  );
-
-  // Save preferences
-  localStorage.setItem("user_preferences", JSON.stringify(preferences));
-
-  // Show success notification
-  showSuccessNotification();
-}
-
-import { useAuth } from "@/composables/useAuth.js";
-
-const { logout: baseLogout } = useAuth();
-
 function logout() {
   baseLogout();
   router.push("/login");
+}
+
+function resetNotificationSettings() {
+  Object.assign(notificationSettings, { ...defaultNotificationSettings });
+}
+
+function resetPreferences() {
+  Object.assign(preferences, {
+    dailyStudyGoal: defaultPreferences.dailyStudyGoal,
+    theme: defaultPreferences.theme,
+    timezone: defaultPreferences.timezone,
+  });
+  Object.assign(preferences.timer, { ...defaultPreferences.timer });
+}
+
+function toNumber(value, fallback) {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+watch(
+  [() => userProfile.value, () => authUser.value],
+  ([profile, firebaseUser]) => {
+    if (profile) {
+      const fallbackName =
+        firebaseUser?.displayName || firebaseUser?.email || "";
+      user.name = profile.full_name || profile.name || fallbackName || "";
+      user.email = profile.email || firebaseUser?.email || "";
+      user.avatar =
+        profile.avatar ||
+        profile.avatar_url ||
+        firebaseUser?.photoURL ||
+        null;
+    } else if (firebaseUser) {
+      user.name = firebaseUser.displayName || firebaseUser.email || "";
+      user.email = firebaseUser.email || "";
+      user.avatar = firebaseUser.photoURL || null;
+    } else {
+      user.name = "";
+      user.email = "";
+      user.avatar = null;
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => authUser.value,
+  (firebaseUser) => {
+    if (firebaseUser) {
+      hydrateSettings();
+    } else {
+      resetNotificationSettings();
+      resetPreferences();
+    }
+  },
+  { immediate: true }
+);
+
+async function hydrateSettings() {
+  if (isLoadingSettings.value) {
+    shouldRehydrate = true;
+    return;
+  }
+  isLoadingSettings.value = true;
+  try {
+    await Promise.all([loadNotificationSettings(), loadUserPreferences()]);
+  } finally {
+    isLoadingSettings.value = false;
+    if (shouldRehydrate) {
+      shouldRehydrate = false;
+      hydrateSettings();
+    }
+  }
+}
+
+async function loadNotificationSettings() {
+  try {
+    const settings = await api.get("/api/notifications/settings");
+    const mappedSettings = {
+      notifications:
+        settings.notifications ?? defaultNotificationSettings.notifications,
+      studyReminders:
+        settings.study_reminders ?? defaultNotificationSettings.studyReminders,
+      dailyCheckin:
+        settings.daily_checkin ?? defaultNotificationSettings.dailyCheckin,
+      achievementNotifications:
+        settings.achievement_notifications ??
+        defaultNotificationSettings.achievementNotifications,
+      socialUpdates:
+        settings.social_updates ?? defaultNotificationSettings.socialUpdates,
+    };
+
+    Object.assign(notificationSettings, mappedSettings);
+  } catch (error) {
+    console.log("Failed to load notification settings:", error);
+    resetNotificationSettings();
+  }
+}
+
+async function loadUserPreferences() {
+  try {
+    const prefs = await api.get("/api/profile/preferences");
+    Object.assign(preferences, {
+      dailyStudyGoal:
+        prefs.daily_study_goal ?? defaultPreferences.dailyStudyGoal,
+      theme: prefs.theme ?? defaultPreferences.theme,
+      timezone: prefs.timezone ?? defaultPreferences.timezone,
+    });
+    const timerSettings = prefs.timer_settings || {};
+    Object.assign(preferences.timer, {
+      focusDuration:
+        timerSettings.focus_duration ??
+        defaultPreferences.timer.focusDuration,
+      breakDuration:
+        timerSettings.break_duration ?? defaultPreferences.timer.breakDuration,
+      longBreakDuration:
+        timerSettings.long_break_duration ??
+        defaultPreferences.timer.longBreakDuration,
+    });
+  } catch (error) {
+    console.log("Failed to load user preferences:", error);
+    resetPreferences();
+  }
+}
+
+async function saveSettings() {
+  try {
+    const notificationPayload = {
+      notifications: notificationSettings.notifications,
+      study_reminders: notificationSettings.studyReminders,
+      daily_checkin: notificationSettings.dailyCheckin,
+      achievement_notifications: notificationSettings.achievementNotifications,
+      social_updates: notificationSettings.socialUpdates,
+    };
+
+    const preferencesPayload = {
+      daily_study_goal: toNumber(
+        preferences.dailyStudyGoal,
+        defaultPreferences.dailyStudyGoal
+      ),
+      theme: preferences.theme,
+      timezone: preferences.timezone,
+      timer_settings: {
+        focus_duration: toNumber(
+          preferences.timer.focusDuration,
+          defaultPreferences.timer.focusDuration
+        ),
+        break_duration: toNumber(
+          preferences.timer.breakDuration,
+          defaultPreferences.timer.breakDuration
+        ),
+        long_break_duration: toNumber(
+          preferences.timer.longBreakDuration,
+          defaultPreferences.timer.longBreakDuration
+        ),
+      },
+    };
+
+    await Promise.all([
+      api.put("/api/notifications/settings", notificationPayload),
+      api.put("/api/profile/preferences", preferencesPayload),
+    ]);
+
+    await hydrateSettings();
+
+    showSuccessNotification();
+  } catch (error) {
+    console.log(error);
+    alert("Failed to save settings: " + error.message);
+  }
 }
 </script>
 
