@@ -7,16 +7,9 @@ from ...core.firebase import db
 router = APIRouter(prefix="/profile", tags=["profile"])
 
 
-class Profile(BaseModel):
-    name: str
-    email: EmailStr
-    avatar: str
-
-
 @router.post("/")
 # verify user id token before upserting profile
 def upsert_profile(payload: dict, user: dict = Depends(require_user)):
-    print(user)
     uid = user["uid"]
     # create document in users collection
     db.collection("users").document(uid).set(
@@ -24,6 +17,23 @@ def upsert_profile(payload: dict, user: dict = Depends(require_user)):
             "full_name": payload["name"],
             "email": payload["email"],
             "created_at": datetime.now(timezone.utc),
+            "notification_settings": {
+                "notifications": True,
+                "study_reminders": True,
+                "daily_checkin": True,
+                "achievement_notifications": False,
+                "social_updates": False,
+            },
+            "user_preferences": {
+                "daily_study_goal": 120,
+                "theme": "system",
+                "timezone": "UTC+8",
+                "timer_settings": {
+                    "focus_duration": 25,
+                    "break_duration": 5,
+                    "long_break_duration": 15,
+                },
+            },
         },
         merge=True,
     )
