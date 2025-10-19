@@ -1,12 +1,13 @@
 import { createRouter, createWebHistory } from "vue-router";
-import LoginPage from "@/views/LoginPage.vue";
-import Dashboard from "@/views/Dashboard.vue";
-import Timer from "@/views/Timer.vue";
-import TaskTracker from "@/views/TaskTracker.vue";
-import Profile from "@/views/Profile.vue";
-import Progress from "@/views/Progress.vue";
-import Checkin from "@/views/Checkin.vue";
-import SocialHub from '@/views/SocialHub.vue'
+import LoginPage from "@/views/loginpage.vue";
+import Dashboard from "@/views/dashboard.vue";
+import Timer from "@/views/timer.vue";
+import TaskTracker from "@/views/tasktracker.vue";
+import Profile from "@/views/profile.vue";
+import Progress from "@/views/progress.vue";
+import Checkin from "@/views/checkin.vue";
+import SocialHub from '@/views/socialhub.vue'
+import PetPage from '@/views/petpage.vue'
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
@@ -59,6 +60,18 @@ const routes = [
     name: 'SocialHub', 
     component: SocialHub,
     meta: { requiresAuth: true }, 
+  },
+  {
+    path: '/pet',
+    name: 'PetPage',
+    component: PetPage,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/pet',
+    name: 'PetPage',
+    component: PetPage,
+    meta: { requiresAuth: true },
   },
 ];
 

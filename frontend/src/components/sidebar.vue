@@ -17,6 +17,7 @@
       <v-list-item to="/progress" prepend-icon="mdi-chart-line" title="Progress" rounded="lg" />
       <v-list-item to="/checkin" prepend-icon="mdi-heart-outline" title="Wellness Check-in" rounded="lg" />
       <v-list-item to="/social-hub" prepend-icon="mdi-account-group-outline" title="Social" rounded="lg" />
+      <v-list-item to="/pet" prepend-icon="mdi-paw" title="Pet" rounded="lg" />
       <v-list-item to="/profile" prepend-icon="mdi-account-outline" title="Profile" rounded="lg" />
     </v-list>
 
