@@ -42,7 +42,7 @@
           <v-card-text class="text-center">
             <v-icon icon="mdi-heart-outline" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Wellness Check-ins</div>
-            <div class="text-h6 font-weight-bold mt-1">0 check-ins</div>
+            <div class="text-h6 font-weight-bold mt-1">{{ wellnessOverview.totalCheckIns }} check-ins</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -245,6 +245,7 @@ import { api } from "@/lib/api.js";
 
 onMounted(() => {
   getTaskStats();
+  getWellnessOverview();
 })
 
 const taskStat = reactive({
@@ -253,6 +254,13 @@ const taskStat = reactive({
   overdue: 0,
   total: 0,
 });
+
+const wellnessOverview = reactive({
+  streak: 0,
+  totalCheckIns: 0,
+  lastCheckInDate: "",
+});
+
 
 async function getTaskStats() {
   try {
@@ -265,13 +273,19 @@ async function getTaskStats() {
   }
 }
 
-
+async function getWellnessOverview() {
+  try {
+    const wellness = await api.get("/api/wellness/overview");
+    Object.assign(wellnessOverview, {
+      streak: wellness.streak,
+      totalCheckIns: wellness.totalCheckIns,
+    });
+  } catch (error) {
+  }
+}
 
 const tab = ref(0)
-const studyProgress = ref(80);
-const taskComplete = ref(20);
-const studyStreak = ref(40);
-const checkIn = ref(60);
+
 
 
 // ---- Dummy Data ----
