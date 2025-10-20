@@ -22,7 +22,7 @@
           <v-card-text class="text-center">
             <v-icon icon="mdi-target" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Tasks Completed</div>
-            <div class="text-h6 font-weight-bold mt-1">67%</div>
+            <div class="text-h6 font-weight-bold mt-1">{{ completionRate }}%</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -55,11 +55,6 @@
       <div class="tab-item" :class="{ active: tab === 2 }" @click="tab = 2">Wellness Trends</div>
       <div class="tab-item" :class="{ active: tab === 3 }" @click="tab = 3">Insights</div>
 
-      <!-- 
-      <button v-for="tab in tabs" :key="tab" :class="['tab-item', { active: activeTab === tab }]"
-        @click="activeTab = tab">
-        {{ tab }}
-      </button> -->
     </div>
 
 
@@ -243,18 +238,41 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, reactive } from "vue";
 import ApexCharts from "vue3-apexcharts";
 
-const tab = ref(0)
+import { api } from "@/lib/api.js";
 
+onMounted(() => {
+  getTaskStats();
+})
+
+const taskStat = reactive({
+  completed: 0,
+  dueToday: 0,
+  overdue: 0,
+  total: 0,
+});
+
+async function getTaskStats() {
+  try {
+    const tasksStats = await api.get("/api/tasks/stats");
+    Object.assign(taskStat, {
+      completed: tasksStats.completed,
+      total: tasksStats.total,
+    });
+  } catch (error) {
+  }
+}
+
+
+
+const tab = ref(0)
 const studyProgress = ref(80);
 const taskComplete = ref(20);
 const studyStreak = ref(40);
 const checkIn = ref(60);
 
-const activeTab = ref("Study Analytics");
-const tabs = ["Study Analytics", "Task Progress", "Wellness Trends", "Insights"];
 
 // ---- Dummy Data ----
 // Bar chart (Daily Study Time)
@@ -297,11 +315,9 @@ const productivityOptions = ref({
 
 // task progress
 
-// Sample data for Task Completion
-const totalTasks = ref(10); // Total number of tasks
-const completedTasks = ref(6); // Completed tasks
-const completionRate = ref(((completedTasks.value / totalTasks.value) * 100).toFixed(2)); // Completion rate calculation
-
+const totalTasks = taskStat.total; // Total number of tasks
+const completedTasks = taskStat.completed; // Completed tasks
+const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 // Task Completion Trends Bar Chart (Created vs Completed)
 const taskCompletionSeries = ref([
   { name: "Created Tasks", data: [2, 3, 1, 2, 4, 3, 2] }, // Example data for tasks created
