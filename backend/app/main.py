@@ -5,7 +5,7 @@ import socketio
 import asyncio
 import os
 
-from app.api.routes import auth, profile, pet, notifications, wellness
+from app.api.routes import auth, profile, pet, notifications, wellness, tasks
 from app.core.firebase import db
 
 app = FastAPI()
@@ -33,6 +33,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(profile.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
 app.include_router(wellness.router, prefix="/api")
+app.include_router(tasks.router, prefix="/api")
 app.include_router(pet.router)
 
 # Pet update loop
