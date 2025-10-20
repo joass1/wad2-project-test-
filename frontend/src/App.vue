@@ -21,8 +21,8 @@
         <router-view @toggle-fullscreen="handleFullscreen" />
       </v-main>
     </template>
-       <!-- NEW: Global floating pet - Always visible on all pages -->
-    <GlobalDesktopPet v-if="!isLogin" />
+       <!-- NEW: Global floating pet - Hidden on login and petpage -->
+    <GlobalDesktopPet v-if="!isLogin && !isPetPage" />
   </v-app>
 </template>
 
@@ -35,6 +35,7 @@ import GlobalDesktopPet from '@/components/GlobalDesktopPet.vue'
 
 const route = useRoute()
 const isLogin = computed(() => route.name === 'Login')
+const isPetPage = computed(() => route.name === 'PetPage' || route.path === '/pet')
 
 // Fullscreen mode state
 const isFullscreen = ref(false)

@@ -44,14 +44,14 @@ class PetState:
         self.last_update = datetime.now()
     
     def reset_movement(self):
-        """Reset movement based on current animation (like InteractablePet)"""
+        """Reset movement based on current animation"""
         # Set velocity and acceleration based on animation state
-        if self.current_animation == "walk_left":
+        if self.current_animation in ["walk_left", "walk"]:
             self.v_x = -2
             self.v_y = 0
             self.a_x = 0
             self.a_y = 0
-        elif self.current_animation == "walk_right":
+        elif self.current_animation in ["walk_right", "walk2"]:
             self.v_x = 2
             self.v_y = 0
             self.a_x = 0
@@ -59,8 +59,8 @@ class PetState:
         elif self.current_animation == "falling":
             self.v_x = 0
             self.a_x = 0
-            self.a_y = 1.5  # Gravity acceleration
-        elif self.current_animation == "idle" or self.current_animation == "sleep":
+            self.a_y = 0.8  # Gravity acceleration (slower fall)
+        elif self.current_animation in ["idle", "idle2", "sleep", "grabbed", "clean", "clean2"]:
             self.v_x = 0
             self.v_y = 0
             self.a_x = 0
@@ -140,16 +140,17 @@ class PetState:
             self.update_roaming(dt)
     
     def start_roaming(self):
-        """Start walking to a random location"""
+        """Start walking to a random location with sprite animations"""
         self.roam_target_x = random.randint(100, self.canvas_width - 100)
         self.is_roaming = True
-        
+
         # Set animation and velocity based on direction
+        # Use walk (row 4) or walk2 (row 5) animations
         if self.roam_target_x > self.x:
-            self.current_animation = "walk_right"
+            self.current_animation = random.choice(["walk_right", "walk2"])
         else:
-            self.current_animation = "walk_left"
-        
+            self.current_animation = random.choice(["walk_left", "walk"])
+
         self.reset_movement()
     
     def update_roaming(self, dt: float):
@@ -158,11 +159,12 @@ class PetState:
         if abs(self.x - self.roam_target_x) < 10:
             self.is_roaming = False
             self.v_x = 0
-            self.current_animation = "idle"
+            # Randomly choose idle animation (idle, idle2, or clean)
+            self.current_animation = random.choice(["idle", "idle2", "clean", "clean2"])
             self.reset_movement()
             self.roam_timer = 0
             self.roam_cooldown = random.randint(3, 8)
-            
+
             # 30% chance to sleep after walking
             if random.random() < 0.3:
                 self.go_to_sleep()
@@ -194,16 +196,16 @@ class PetState:
         self.transition_duration = 1.0
     
     def set_grabbed(self, grabbed: bool):
-        """Handle grab/release (like InteractablePet event handlers)"""
+        """Handle grab/release with sprite-based animations"""
         self.is_grabbed = grabbed
-        
+
         if grabbed:
-            # start_move event
-            self.current_animation = "idle"
+            # Use grabbed sprite animation (paw animation - row 7)
+            self.current_animation = "grabbed"
             self.is_roaming = False
             self.is_sleeping = False
             self.transition_start_time = None
-            
+
             # Stop all movement
             self.v_x = 0
             self.v_y = 0
@@ -212,14 +214,14 @@ class PetState:
         else:
             # stop_move event - check if should fall
             floor_level = self.canvas_height - self.pet_size
-            
+
             if self.y < floor_level:
-                # Pet is above ground, start falling
+                # Pet is above ground, start falling with scared animation (row 9)
                 self.current_animation = "falling"
                 self.v_y = 0  # Start with zero velocity
-                self.a_y = 1.5  # Gravity
+                self.a_y = 0.8  # Slower gravity for gentle fall
             else:
-                # On ground, just idle
+                # On ground, return to idle
                 self.current_animation = "idle"
                 self.reset_movement()
     
