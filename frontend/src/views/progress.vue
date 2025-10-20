@@ -10,11 +10,7 @@
       <v-col cols="12" sm="6" md="3">
         <v-card class="rounded-xl" elevation="0" variant="outlined">
           <v-card-text class="text-center">
-            <v-icon
-              icon="mdi-clock-time-four-outline"
-              size="26"
-              class="mb-2 text-primary"
-            />
+            <v-icon icon="mdi-clock-time-four-outline" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Study Hours</div>
             <div class="text-h6 font-weight-bold mt-1">1h 25m</div>
           </v-card-text>
@@ -53,196 +49,160 @@
     </v-row>
     <!-- Tabs -->
     <div class="tab-navigation">
-      <button
-        v-for="tab in tabs"
-        :key="tab"
-        :class="['tab-item', { active: activeTab === tab }]"
-        @click="activeTab = tab"
-      >
+      <!-- const tabs = ["Study Analytics", "Task Progress", "Wellness Trends", "Insights"]; -->
+      <div class="tab-item" :class="{ active: tab === 0 }" @click="tab = 0">Study Analytics</div>
+      <div class="tab-item" :class="{ active: tab === 1 }" @click="tab = 1">Task Progress</div>
+      <div class="tab-item" :class="{ active: tab === 2 }" @click="tab = 2">Wellness Trends</div>
+      <div class="tab-item" :class="{ active: tab === 3 }" @click="tab = 3">Insights</div>
+
+      <!-- 
+      <button v-for="tab in tabs" :key="tab" :class="['tab-item', { active: activeTab === tab }]"
+        @click="activeTab = tab">
         {{ tab }}
-      </button>
+      </button> -->
     </div>
 
-    <div>
-      <div v-if="activeTab === 'Study Analytics'">
-        <v-container fluid>
-          <v-row>
-            <!-- Daily Study Time Chart -->
-            <v-col cols="12" md="6">
-              <v-card class="pa-4">
-                <v-card-title>Daily Study Time (Last 7 Days)</v-card-title>
-                <v-card-subtitle>Hours spent studying each day</v-card-subtitle>
-                <apexchart
-                  type="bar"
-                  height="250"
-                  :options="dailyStudyOptions"
-                  :series="dailyStudySeries"
-                />
-              </v-card>
-            </v-col>
 
-            <!-- Study Time by Subject Chart -->
-            <v-col cols="12" md="6">
-              <v-card class="pa-4">
-                <v-card-title>Study Time by Subject</v-card-title>
-                <v-card-subtitle>Distribution of study hours</v-card-subtitle>
-                <apexchart
-                  type="donut"
-                  height="250"
-                  :options="subjectOptions"
-                  :series="subjectSeries"
-                />
-              </v-card>
-            </v-col>
-          </v-row>
-
-          <v-row>
-            <!-- Productivity Trend Chart -->
-            <v-col cols="12">
-              <v-card class="pa-4">
-                <v-card-title>Productivity Trend</v-card-title>
-                <v-card-subtitle>Your self-rated productivity over time</v-card-subtitle>
-                <apexchart
-                  type="line"
-                  height="250"
-                  :options="productivityOptions"
-                  :series="productivitySeries"
-                />
-              </v-card>
-            </v-col>
-          </v-row>
-        </v-container>
-      </div>
-
-      <div v-else-if="activeTab === 'Task Progress'">
-        <v-container fluid>
-          <v-row>
-            <!-- Task Completion Trends Chart -->
-            <v-col cols="12">
-              <v-card class="pa-4">
-                <v-card-title>Task Completion Trends</v-card-title>
-                <v-card-subtitle
-                  >Tasks created vs completed over the last 7 days</v-card-subtitle
-                >
-                <apexchart
-                  type="bar"
-                  height="250"
-                  :options="taskCompletionOptions"
-                  :series="taskCompletionSeries"
-                />
-              </v-card>
-            </v-col>
-          </v-row>
-          <!-- Task Stats (Total Tasks, Completed, Completion Rate) -->
-          <v-col cols="12">
-            <v-row>
-              <v-col cols="12" sm="4">
-                <v-card class="rounded-xl" elevation="0" variant="outlined">
-                  <v-card-text class="text-center">
-                    <v-icon
-                      icon="mdi-format-list-checks"
-                      size="26"
-                      class="mb-2 text-primary"
-                    />
-                    <div class="text-subtitle-2">Total Tasks</div>
-                    <div class="text-h6 font-weight-bold mt-1">{{ totalTasks }}</div>
-                  </v-card-text>
-                </v-card>
-              </v-col>
-
-              <v-col cols="12" sm="4">
-                <v-card class="rounded-xl" elevation="0" variant="outlined">
-                  <v-card-text class="text-center">
-                    <v-icon
-                      icon="mdi-check-circle-outline"
-                      size="26"
-                      class="mb-2 text-primary"
-                    />
-                    <div class="text-subtitle-2">Completed</div>
-                    <div class="text-h6 font-weight-bold mt-1">{{ completedTasks }}</div>
-                  </v-card-text>
-                </v-card>
-              </v-col>
-
-              <v-col cols="12" sm="4">
-                <v-card class="rounded-xl" elevation="0" variant="outlined">
-                  <v-card-text class="text-center">
-                    <v-icon icon="mdi-percent" size="26" class="mb-2 text-primary" />
-                    <div class="text-subtitle-2">Completion Rate</div>
-                    <div class="text-h6 font-weight-bold mt-1">{{ completionRate }}%</div>
-                  </v-card-text>
-                </v-card>
-              </v-col>
-            </v-row>
+    <v-window v-model="tab" :transition="false" :touch="false">
+      <v-window-item :value="0">
+        <v-row>
+          <!-- Daily Study Time Chart -->
+          <v-col cols="12" md="6">
+            <v-card class="pa-4">
+              <v-card-title>Daily Study Time (Last 7 Days)</v-card-title>
+              <v-card-subtitle>Hours spent studying each day</v-card-subtitle>
+              <apexchart type="bar" height="250" :options="dailyStudyOptions" :series="dailyStudySeries" />
+            </v-card>
           </v-col>
-        </v-container>
-      </div>
 
-      <div class="tab-navigation" v-else-if="activeTab === 'Wellness Trends'">
-        <v-container fluid>
+          <!-- Study Time by Subject Chart -->
+          <v-col cols="12" md="6">
+            <v-card class="pa-4">
+              <v-card-title>Study Time by Subject</v-card-title>
+              <v-card-subtitle>Distribution of study hours</v-card-subtitle>
+              <apexchart type="donut" height="250" :options="subjectOptions" :series="subjectSeries" />
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <v-row>
+          <!-- Productivity Trend Chart -->
+          <v-col cols="12">
+            <v-card class="pa-4">
+              <v-card-title>Productivity Trend</v-card-title>
+              <v-card-subtitle>Your self-rated productivity over time</v-card-subtitle>
+              <apexchart type="line" height="250" :options="productivityOptions" :series="productivitySeries" />
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-window-item>
+
+      <v-window-item :value="1">
+        <v-row>
+          <!-- Task Completion Trends Chart -->
+          <v-col cols="12">
+            <v-card class="pa-4">
+              <v-card-title>Task Completion Trends</v-card-title>
+              <v-card-subtitle>Tasks created vs completed over the last 7 days</v-card-subtitle>
+              <apexchart type="bar" height="250" :options="taskCompletionOptions" :series="taskCompletionSeries" />
+            </v-card>
+          </v-col>
+        </v-row>
+        <!-- Task Stats (Total Tasks, Completed, Completion Rate) -->
+        <div>
           <v-row>
-            <!-- Wellness Trends Chart -->
-            <v-col cols="12">
-              <v-card class="pa-4">
-                <v-card-title>Wellness Trends (Last 7 Days)</v-card-title>
-                <v-card-subtitle
-                  >Track your mood, energy, sleep, and stress levels</v-card-subtitle
-                >
-                <apexchart
-                  type="line"
-                  height="250"
-                  :options="wellnessOptions"
-                  :series="wellnessSeries"
-                />
+            <v-col>
+              <v-card class="rounded-xl" elevation="0" variant="outlined">
+                <v-card-text class="text-center">
+                  <v-icon icon="mdi-format-list-checks" size="26" class="mb-2 text-primary" />
+                  <div class="text-subtitle-2">Total Tasks</div>
+                  <div class="text-h6 font-weight-bold mt-1">{{ totalTasks }}</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+
+            <v-col cols="12" sm="4">
+              <v-card class="rounded-xl" elevation="0" variant="outlined">
+                <v-card-text class="text-center">
+                  <v-icon icon="mdi-check-circle-outline" size="26" class="mb-2 text-primary" />
+                  <div class="text-subtitle-2">Completed</div>
+                  <div class="text-h6 font-weight-bold mt-1">{{ completedTasks }}</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+
+            <v-col>
+              <v-card class="rounded-xl" elevation="0" variant="outlined">
+                <v-card-text class="text-center">
+                  <v-icon icon="mdi-percent" size="26" class="mb-2 text-primary" />
+                  <div class="text-subtitle-2">Completion Rate</div>
+                  <div class="text-h6 font-weight-bold mt-1">{{ completionRate }}%</div>
+                </v-card-text>
               </v-card>
             </v-col>
           </v-row>
+        </div>
+      </v-window-item>
 
-          <!-- Wellness Stats (Mood, Energy, Sleep, Stress) -->
-          <v-row>
-            <v-col cols="12" sm="3">
-              <v-card class="rounded-xl" elevation="0" variant="outlined">
-                <v-card-text class="text-center">
-                  <div class="text-subtitle-2">Mood</div>
-                  <div class="text-h6 font-weight-bold mt-1">{{ mood }}/10</div>
-                  <div class="text-caption text-disabled">7-day avg</div>
-                </v-card-text>
-              </v-card>
-            </v-col>
 
-            <v-col cols="12" sm="3">
-              <v-card class="rounded-xl" elevation="0" variant="outlined">
-                <v-card-text class="text-center">
-                  <div class="text-subtitle-2">Energy</div>
-                  <div class="text-h6 font-weight-bold mt-1">{{ energy }}/10</div>
-                  <div class="text-caption text-disabled">7-day avg</div>
-                </v-card-text>
-              </v-card>
-            </v-col>
+      <v-window-item :value="2">
+        <v-row>
+          <!-- Wellness Trends Chart -->
+          <v-col cols="12">
+            <v-card class="pa-4">
+              <v-card-title>Wellness Trends (Last 7 Days)</v-card-title>
+              <v-card-subtitle>Track your mood, energy, sleep, and stress levels</v-card-subtitle>
+              <apexchart type="line" height="250" :options="wellnessOptions" :series="wellnessSeries" />
+            </v-card>
+          </v-col>
+        </v-row>
 
-            <v-col cols="12" sm="3">
-              <v-card class="rounded-xl" elevation="0" variant="outlined">
-                <v-card-text class="text-center">
-                  <div class="text-subtitle-2">Sleep</div>
-                  <div class="text-h6 font-weight-bold mt-1">{{ sleep }}/10</div>
-                  <div class="text-caption text-disabled">7-day avg</div>
-                </v-card-text>
-              </v-card>
-            </v-col>
+        <!-- Wellness Stats (Mood, Energy, Sleep, Stress) -->
+        <v-row>
+          <v-col cols="12" sm="3">
+            <v-card class="rounded-xl" elevation="0" variant="outlined">
+              <v-card-text class="text-center">
+                <div class="text-subtitle-2">Mood</div>
+                <div class="text-h6 font-weight-bold mt-1">{{ mood }}/10</div>
+                <div class="text-caption text-disabled">7-day avg</div>
+              </v-card-text>
+            </v-card>
+          </v-col>
 
-            <v-col cols="12" sm="3">
-              <v-card class="rounded-xl" elevation="0" variant="outlined">
-                <v-card-text class="text-center">
-                  <div class="text-subtitle-2">Stress</div>
-                  <div class="text-h6 font-weight-bold mt-1">{{ stress }}/10</div>
-                  <div class="text-caption text-disabled">7-day avg</div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
-        </v-container>
-      </div>
-      <div v-else-if="activeTab === 'Insights'">
+          <v-col cols="12" sm="3">
+            <v-card class="rounded-xl" elevation="0" variant="outlined">
+              <v-card-text class="text-center">
+                <div class="text-subtitle-2">Energy</div>
+                <div class="text-h6 font-weight-bold mt-1">{{ energy }}/10</div>
+                <div class="text-caption text-disabled">7-day avg</div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+
+          <v-col cols="12" sm="3">
+            <v-card class="rounded-xl" elevation="0" variant="outlined">
+              <v-card-text class="text-center">
+                <div class="text-subtitle-2">Sleep</div>
+                <div class="text-h6 font-weight-bold mt-1">{{ sleep }}/10</div>
+                <div class="text-caption text-disabled">7-day avg</div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+
+          <v-col cols="12" sm="3">
+            <v-card class="rounded-xl" elevation="0" variant="outlined">
+              <v-card-text class="text-center">
+                <div class="text-subtitle-2">Stress</div>
+                <div class="text-h6 font-weight-bold mt-1">{{ stress }}/10</div>
+                <div class="text-caption text-disabled">7-day avg</div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-window-item>
+
+
+      <v-window-item :value="3">
         <div class="insights-container">
           <div class="card mood">
             <div class="icon">😊</div>
@@ -276,14 +236,17 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </v-window-item>
+    </v-window>
+
   </v-container>
 </template>
 
 <script setup>
 import { ref, computed } from "vue";
 import ApexCharts from "vue3-apexcharts";
+
+const tab = ref(0)
 
 const studyProgress = ref(80);
 const taskComplete = ref(20);
@@ -435,8 +398,8 @@ const insights = computed(() => [
       mood.value >= 8
         ? "insight-positive"
         : mood.value >= 5
-        ? "insight-neutral"
-        : "insight-negative",
+          ? "insight-neutral"
+          : "insight-negative",
   },
   {
     title: "Energy",
@@ -446,8 +409,8 @@ const insights = computed(() => [
       energy.value >= 8
         ? "insight-positive"
         : energy.value >= 5
-        ? "insight-neutral"
-        : "insight-negative",
+          ? "insight-neutral"
+          : "insight-negative",
   },
   {
     title: "Sleep",
@@ -457,8 +420,8 @@ const insights = computed(() => [
       sleep.value >= 8
         ? "insight-positive"
         : sleep.value >= 5
-        ? "insight-neutral"
-        : "insight-negative",
+          ? "insight-neutral"
+          : "insight-negative",
   },
   {
     title: "Stress",
@@ -468,8 +431,8 @@ const insights = computed(() => [
       stress.value <= 3
         ? "insight-positive"
         : stress.value <= 6
-        ? "insight-neutral"
-        : "insight-negative",
+          ? "insight-neutral"
+          : "insight-negative",
   },
 ]);
 </script>
@@ -536,21 +499,26 @@ const insights = computed(() => [
 
 .v-card {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  background: var(--surface);
+  border: 1px solid var(--surface-lighter);
 }
 
 .v-icon {
   color: #42a5f5;
 }
+
 .insights-container {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 32px 24px 24px 24px; /* padding with extra top */
+  padding: 32px 24px 24px 24px;
+  /* padding with extra top */
   border-radius: 16px;
   border: 1.5px solid #d1d5db;
   width: 100%;
   box-sizing: border-box;
-  margin-top: 16px; /* space between tab and container */
+  margin-top: 16px;
+  /* space between tab and container */
 }
 
 .card {
@@ -563,6 +531,7 @@ const insights = computed(() => [
   padding: 16px 20px;
   transition: box-shadow 0.3s ease;
 }
+
 /* Icon styling */
 .icon {
   font-size: 30px;
