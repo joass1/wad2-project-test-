@@ -17,13 +17,6 @@
             />
             <div class="text-subtitle-2">Study Hours</div>
             <div class="text-h6 font-weight-bold mt-1">1h 25m</div>
-            <div class="text-caption text-disabled">Next: 10</div>
-            <v-progress-linear
-              :model-value="studyProgress"
-              height="5"
-              rounded
-              color="primary"
-            />
           </v-card-text>
         </v-card>
       </v-col>
@@ -34,13 +27,6 @@
             <v-icon icon="mdi-target" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Tasks Completed</div>
             <div class="text-h6 font-weight-bold mt-1">67%</div>
-            <div class="text-caption text-disabled">Next: 5</div>
-            <v-progress-linear
-              :model-value="taskComplete"
-              height="5"
-              rounded
-              color="primary"
-            />
           </v-card-text>
         </v-card>
       </v-col>
@@ -51,13 +37,6 @@
             <v-icon icon="mdi-fire" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Study Streak</div>
             <div class="text-h6 font-weight-bold mt-1">5 days</div>
-            <div class="text-caption text-disabled">Next: 3</div>
-            <v-progress-linear
-              :model-value="studyStreak"
-              height="5"
-              rounded
-              color="primary"
-            />
           </v-card-text>
         </v-card>
       </v-col>
@@ -68,13 +47,7 @@
             <v-icon icon="mdi-heart-outline" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Wellness Check-ins</div>
             <div class="text-h6 font-weight-bold mt-1">0 check-ins</div>
-            <div class="text-caption text-disabled">Next: 5</div>
-            <v-progress-linear
-              :model-value="checkIn"
-              height="5"
-              rounded
-              color="primary"
-            />
+
           </v-card-text>
         </v-card>
       </v-col>
@@ -206,7 +179,7 @@
         </v-container>
       </div>
 
-      <div v-else-if="activeTab === 'Wellness Trends'">
+      <div class="tab-navigation" v-else-if="activeTab === 'Wellness Trends'">
         <v-container fluid>
           <v-row>
             <!-- Wellness Trends Chart -->
@@ -561,7 +534,6 @@ const insights = computed(() => [
   flex-direction: column;
   gap: 16px;
   padding: 32px 24px 24px 24px; /* padding with extra top */
-  background: #f8fafc;
   border-radius: 16px;
   border: 1.5px solid #d1d5db;
   width: 100%;
