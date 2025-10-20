@@ -66,14 +66,14 @@ let dragOffset = { x: 0, y: 0 }
 // Physics state
 const GRAVITY = 0.8          // pixels per frame^2
 const TERMINAL_VELOCITY = 15  // max falling speed
-const DRAG_COEFFICIENT = 0.95 // air resistance
+const DRAG_COEFFICIENT = 0.8 // air resistance
 let isFalling = false
 let isOnGround = false
 
 // Walking behavior
 let walkTarget = null
 let walkCooldown = 0
-const WALK_SPEED = 1
+const WALK_SPEED = 0.5
 
 // Sleep behavior
 let isSleeping = false
