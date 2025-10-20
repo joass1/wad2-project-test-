@@ -1,5 +1,5 @@
 <template>
-  <v-container class="py-8">
+  <v-container class="py-8 main-content">
     <div>
       <h1 class="text-h5 text-primary font-weight-bold mb-1">Progress Analytics</h1>
       <p class="text-body-2 text-muted mb-4">Track your academic and wellness journey</p>
@@ -47,24 +47,23 @@
             <v-icon icon="mdi-heart-outline" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Wellness Check-ins</div>
             <div class="text-h6 font-weight-bold mt-1">0 check-ins</div>
-
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
     <!-- Tabs -->
-    <div class="custom-tabs">
+    <div class="tab-navigation">
       <button
         v-for="tab in tabs"
         :key="tab"
-        :class="['tab-button', { active: activeTab === tab }]"
+        :class="['tab-item', { active: activeTab === tab }]"
         @click="activeTab = tab"
       >
         {{ tab }}
       </button>
     </div>
 
-    <div class="tab-content">
+    <div>
       <div v-if="activeTab === 'Study Analytics'">
         <v-container fluid>
           <v-row>
@@ -480,46 +479,59 @@ const insights = computed(() => [
   color: var(--text-muted);
 }
 
-.progress-bar {
-  height: 4px;
-  background-color: #eaeaea;
-  position: relative;
-  margin-top: 10px;
+.main-content {
+  padding: 32px;
+  background-color: var(--background);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.progress-fill {
-  background-color: #4caf50;
-  height: 100%;
-}
-
-.custom-tabs {
+/* TAB */
+.tab-navigation {
   display: flex;
-  background-color: #f0f0f5;
+  gap: 0;
+  margin-bottom: 24px;
+  background-color: var(--surface-lighter);
+  border-radius: 12px;
   padding: 4px;
-  border-radius: 20px;
-  width: 100%;
-  height: 60%;
-  transition: opacity 0.5s ease-in-out;
+  position: relative;
 }
 
-.tab-button {
-  flex: 1;
-  /* Makes each button take equal width */
-  border: none;
-  background: transparent;
-  padding: 6px 12px;
-  border-radius: 16px;
+.tab-item {
+  padding: 12px 24px;
   cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  color: var(--text-muted);
   font-weight: 500;
-  color: #444;
-  transition: background 0.3s, color 0.3s;
+  position: relative;
+  flex: 1;
   text-align: center;
+  background: transparent;
 }
 
-.tab-button.active {
-  background-color: #ffffff;
-  color: #000;
+.tab-item:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+  color: var(--text-primary);
+}
+
+.tab-item.active {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   font-weight: 600;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  background-color: var(--primary);
+  border-radius: 2px;
 }
 
 .v-card {
