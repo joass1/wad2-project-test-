@@ -403,34 +403,23 @@
           </div>
 
           <div class="settings-section">
-            <h3 class="section-title">
-              <span class="section-icon">🛡️</span>
-              Data & Privacy
-            </h3>
-            <div class="privacy-actions">
-              <button class="export-btn">
-                <span class="btn-icon">⬇️</span>
-                Export My Data
+            <h3 class="section-title">Account</h3>
+            <div class="account-actions">
+              <button class="signout-btn" @click="confirmLogout">
+                <span class="btn-icon"></span>
+                Sign Out
               </button>
-              <button class="delete-btn">
-                <span class="btn-icon">🗑️</span>
+              <button class="delete-btn" @click="confirmDeleteAccount">
+                <span class="btn-icon"></span>
                 Delete Account
               </button>
             </div>
           </div>
 
-          <div class="settings-section">
-            <h3 class="section-title">Account</h3>
-            <button class="signout-btn" @click="logout">
-              <span class="btn-icon">➡️</span>
-              Sign Out
-            </button>
-          </div>
-
           <!-- Save Settings Button -->
           <div class="settings-save-section">
             <button class="save-settings-btn" @click="saveSettings">
-              <span class="btn-icon">💾</span>
+              <span class="btn-icon"></span>
               Save Settings
             </button>
           </div>
@@ -527,6 +516,67 @@
       <div class="toast-icon">✓</div>
       <div class="toast-message">Profile updated successfully!</div>
     </div>
+
+    <!-- Sign Out Confirmation Modal -->
+    <div v-if="showLogoutModal" class="modal-overlay" @click="closeLogoutModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3 class="modal-title">Sign Out</h3>
+          <button class="modal-close" @click="closeLogoutModal">×</button>
+        </div>
+        <div class="modal-body">
+          <p style="margin: 0 0 16px 0; color: var(--text-primary)">
+            Are you sure you want to sign out?
+          </p>
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" @click="closeLogoutModal">
+              Cancel
+            </button>
+            <button type="button" class="btn-danger" @click="confirmLogoutProceed">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Account Confirmation Modal -->
+    <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3 class="modal-title">Delete Account</h3>
+          <button class="modal-close" @click="closeDeleteModal">×</button>
+        </div>
+        <div class="modal-body">
+          <p style="margin: 0 0 16px 0; color: var(--text-primary)">
+            This action is permanent. Are you sure you want to delete your account?
+          </p>
+
+          <div style="margin: 12px 0 8px 0; color: var(--text-primary)">
+            To continue, solve the equation:
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px">
+            <div style="font-weight:600; font-size:16px; color: var(--text-primary)">{{ deleteChallenge.a }} {{ deleteChallenge.op }} {{ deleteChallenge.b }} = ?</div>
+            <input
+              type="number"
+              class="form-input"
+              style="max-width:140px"
+              v-model="deleteChallenge.userInput"
+              placeholder="Your answer"
+            />
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" @click="closeDeleteModal">
+              Cancel
+            </button>
+            <button type="button" class="btn-danger" :disabled="!isDeleteAnswerCorrect" @click="confirmDeleteProceed">
+              Delete Account
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -544,6 +594,10 @@ const activeTab = ref("overview");
 const showEditModal = ref(false);
 const showSuccessToast = ref(false);
 const showAvatarModal = ref(false);
+const showLogoutModal = ref(false);
+const showDeleteModal = ref(false);
+const deleteChallenge = reactive({ a: 0, b: 0, op: '+', userInput: '' });
+const isDeleteAnswerCorrect = ref(false);
 const avatarInput = ref(null);
 const previewAvatar = ref(null);
 
@@ -710,9 +764,66 @@ function toggleNotification(setting) {
   // Note: Individual toggles no longer auto-save, user must click Save Settings
 }
 
+// Recompute whether the math challenge answer is correct whenever user input changes
+watch(
+  () => deleteChallenge.userInput,
+  (val) => {
+    const parsed = Number(val);
+    const correct =
+      deleteChallenge.op === '+'
+        ? deleteChallenge.a + deleteChallenge.b
+        : deleteChallenge.a - deleteChallenge.b;
+    isDeleteAnswerCorrect.value = Number.isFinite(parsed) && parsed === correct;
+  }
+);
+
 function logout() {
   baseLogout();
   router.push("/login");
+}
+
+function confirmLogout() {
+  showLogoutModal.value = true;
+}
+
+function closeLogoutModal() {
+  showLogoutModal.value = false;
+}
+
+function confirmLogoutProceed() {
+  showLogoutModal.value = false;
+  logout();
+}
+
+function confirmDeleteAccount() {
+  // generate easy math challenge: numbers 1-9, random + or - with non-negative result
+  const a = Math.floor(Math.random() * 9) + 1;
+  const b = Math.floor(Math.random() * 9) + 1;
+  const useAddition = Math.random() < 0.5;
+  if (useAddition) {
+    deleteChallenge.a = a;
+    deleteChallenge.b = b;
+    deleteChallenge.op = '+';
+  } else {
+    const maxVal = Math.max(a, b);
+    const minVal = Math.min(a, b);
+    deleteChallenge.a = maxVal;
+    deleteChallenge.b = minVal;
+    deleteChallenge.op = '-';
+  }
+  deleteChallenge.userInput = '';
+  isDeleteAnswerCorrect.value = false;
+  showDeleteModal.value = true;
+}
+
+function closeDeleteModal() {
+  showDeleteModal.value = false;
+}
+
+function confirmDeleteProceed() {
+  showDeleteModal.value = false;
+  // Implement deletion here (API call). For demo, sign out afterward.
+  logout();
 }
 
 function resetNotificationSettings() {
@@ -1766,6 +1877,19 @@ async function saveSettings() {
   gap: 12px;
 }
 
+.account-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.account-actions .signout-btn,
+.account-actions .delete-btn {
+  flex: 1 1 240px;
+}
+
 .export-btn,
 .delete-btn,
 .signout-btn {
@@ -1786,6 +1910,7 @@ async function saveSettings() {
   background-color: var(--error);
   color: white;
   border-color: var(--error);
+  justify-content: center;
 }
 
 .delete-btn:hover {
@@ -1793,7 +1918,6 @@ async function saveSettings() {
 }
 
 .signout-btn {
-  width: 100%;
   justify-content: center;
 }
 
@@ -1993,6 +2117,28 @@ async function saveSettings() {
 
 .btn-cancel:hover {
   background-color: var(--surface-light);
+}
+
+/* Danger (destructive action) button */
+.btn-danger {
+  background-color: var(--error);
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+}
+
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Dark mode adjustments for modal */
