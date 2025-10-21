@@ -23,20 +23,89 @@
 
     <v-spacer />
 
+    <!-- Coin display -->
+    <div class="coin-display mb-3 pa-3 d-flex align-center ga-2">
+      <template v-if="coinsLoading">
+        <div class="coin-loading text-body-2">Loading coins...</div>
+      </template>
+      <template v-else-if="coinsError">
+        <div class="coin-error">
+          <div class="error-icon">⚠️</div>
+          <div class="error-text text-caption">{{ coinsError }}</div>
+        </div>
+      </template>
+      <template v-else>
+        <AnimatedCoin :scale="2" :speed="8" />
+        <div class="coin-amount text-h6 font-weight-bold">{{ coins }}</div>
+      </template>
+    </div>
+
     <!-- Bottom theme toggle -->
-    <div class="mt-4 pt-2 border-top">
+    <div class="mt-2 pt-2 border-top">
       <ThemeToggle compact />
     </div>
   </div>
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import AnimatedCoin from '@/components/AnimatedCoin.vue'
+import { useCoins } from '@/composables/useCoins.js'
+
+// Use shared coin state
+const { coins, coinsLoading, coinsError, fetchCoins } = useCoins()
+
+onMounted(() => {
+  // Only fetch if coins haven't been loaded yet
+  if (coins.value === null && !coinsLoading.value) {
+    fetchCoins()
+  }
+})
 </script>
 
 <style scoped>
 .border-top {
   border-top: 1px solid var(--surface-lighter);
+}
+
+.coin-display {
+  background: rgba(255, 215, 0, 0.1);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.coin-display:hover {
+  background: rgba(255, 215, 0, 0.15);
+  border-color: rgba(255, 215, 0, 0.5);
+}
+
+.coin-amount {
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.coin-loading {
+  color: rgba(255, 215, 0, 0.7);
+  font-style: italic;
+}
+
+.coin-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.error-icon {
+  font-size: 20px;
+}
+
+.error-text {
+  color: #ff6b6b;
+  line-height: 1.2;
+  flex: 1;
 }
 
 :deep(.v-list-item) {

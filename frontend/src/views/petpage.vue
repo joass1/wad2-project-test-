@@ -1,7 +1,9 @@
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import AnimatedPet from '@/components/AnimatedPet.vue'
 import SpritePreview from '@/components/SpritePreview.vue'
+import AnimatedCoin from '@/components/AnimatedCoin.vue'
+import { useCoins } from '@/composables/useCoins.js'
 
 /* ===== Global size knob ===== */
 const SCALE = 6  // ↓ smaller pet. Try 5 or 4 if you want it even smaller.
@@ -90,7 +92,10 @@ function feedPet() {
 
 /* ==== Shop ==== */
 const showShop = ref(false)
-const playerGold = ref(1000)
+
+// Use shared coin state
+const { coins: playerGold, coinsLoading, coinsError, fetchCoins, updateCoins } = useCoins()
+
 const shopItems = ref([
   { icon: '🍎', name: 'Apple', price: 50, description: 'A crisp, sweet apple that pets love!' },
   { icon: '🥕', name: 'Carrot', price: 30, description: 'Fresh orange carrots, great for pet health.' },
@@ -100,22 +105,101 @@ const shopItems = ref([
   { icon: '🧀', name: 'Cheese', price: 60, description: 'Rich cheese, a special treat for pets.' }
 ])
 
+/* ==== Shopkeeper Animation ==== */
+const shopkeeperState = ref('happytalk')  // happytalk, neutral, annoyedclosed
+let talkingInterval = null
+
+const shopkeeperImage = computed(() => {
+  const images = {
+    happytalk: '/shopkeeper/sk_bb_happytalk.png',
+    neutral: '/shopkeeper/sk_bb_neutral.png',
+    annoyedclosed: '/shopkeeper/sk_bb_annoyedclosed.png'
+  }
+  return images[shopkeeperState.value]
+})
+
+function startTalkingAnimation() {
+  // Reset to happytalk when shop opens
+  shopkeeperState.value = 'happytalk'
+
+  // Alternate between happytalk and neutral for 5 seconds
+  let elapsed = 0
+  let isHappy = true
+
+  talkingInterval = setInterval(() => {
+    if (elapsed >= 3000) {
+      // After 5 seconds, stop at neutral
+      shopkeeperState.value = 'neutral'
+      clearInterval(talkingInterval)
+      talkingInterval = null
+    } else {
+      // Toggle between happytalk and neutral every 500ms
+      isHappy = !isHappy
+      shopkeeperState.value = isHappy ? 'happytalk' : 'neutral'
+      elapsed += 500
+    }
+  }, 500)
+}
+
+function handleShopkeeperClick() {
+  // Clear any ongoing animation
+  if (talkingInterval) {
+    clearInterval(talkingInterval)
+    talkingInterval = null
+  }
+  // Switch to annoyed
+  shopkeeperState.value = 'annoyedclosed'
+
+  // Return to neutral after 1.5 seconds
+  setTimeout(() => {
+    shopkeeperState.value = 'neutral'
+  }, 1500)
+}
+
+// Watch for shop opening
+watch(showShop, (isOpen) => {
+  if (isOpen) {
+    startTalkingAnimation()
+  } else {
+    // Clean up animation when shop closes
+    if (talkingInterval) {
+      clearInterval(talkingInterval)
+      talkingInterval = null
+    }
+  }
+})
+
 function toggleShop() {
   showShop.value = !showShop.value
 }
 
-function buyFood(item) {
-  if (playerGold.value >= item.price) {
-    playerGold.value -= item.price
-    // Add to existing food or create new entry
-    const existingFood = availableFood.value.find(f => f.name === item.name)
-    if (existingFood) {
-      existingFood.count++
+async function buyFood(item) {
+  if (playerGold.value !== null && playerGold.value >= item.price) {
+    const newCoinAmount = playerGold.value - item.price
+
+    // Use the shared updateCoins function
+    const result = await updateCoins(newCoinAmount)
+
+    if (result.success) {
+      // Add to existing food or create new entry
+      const existingFood = availableFood.value.find(f => f.name === item.name)
+      if (existingFood) {
+        existingFood.count++
+      } else {
+        availableFood.value.push({ icon: item.icon, name: item.name, count: 1 })
+      }
     } else {
-      availableFood.value.push({ icon: item.icon, name: item.name, count: 1 })
+      alert('Failed to purchase item: ' + (result.error || 'Please try again'))
     }
   }
 }
+
+// Fetch coins when component mounts if not already loaded
+onMounted(() => {
+  if (playerGold.value === null && !coinsLoading.value) {
+    fetchCoins()
+  }
+})
 </script>
 
 <template>
@@ -222,7 +306,18 @@ function buyFood(item) {
       <div class="shop-popup" @click.stop>
         <div class="shop-header">
           <h3>🛒 Pet Shop</h3>
-          <div class="header-gold">💰 {{ playerGold }}g</div>
+          <div class="header-gold">
+            <template v-if="coinsLoading">
+              <span class="gold-amount">Loading...</span>
+            </template>
+            <template v-else-if="coinsError">
+              <span class="gold-amount error">Error: {{ coinsError }}</span>
+            </template>
+            <template v-else>
+              <AnimatedCoin :scale="1.5" :speed="8" />
+              <span class="gold-amount">{{ playerGold }}</span>
+            </template>
+          </div>
           <button class="close-shop" @click="toggleShop">×</button>
         </div>
         
@@ -230,13 +325,27 @@ function buyFood(item) {
           <div class="shop-layout">
                     <!-- Character Dialogue Area -->
                     <div class="character-section">
-                      <div class="character-portrait">
-                        <img src="/shopkeeper.png" alt="Shopkeeper" class="character-image" />
+                      <div class="character-portrait" @click="handleShopkeeperClick">
+                        <img :src="shopkeeperImage" alt="Shopkeeper" class="character-image" />
                       </div>
                       <div class="character-name">Anya the Petkeeper</div>
                       <div class="dialogue-box">
                         <div class="dialogue-text">
-                          {{ playerGold > 0 ? "Welcome to the pet shop! How can I help you today? Be sure to have money when you buy from me!" : "Sorry, but you don't have any money. Come back when you can afford something!" }}
+                          <template v-if="coinsLoading">
+                            Please wait while I check your coin balance...
+                          </template>
+                          <template v-else-if="coinsError">
+                            Oh no! I can't check your coins right now. There seems to be a problem: {{ coinsError }}
+                          </template>
+                          <template v-else-if="playerGold === null">
+                            I'm having trouble reading your coin balance. Please try again later.
+                          </template>
+                          <template v-else-if="playerGold > 0">
+                            Welcome to the pet shop! How can I help you today? Be sure to have enough coins when you buy from me!
+                          </template>
+                          <template v-else>
+                            Sorry, but you don't have any coins. Come back when you can afford something!
+                          </template>
                         </div>
                       </div>
                     </div>
@@ -255,11 +364,14 @@ function buyFood(item) {
                     <div class="item-description">{{ item.description }}</div>
                   </div>
                   <div class="item-price">
-                    <span class="price">{{ item.price }}g</span>
-                    <button 
-                      class="buy-btn" 
+                    <div class="price-container">
+                      <AnimatedCoin :scale="1" :speed="8" />
+                      <span class="price">{{ item.price }}</span>
+                    </div>
+                    <button
+                      class="buy-btn"
                       @click="buyFood(item)"
-                      :disabled="playerGold < item.price"
+                      :disabled="coinsLoading || coinsError || playerGold === null || playerGold < item.price"
                     >
                       Buy
                     </button>
@@ -359,6 +471,18 @@ function buyFood(item) {
   border-radius:6px;
   font-weight:600;
   font-size:14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.gold-amount{
+  color:#fff;
+  font-weight:600;
+  font-size:14px;
+}
+.gold-amount.error{
+  color:#ff6b6b;
+  font-size:12px;
 }
 .close-shop{
   background:none;
@@ -397,18 +521,27 @@ function buyFood(item) {
 }
 .character-portrait{
   width:100%;
-  height:120px;
+  height:280px;
   background:var(--surface-light);
   border-radius:8px;
   display:flex;
   align-items:center;
   justify-content:center;
   overflow:hidden;
+  cursor:pointer;
+  transition:transform 0.2s ease, box-shadow 0.2s ease;
+}
+.character-portrait:hover{
+  transform:scale(1.02);
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+}
+.character-portrait:active{
+  transform:scale(0.98);
 }
 .character-image{
   width:100%;
   height:100%;
-  object-fit:cover;
+  object-fit:contain;
 }
 .character-name{
   text-align:center;
@@ -490,6 +623,11 @@ function buyFood(item) {
   flex-direction:column;
   align-items:flex-end;
   gap:8px;
+}
+.price-container{
+  display:flex;
+  align-items:center;
+  gap:4px;
 }
 .price{
   font-weight:600;

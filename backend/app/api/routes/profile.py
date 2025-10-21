@@ -56,6 +56,7 @@ def upsert_profile(payload: dict, user: dict = Depends(require_user)):
             "email": payload["email"],
             "created_at": datetime.now(timezone.utc),
             "avatar": "",
+            "coins": 500,  # Default coins for new users
             "notification_settings": deepcopy(DEFAULT_NOTIFICATION_SETTINGS),
             "user_preferences": deepcopy(DEFAULT_USER_PREFERENCES),
         },
@@ -92,3 +93,39 @@ def update_user_preferences(
         merge=True,
     )
     return SUCCESS_RESPONSE
+
+
+@router.get("/coins")
+def get_user_coins(user: dict = Depends(require_user)):
+    """Get the user's current coin balance"""
+    uid = user["uid"]
+    doc_snapshot = db.collection("users").document(uid).get()
+
+    if not doc_snapshot.exists:
+        raise Exception("User profile not found")
+
+    user_data = doc_snapshot.to_dict() or {}
+    if "coins" not in user_data:
+        raise Exception("Coins field not found in user profile")
+
+    return {"coins": user_data["coins"]}
+
+
+@router.put("/coins")
+def update_user_coins(payload: dict, user: dict = Depends(require_user)):
+    """Update the user's coin balance"""
+    uid = user["uid"]
+    new_coins = payload.get("coins")
+
+    if new_coins is None:
+        return {"ok": False, "message": "Missing 'coins' field"}
+
+    if not isinstance(new_coins, int) or new_coins < 0:
+        return {"ok": False, "message": "Coins must be a non-negative integer"}
+
+    db.collection("users").document(uid).set(
+        {"coins": new_coins},
+        merge=True,
+    )
+
+    return {"ok": True, "coins": new_coins, "message": "Coins updated successfully"}
