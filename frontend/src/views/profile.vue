@@ -1327,10 +1327,22 @@ async function saveSettings() {
   overflow: hidden;
 }
 
+/* Dark mode activity items */
+[data-theme="dark"] .activity-item {
+  background: #000000 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
 .activity-item:hover {
   background: rgba(255, 255, 255, 0.8);
   transform: translateX(8px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode activity item hover */
+[data-theme="dark"] .activity-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
 }
 
 .activity-icon {
@@ -1658,10 +1670,22 @@ async function saveSettings() {
   position: relative;
 }
 
+/* Dark mode setting items */
+[data-theme="dark"] .setting-item {
+  background: #000000 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
 .setting-item:hover {
   background: rgba(255, 255, 255, 0.7);
   transform: translateX(4px);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode setting item hover */
+[data-theme="dark"] .setting-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
 .setting-item:last-child {

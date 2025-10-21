@@ -10,7 +10,7 @@
         v-if="!isFullscreen"
         app
         permanent
-        width="260"
+        width="287"
         class="sb-drawer"
       >
         <Sidebar />
