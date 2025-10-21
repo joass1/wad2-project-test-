@@ -4,37 +4,47 @@ import AnimatedPet from '@/components/AnimatedPet.vue'
 import SpritePreview from '@/components/SpritePreview.vue'
 
 /* ===== Global size knob ===== */
-const SCALE = 4  // ↓ smaller pet. Try 5 or 4 if you want it even smaller.
+const SCALE = 6  // ↓ smaller pet. Try 5 or 4 if you want it even smaller.
 
 /* ================= PET CATALOG ================= */
 const PETS = {
-  bear: { label: 'Bear', config: { spriteUrl: '/MiniBear.png', slice: 32, scale: SCALE, speed: 70,
-    animations: { move:{row:0,fps:10,loop:true,frames:8}, idle:{row:1,fps:6,loop:true,frames:8},
-    clean:{row:2,fps:8,loop:true,frames:8}, move2:{row:3,fps:10,loop:true,frames:8},
-    sleep:{row:6,fps:5,loop:true,frames:6}, jump:{row:7,fps:12,loop:false,frames:4}, scared:{row:8,fps:10,loop:false,frames:6}}}},
-  fox: { label: 'Fox', config: { spriteUrl: '/MiniFox.png', slice: 32, scale: SCALE, speed: 80,
-    animations: { move:{row:0,fps:12,loop:true,frames:8}, idle:{row:1,fps:6,loop:true,frames:6},
-    clean:{row:2,fps:8,loop:true,frames:6}, sleep:{row:3,fps:5,loop:true,frames:4},
-    jump:{row:4,fps:12,loop:false,frames:4}, scared:{row:4,fps:12,loop:false,frames:4}}}},
-  deer1:{label:'Deer 1',config:{spriteUrl:'/MiniDeer1.png',slice:32,scale:SCALE,speed:70,
-    animations:{move:{row:0,fps:10,loop:true,frames:6},idle:{row:1,fps:6,loop:true,frames:6},
-    clean:{row:2,fps:8,loop:true,frames:6},jump:{row:3,fps:12,loop:false,frames:6},sleep:{row:4,fps:5,loop:true,frames:5}}}},
-  deer2:{label:'Deer 2',config:{spriteUrl:'/MiniDeer2.png',slice:32,scale:SCALE,speed:70,
-    animations:{move:{row:0,fps:10,loop:true,frames:7},idle:{row:1,fps:6,loop:true,frames:7},
-    clean:{row:2,fps:8,loop:true,frames:7},jump:{row:3,fps:12,loop:false,frames:7},sleep:{row:4,fps:5,loop:true,frames:7}}}},
-  bunny:{label:'Bunny',config:{spriteUrl:'/MiniBunny.png',slice:32,scale:SCALE,speed:85,
-    animations:{move:{row:0,fps:12,loop:true,frames:4},idle:{row:1,fps:6,loop:true,frames:4},
-    jump:{row:2,fps:14,loop:false,frames:4},sleep:{row:3,fps:5,loop:true,frames:4}}}},
-  boar:{label:'Boar',config:{spriteUrl:'/MiniBoar.png',slice:32,scale:SCALE,speed:75,
-    animations:{move:{row:0,fps:10,loop:true,frames:6},idle:{row:1,fps:6,loop:true,frames:6},
-    clean:{row:2,fps:8,loop:true,frames:6},jump:{row:3,fps:12,loop:false,frames:6},sleep:{row:4,fps:5,loop:true,frames:5}}}},
-  bird:{label:'Bird',config:{spriteUrl:'/MiniBird.png',slice:16,scale:SCALE+2,speed:90,
-    animations:{move:{row:0,fps:14,loop:true,frames:3},idle:{row:1,fps:8,loop:true,frames:3},
-    jump:{row:2,fps:12,loop:false,frames:3},sleep:{row:3,fps:5,loop:true,frames:3}}}},
-  wolf:{label:'Wolf',config:{spriteUrl:'/MiniWolf.png',slice:32,scale:SCALE,speed:80,
-    animations:{move:{row:0,fps:12,loop:true,frames:8},idle:{row:1,fps:6,loop:true,frames:8},
-    clean:{row:2,fps:8,loop:true,frames:8},scared:{row:5,fps:10,loop:false,frames:8},
-    sleep:{row:6,fps:5,loop:true,frames:7},jump:{row:7,fps:12,loop:false,frames:7}}}}
+  cat: { label: 'Cat', config: { spriteUrl: '/cat-spritesheet.png', slice: 32, scale: SCALE, speed: 70,
+    animations: { idle:{row:0,fps:6,loop:true,frames:8,colStart:0}, idle2:{row:1,fps:6,loop:true,frames:8,colStart:0},
+    clean:{row:2,fps:8,loop:true,frames:8,colStart:0}, clean2:{row:3,fps:8,loop:true,frames:8,colStart:0},
+    move:{row:4,fps:10,loop:true,frames:8,colStart:0}, move2:{row:5,fps:10,loop:true,frames:8,colStart:0},
+    sleep:{row:6,fps:5,loop:true,frames:6,colStart:0}, paw:{row:7,fps:10,loop:false,frames:6,colStart:0},
+    grabbed:{row:7,fps:8,loop:true,frames:6,colStart:0}, jump:{row:8,fps:12,loop:false,frames:8,colStart:0},
+    scared:{row:9,fps:10,loop:false,frames:8,colStart:0}, falling:{row:9,fps:8,loop:true,frames:8,colStart:0}}}},
+    
+  catGrey: { label: 'Grey Cat', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat (Grey).png', slice: 32, scale: SCALE, speed: 70,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:3,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
+
+  catBlack: { label: 'Black Cat', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat (Black).png', slice: 32, scale: SCALE, speed: 70,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:3,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
+
+  catNew: { label: 'New Cat', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat.png', slice: 32, scale: SCALE, speed: 70,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:3,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
+
+  dogBlonde: { label: 'Blonde Dog', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Dog (Blonde).png', slice: 32, scale: SCALE, speed: 80,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:2,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
+
+  dogGrey: { label: 'Grey Dog', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Dog (Grey).png', slice: 32, scale: SCALE, speed: 80,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:2,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
+
+  dogLight: { label: 'Light Dog', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Dog (Light Brown).png', slice: 32, scale: SCALE, speed: 80,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:2,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}}
 }
 
 /* ==== Status / Food ==== */
@@ -77,6 +87,35 @@ function feedPet() {
     petStatus.health    = Math.min(100, petStatus.health + 5)
   }
 }
+
+/* ==== Shop ==== */
+const showShop = ref(false)
+const playerGold = ref(1000)
+const shopItems = ref([
+  { icon: '🍎', name: 'Apple', price: 50, description: 'A crisp, sweet apple that pets love!' },
+  { icon: '🥕', name: 'Carrot', price: 30, description: 'Fresh orange carrots, great for pet health.' },
+  { icon: '🐟', name: 'Fish', price: 80, description: 'Fresh fish, a premium treat for pets.' },
+  { icon: '🥛', name: 'Milk', price: 40, description: 'Fresh milk, good for growing pets.' },
+  { icon: '🍖', name: 'Meat', price: 120, description: 'Premium meat, the ultimate pet treat.' },
+  { icon: '🧀', name: 'Cheese', price: 60, description: 'Rich cheese, a special treat for pets.' }
+])
+
+function toggleShop() {
+  showShop.value = !showShop.value
+}
+
+function buyFood(item) {
+  if (playerGold.value >= item.price) {
+    playerGold.value -= item.price
+    // Add to existing food or create new entry
+    const existingFood = availableFood.value.find(f => f.name === item.name)
+    if (existingFood) {
+      existingFood.count++
+    } else {
+      availableFood.value.push({ icon: item.icon, name: item.name, count: 1 })
+    }
+  }
+}
 </script>
 
 <template>
@@ -85,8 +124,20 @@ function feedPet() {
     <div class="main-content" :style="{ backgroundImage: `url(${currentBackground})` }">
       <div class="pet-stage">
         <!-- 🔑 key makes sure AnimatedPet remounts when selectedPetKey changes -->
-        <AnimatedPet :key="selectedPetKey" :config="PETS[selectedPetKey].config" />
+        <AnimatedPet 
+          :key="selectedPetKey" 
+          :sprite-url="PETS[selectedPetKey].config.spriteUrl"
+          :slice="PETS[selectedPetKey].config.slice"
+          :scale="PETS[selectedPetKey].config.scale"
+          :speed="PETS[selectedPetKey].config.speed"
+          :animations="PETS[selectedPetKey].config.animations"
+        />
       </div>
+      
+              <!-- Shop Button -->
+              <button class="shop-button" @click="toggleShop">
+                <img src="/fruitstand.png" alt="Shop" class="shop-icon" />
+              </button>
     </div>
 
     <!-- Right Panel -->
@@ -165,6 +216,61 @@ function feedPet() {
         </div>
       </div>
     </div>
+
+    <!-- Shop Popup -->
+    <div v-if="showShop" class="shop-overlay" @click="toggleShop">
+      <div class="shop-popup" @click.stop>
+        <div class="shop-header">
+          <h3>🛒 Pet Shop</h3>
+          <div class="header-gold">💰 {{ playerGold }}g</div>
+          <button class="close-shop" @click="toggleShop">×</button>
+        </div>
+        
+        <div class="shop-content">
+          <div class="shop-layout">
+                    <!-- Character Dialogue Area -->
+                    <div class="character-section">
+                      <div class="character-portrait">
+                        <img src="/shopkeeper.png" alt="Shopkeeper" class="character-image" />
+                      </div>
+                      <div class="character-name">Anya the Petkeeper</div>
+                      <div class="dialogue-box">
+                        <div class="dialogue-text">
+                          {{ playerGold > 0 ? "Welcome to the pet shop! How can I help you today? Be sure to have money when you buy from me!" : "Sorry, but you don't have any money. Come back when you can afford something!" }}
+                        </div>
+                      </div>
+                    </div>
+            
+            <!-- Shop Items -->
+            <div class="items-section">
+              <div class="shop-items">
+                <div 
+                  v-for="item in shopItems" 
+                  :key="item.name" 
+                  class="shop-item"
+                >
+                  <div class="item-icon">{{ item.icon }}</div>
+                  <div class="item-info">
+                    <div class="item-name">{{ item.name }}</div>
+                    <div class="item-description">{{ item.description }}</div>
+                  </div>
+                  <div class="item-price">
+                    <span class="price">{{ item.price }}g</span>
+                    <button 
+                      class="buy-btn" 
+                      @click="buyFood(item)"
+                      :disabled="playerGold < item.price"
+                    >
+                      Buy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -190,4 +296,223 @@ function feedPet() {
 .bg-preview{width:100%;height:48px;border-radius:8px;background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .bg-name{background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;}
 .action-btn{width:100%;padding:10px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;}
+
+/* Shop Button */
+.shop-button{
+  position:absolute;
+  top:20px;
+  right:20px;
+  background:transparent;
+  border:none;
+  border-radius:8px;
+  padding:8px;
+  cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+  transition:all 0.3s ease;
+}
+.shop-button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(0,0,0,0.3);
+}
+.shop-icon{
+  width:40px;
+  height:40px;
+  object-fit:contain;
+}
+
+/* Shop Popup */
+.shop-overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100vw;
+  height:100vh;
+  background:rgba(0,0,0,0.7);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+}
+.shop-popup{
+  background:var(--surface);
+  border-radius:12px;
+  width:700px;
+  max-height:80vh;
+  overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,0.3);
+}
+.shop-header{
+  background:var(--primary);
+  color:#fff;
+  padding:16px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.shop-header h3{
+  margin:0;
+  font-size:18px;
+}
+.header-gold{
+  background:rgba(255,255,255,0.2);
+  padding:8px 12px;
+  border-radius:6px;
+  font-weight:600;
+  font-size:14px;
+}
+.close-shop{
+  background:none;
+  border:none;
+  color:#fff;
+  font-size:24px;
+  cursor:pointer;
+  padding:0;
+  width:32px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  transition:background 0.2s ease;
+}
+.close-shop:hover{
+  background:rgba(255,255,255,0.2);
+}
+.shop-content{
+  padding:20px;
+  max-height:60vh;
+  overflow:hidden;
+}
+.shop-layout{
+  display:flex;
+  gap:20px;
+  height:100%;
+}
+.character-section{
+  width:200px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  flex-shrink:0;
+}
+.character-portrait{
+  width:100%;
+  height:120px;
+  background:var(--surface-light);
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.character-image{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.character-name{
+  text-align:center;
+  font-weight:600;
+  color:var(--text-primary);
+  font-size:14px;
+  margin-top:8px;
+}
+.dialogue-box{
+  background:var(--surface-light);
+  border:2px solid var(--primary);
+  border-radius:8px;
+  padding:12px;
+  position:relative;
+}
+.dialogue-box::before{
+  content:"";
+  position:absolute;
+  top:-8px;
+  left:20px;
+  width:0;
+  height:0;
+  border-left:8px solid transparent;
+  border-right:8px solid transparent;
+  border-bottom:8px solid var(--primary);
+}
+.dialogue-text{
+  font-size:12px;
+  line-height:1.4;
+  color:var(--text-primary);
+  font-style:italic;
+}
+.items-section{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  max-height:50vh;
+}
+.shop-items{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.shop-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px;
+  background:var(--surface-light);
+  border-radius:8px;
+  border:1px solid var(--surface-lighter);
+}
+.item-icon{
+  font-size:24px;
+  width:40px;
+  height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--surface);
+  border-radius:6px;
+}
+.item-info{
+  flex:1;
+}
+.item-name{
+  font-weight:600;
+  color:var(--text-primary);
+  margin-bottom:4px;
+}
+.item-description{
+  font-size:12px;
+  color:var(--text-muted);
+  line-height:1.4;
+}
+.item-price{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:8px;
+}
+.price{
+  font-weight:600;
+  color:var(--primary);
+}
+.buy-btn{
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:6px 12px;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s ease;
+}
+.buy-btn:hover:not(:disabled){
+  background:var(--primary-dark);
+  transform:translateY(-1px);
+}
+.buy-btn:disabled{
+  background:var(--surface-lighter);
+  color:var(--text-muted);
+  cursor:not-allowed;
+}
 </style>

@@ -11,17 +11,9 @@ const props = defineProps({
     type: Object,
     default: () => ({
       idle:   { row: 0, frames: 8, fps: 6,  loop: true,  colStart: 0 },
-      idle2:  { row: 1, frames: 8, fps: 6,  loop: true,  colStart: 0 },
-      clean:  { row: 2, frames: 8, fps: 8,  loop: true,  colStart: 0 },
-      clean2: { row: 3, frames: 8, fps: 8,  loop: true,  colStart: 0 },
       move:   { row: 4, frames: 8, fps: 10, loop: true,  colStart: 0 },
-      move2:  { row: 5, frames: 8, fps: 10, loop: true,  colStart: 0 },
-      sleep:   { row: 6, frames: 6, fps: 5,  loop: true,  colStart: 0 },
-      paw:     { row: 7, frames: 6, fps: 10, loop: false, colStart: 0 },
-      grabbed: { row: 7, frames: 6, fps: 8,  loop: true,  colStart: 0 },
-      jump:    { row: 8, frames: 8, fps: 12, loop: false, colStart: 0 },
-      scared:  { row: 9, frames: 8, fps: 10, loop: false, colStart: 0 },
-      falling: { row: 9, frames: 8, fps: 8,  loop: true,  colStart: 0 }
+      sleep:  { row: 6, frames: 6, fps: 5,  loop: true,  colStart: 0 },
+      click:  { row: 3, frames: 4, fps: 8,  loop: false, colStart: 0 }
     })
   }
 })
@@ -62,6 +54,15 @@ let mouseDownPos = { x: 0, y: 0 }
 
 /* Helpers */
 function setAnim(key, once = false, queueNext = null) {
+  // For Stardew pets (identified by having a 'click' animation), only allow
+  // side-to-side animations (no forward/backward variants)
+  if (props.animations.click) {
+    const allowed = ['idle', 'move', 'sleep', 'click', 'falling', 'grabbed']
+    if (!allowed.includes(key)) {
+      key = 'idle' // fallback to idle for any disallowed animation
+    }
+  }
+
   if (!props.animations[key]) return
   animKey = key
   anim = props.animations[key]
@@ -77,11 +78,18 @@ function setAnim(key, once = false, queueNext = null) {
 }
 
 function randomIdleAnim() {
-  // Favor longer calm states; sometimes fall asleep
-  const pool = Math.random() < 0.35
-    ? ['sleep']                                  // 35% chance to snooze
-    : ['idle', 'idle2', 'clean', 'clean2']       // otherwise mild idles
-  setAnim(pool[Math.floor(Math.random() * pool.length)])
+  // Stardew pets: only simple idles; Original cat: richer set
+  if (props.animations.click) {
+    // Stardew sprites: stick to simple idle or sleep
+    const pool = Math.random() < 0.3 ? ['sleep'] : ['idle']
+    setAnim(pool[Math.floor(Math.random() * pool.length)])
+  } else {
+    // Original cat keeps richer ambient idles
+    const pool = Math.random() < 0.35
+      ? ['sleep']
+      : ['idle', 'idle2', 'clean', 'clean2']
+    setAnim(pool[Math.floor(Math.random() * pool.length)])
+  }
 }
 
 function chooseDest() {
@@ -177,12 +185,21 @@ function applyPhysics() {
 }
 
 function scheduleRandomEvent() {
-  const ms = 10000 + Math.random() * 20000 // 10–30s
+  // Stardew Valley pets sleep every minute, original cat has random events
+  const ms = props.animations.click ? 60000 : (10000 + Math.random() * 20000) // 1min for Stardew, 10-30s for original
   randomEvt = window.setTimeout(() => {
-    // no ambient events while sleeping or during one-shots
-    if (!sleeping && !playingOnce && ['idle','idle2','clean','clean2'].includes(animKey)) {
-      // tiny surprise even when idle
-      setAnim(Math.random() < 0.5 ? 'scared' : 'jump', true)
+    if (props.animations.click) {
+      // Stardew Valley pets: sleep every minute
+      if (!sleeping && !playingOnce) {
+        setAnim('sleep')
+        sleeping = true
+        idleUntil = Number.POSITIVE_INFINITY // Stay asleep until clicked
+      }
+    } else {
+      // Original cat: random events
+      if (!sleeping && !playingOnce && ['idle','idle2','clean','clean2'].includes(animKey)) {
+        setAnim(Math.random() < 0.5 ? 'scared' : 'jump', true)
+      }
     }
     scheduleRandomEvent()
   }, ms)
@@ -233,11 +250,16 @@ function handleMouseUp(event) {
   const distance = Math.sqrt(dx * dx + dy * dy)
 
   if (holdDuration < 200 && distance < 5) {
-    // Quick click - wake or scare
+    // Quick click - use appropriate animation based on pet type
     if (sleeping) {
       sleeping = false
       idleUntil = 0
-      setAnim('scared', true, 'jump')
+    }
+    
+    // Check if this is a Stardew Valley pet (has click animation) or original cat
+    if (props.animations.click) {
+      // Stardew Valley pets: use flat animation for click
+      setAnim('click', true)
     } else {
       setAnim('scared', true, 'jump')
     }
@@ -286,7 +308,17 @@ function loop(t) {
       } else {
         // walk horizontally (Y controlled by physics)
         const vx = (dx / dist) * props.speed
-        pos.value.x = Math.min(Math.max(0, pos.value.x + vx * dt), bounds.w - w)
+        const newX = pos.value.x + vx * dt
+        const clampedX = Math.min(Math.max(0, newX), bounds.w - w)
+        
+        // Check if we hit a boundary and change direction
+        if (clampedX !== newX) {
+          // Hit left or right edge, choose new destination in opposite direction
+          chooseDest()
+          return
+        }
+        
+        pos.value.x = clampedX
         dir = vx >= 0 ? 1 : -1
 
         // more frequent loitering: around 12% chance per second to pause 2–5s
@@ -295,8 +327,13 @@ function loop(t) {
           randomIdleAnim()
         }
 
-        if (!playingOnce && (animKey !== 'move' && animKey !== 'move2')) {
-          setAnim(Math.random() < 0.7 ? 'move' : 'move2')
+        if (!playingOnce && animKey !== 'move') {
+          // Stardew pets always use 'move'; original cat can alternate
+          if (props.animations.click) {
+            setAnim('move')
+          } else {
+            setAnim(Math.random() < 0.7 ? 'move' : 'move2')
+          }
         }
       }
     }
@@ -397,6 +434,7 @@ onMounted(async () => {
 
   pos.value.x = Math.random() * 120 + 40
   pos.value.y = Math.random() * 80 + 40
+  
   chooseDest()
   setAnim('idle')
   idleUntil = 0
