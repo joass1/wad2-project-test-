@@ -2,10 +2,13 @@
   <div class="pa-4 d-flex flex-column h-100">
     <!-- Profile header -->
     <div class="d-flex align-center mb-4 ga-3">
-      <v-avatar size="44" color="secondary" variant="tonal">🐱</v-avatar>
+      <v-avatar size="44" color="secondary" variant="tonal">
+        <img v-if="displayAvatar" :src="displayAvatar" alt="Profile Avatar" class="avatar-image" />
+        <span v-else>{{ displayName.charAt(0).toUpperCase() }}</span>
+      </v-avatar>
       <div>
-        <div class="text-body-1 font-weight-semibold">qw</div>
-        <v-chip size="x-small" color="primary" variant="tonal">Level 1</v-chip>
+        <div class="text-body-1 font-weight-semibold">{{ displayName }}</div>
+        <v-chip size="x-small" color="primary" variant="tonal">Level {{ level }}</v-chip>
       </div>
     </div>
 
@@ -52,9 +55,13 @@ import { onMounted } from 'vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import { useCoins } from '@/composables/useCoins.js'
+import { useUserProfile } from '@/composables/useUserProfile.js'
 
 // Use shared coin state
 const { coins, coinsLoading, coinsError, fetchCoins } = useCoins()
+
+// Use shared profile state
+const { displayName, displayAvatar, level } = useUserProfile()
 
 onMounted(() => {
   // Only fetch if coins haven't been loaded yet
@@ -121,5 +128,12 @@ onMounted(() => {
 :deep(.v-list-item--active) {
   background: #0b0b15 !important;
   color: #fff !important;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 </style>

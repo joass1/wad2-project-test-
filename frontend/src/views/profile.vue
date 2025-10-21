@@ -19,13 +19,6 @@
         </div>
         <div
           class="tab-item"
-          :class="{ active: activeTab === 'pet' }"
-          @click="activeTab = 'pet'"
-        >
-          Pet
-        </div>
-        <div
-          class="tab-item"
           :class="{ active: activeTab === 'achievements' }"
           @click="activeTab = 'achievements'"
         >
@@ -50,13 +43,13 @@
               <div class="avatar-container">
                 <div class="profile-avatar">
                   <img
-                    v-if="user.avatar"
-                    :src="user.avatar"
+                    v-if="displayAvatar"
+                    :src="displayAvatar"
                     alt="Profile Avatar"
                     class="avatar-image"
                   />
                   <span v-else class="avatar-text">{{
-                    user.name?.charAt(0)?.toUpperCase() || "S"
+                    displayName?.charAt(0)?.toUpperCase() || "S"
                   }}</span>
                   <div class="camera-icon" @click="triggerAvatarUpload">
                     <svg
@@ -81,9 +74,9 @@
                 <div class="level-badge">Level 1</div>
               </div>
               <div class="profile-info">
-                <h2 class="profile-name">{{ user.name || "User" }}</h2>
+                <h2 class="profile-name">{{ displayName || "User" }}</h2>
                 <p class="profile-email">
-                  {{ user.email || "user@example.com" }}
+                  {{ displayEmail || "user@example.com" }}
                 </p>
                 <p class="profile-member-since">Member since October 2025</p>
                 <div class="experience-section">
@@ -121,12 +114,12 @@
             <div class="stat-card">
               <div class="stat-icon green">🎯</div>
               <div class="stat-value">{{ stats.studyStreak }}</div>
-              <div class="stat-label">Study Streak</div>
+              <div class="stat-label">Current Streak</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon red">❤️</div>
               <div class="stat-value">{{ stats.checkinStreak }}</div>
-              <div class="stat-label">Check-in Streak</div>
+              <div class="stat-label">Longest Streak</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon purple">🏆</div>
@@ -166,57 +159,6 @@
           </div>
         </div>
 
-        <!-- Pet Tab -->
-        <div v-if="activeTab === 'pet'" class="pet-content">
-          <div class="pet-card">
-            <h3 class="pet-title">Your Virtual Pet - Buddy</h3>
-            <p class="pet-subtitle">Take care of your study companion</p>
-            <div class="pet-display">
-              <div class="pet-avatar">
-                <div class="pet-icon">🐱</div>
-                <div class="pet-level">Level 1</div>
-              </div>
-              <div class="pet-stats">
-                <div class="pet-stats-row">
-                  <div class="pet-stat">
-                    <div class="stat-label">Health</div>
-                    <div class="stat-bar">
-                      <div class="stat-fill" style="width: 80%"></div>
-                    </div>
-                    <div class="stat-value">80%</div>
-                  </div>
-                  <div class="pet-stat">
-                    <div class="stat-label">Happiness</div>
-                    <div class="stat-bar">
-                      <div class="stat-fill" style="width: 70%"></div>
-                    </div>
-                    <div class="stat-value">70%</div>
-                  </div>
-                </div>
-                <div class="pet-details">
-                  <div class="pet-detail">
-                    <span class="detail-label">Pet Name:</span>
-                    <span class="detail-value">Buddy</span>
-                  </div>
-                  <div class="pet-detail">
-                    <span class="detail-label">Pet Type:</span>
-                    <span class="detail-value">Cat</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="pet-tips-card">
-            <h3 class="tips-title">Pet Care Tips</h3>
-            <ul class="tips-list">
-              <li>Study regularly to keep your pet healthy</li>
-              <li>Complete daily check-ins to boost happiness</li>
-              <li>Feed your pet by clicking the feed button</li>
-              <li>Your pet's well-being reflects your own!</li>
-            </ul>
-          </div>
-        </div>
 
         <!-- Achievements Tab -->
         <div v-if="activeTab === 'achievements'" class="achievements-content">
@@ -392,14 +334,6 @@
                 max="1440"
               />
             </div>
-            <div class="preference-item">
-              <label class="preference-label">Theme</label>
-              <select class="preference-select" v-model="preferences.theme">
-                <option value="system">System</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-              </select>
-            </div>
           </div>
 
           <div class="settings-section">
@@ -486,7 +420,7 @@
                 class="preview-image"
               />
               <span v-else class="preview-initials">{{
-                user.name?.charAt(0)?.toUpperCase() || "S"
+                displayName?.charAt(0)?.toUpperCase() || "S"
               }}</span>
             </div>
           </div>
@@ -585,9 +519,11 @@ import { onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { useAuth } from "@/composables/useAuth.js";
+import { useUserProfile } from "@/composables/useUserProfile.js";
 import { api } from "@/lib/api.js";
 
 const { userProfile, user: authUser, logout: baseLogout } = useAuth();
+const { profile: user, displayName, displayEmail, displayAvatar, updateName, updateEmail, updateAvatar } = useUserProfile();
 
 const router = useRouter();
 const activeTab = ref("overview");
@@ -601,11 +537,7 @@ const isDeleteAnswerCorrect = ref(false);
 const avatarInput = ref(null);
 const previewAvatar = ref(null);
 
-const user = reactive({
-  name: "",
-  email: "",
-  avatar: null,
-});
+// User state is now managed by useUserProfile composable
 
 const editForm = reactive({
   name: "",
@@ -631,7 +563,6 @@ const defaultNotificationSettings = {
 
 const defaultPreferences = {
   dailyStudyGoal: 120,
-  theme: "system",
   timezone: "UTC+8",
   timer: {
     focusDuration: 25,
@@ -646,7 +577,6 @@ const notificationSettings = reactive({ ...defaultNotificationSettings });
 // Preferences settings
 const preferences = reactive({
   dailyStudyGoal: defaultPreferences.dailyStudyGoal,
-  theme: defaultPreferences.theme,
   timezone: defaultPreferences.timezone,
   timer: { ...defaultPreferences.timer },
 });
@@ -654,18 +584,11 @@ const preferences = reactive({
 const isLoadingSettings = ref(false);
 let shouldRehydrate = false;
 
-onMounted(() => {
-  try {
-    const data = JSON.parse(localStorage.getItem("demo_user") || "{}");
-    if (data?.email) user.email = data.email;
-    if (data?.name) user.name = data.name;
-    if (data?.avatar) user.avatar = data.avatar;
-  } catch {}
-});
+// Profile data is now managed by useUserProfile composable
 
 function openEditModal() {
-  editForm.name = user.name;
-  editForm.email = user.email;
+  editForm.name = displayName.value;
+  editForm.email = displayEmail.value;
   showEditModal.value = true;
 }
 
@@ -676,15 +599,8 @@ function closeEditModal() {
 }
 
 function saveProfile() {
-  user.name = editForm.name;
-  user.email = editForm.email;
-
-  // Save to localStorage
-  const userData = {
-    name: user.name,
-    email: user.email,
-  };
-  localStorage.setItem("demo_user", JSON.stringify(userData));
+  updateName(editForm.name);
+  updateEmail(editForm.email);
 
   closeEditModal();
   showSuccessNotification();
@@ -699,7 +615,7 @@ function showSuccessNotification() {
 
 function triggerAvatarUpload() {
   showAvatarModal.value = true;
-  previewAvatar.value = user.avatar;
+  previewAvatar.value = displayAvatar.value;
 }
 
 function triggerFileUpload() {
@@ -712,15 +628,8 @@ function closeAvatarModal() {
 }
 
 function useDefaultAvatar() {
-  user.avatar = null;
+  updateAvatar(null);
   previewAvatar.value = null;
-  // Save to localStorage
-  const userData = {
-    name: user.name,
-    email: user.email,
-    avatar: user.avatar,
-  };
-  localStorage.setItem("demo_user", JSON.stringify(userData));
   closeAvatarModal();
   showSuccessNotification();
 }
@@ -744,14 +653,7 @@ function handleAvatarChange(event) {
     const reader = new FileReader();
     reader.onload = (e) => {
       previewAvatar.value = e.target.result;
-      user.avatar = e.target.result;
-      // Save to localStorage
-      const userData = {
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-      };
-      localStorage.setItem("demo_user", JSON.stringify(userData));
+      updateAvatar(e.target.result);
       closeAvatarModal();
       showSuccessNotification();
     };
@@ -833,7 +735,6 @@ function resetNotificationSettings() {
 function resetPreferences() {
   Object.assign(preferences, {
     dailyStudyGoal: defaultPreferences.dailyStudyGoal,
-    theme: defaultPreferences.theme,
     timezone: defaultPreferences.timezone,
   });
   Object.assign(preferences.timer, { ...defaultPreferences.timer });
@@ -847,31 +748,7 @@ function toNumber(value, fallback) {
   return Number.isFinite(num) ? num : fallback;
 }
 
-watch(
-  [() => userProfile.value, () => authUser.value],
-  ([profile, firebaseUser]) => {
-    if (profile) {
-      const fallbackName =
-        firebaseUser?.displayName || firebaseUser?.email || "";
-      user.name = profile.full_name || profile.name || fallbackName || "";
-      user.email = profile.email || firebaseUser?.email || "";
-      user.avatar =
-        profile.avatar ||
-        profile.avatar_url ||
-        firebaseUser?.photoURL ||
-        null;
-    } else if (firebaseUser) {
-      user.name = firebaseUser.displayName || firebaseUser.email || "";
-      user.email = firebaseUser.email || "";
-      user.avatar = firebaseUser.photoURL || null;
-    } else {
-      user.name = "";
-      user.email = "";
-      user.avatar = null;
-    }
-  },
-  { immediate: true }
-);
+// Profile data synchronization is now handled by useUserProfile composable
 
 watch(
   () => authUser.value,
@@ -933,7 +810,6 @@ async function loadUserPreferences() {
     Object.assign(preferences, {
       dailyStudyGoal:
         prefs.daily_study_goal ?? defaultPreferences.dailyStudyGoal,
-      theme: prefs.theme ?? defaultPreferences.theme,
       timezone: prefs.timezone ?? defaultPreferences.timezone,
     });
     const timerSettings = prefs.timer_settings || {};
@@ -968,7 +844,6 @@ async function saveSettings() {
         preferences.dailyStudyGoal,
         defaultPreferences.dailyStudyGoal
       ),
-      theme: preferences.theme,
       timezone: preferences.timezone,
       timer_settings: {
         focus_duration: toNumber(
@@ -1286,6 +1161,12 @@ async function saveSettings() {
   justify-content: center;
   font-size: 24px;
   margin: 0 auto 12px;
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.stat-icon:hover {
+  animation: bounce 0.6s ease-in-out;
 }
 
 .stat-icon.blue {
@@ -1379,164 +1260,6 @@ async function saveSettings() {
   color: var(--text-muted);
 }
 
-/* Pet Content */
-.pet-content {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.pet-card {
-  background: var(--surface);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--surface-lighter);
-}
-
-.pet-title {
-  font-size: 20px;
-  font-weight: bold;
-  color: var(--text-primary);
-  margin: 0 0 8px 0;
-}
-
-.pet-subtitle {
-  font-size: 14px;
-  color: var(--text-muted);
-  margin: 0 0 24px 0;
-}
-
-.pet-display {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.pet-avatar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.pet-icon {
-  width: 80px;
-  height: 80px;
-  background-color: #e1bee7;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-}
-
-.pet-level {
-  font-size: 14px;
-  font-weight: bold;
-  color: var(--text-primary);
-  background-color: var(--surface-lighter);
-  padding: 4px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-}
-
-.pet-stats {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.pet-stats-row {
-  display: flex;
-  gap: 32px;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.pet-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.stat-bar {
-  width: 100%;
-  height: 8px;
-  background-color: var(--surface-lighter);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.stat-fill {
-  height: 100%;
-  background-color: var(--primary);
-  border-radius: 4px;
-}
-
-.stat-value {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.pet-details {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pet-detail {
-  display: flex;
-  gap: 8px;
-}
-
-.detail-label {
-  font-size: 14px;
-  color: var(--text-muted);
-  min-width: 80px;
-}
-
-.detail-value {
-  font-size: 14px;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.pet-tips-card {
-  background: var(--surface);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--surface-lighter);
-}
-
-.tips-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: var(--text-primary);
-  margin: 0 0 16px 0;
-}
-
-.tips-list {
-  margin: 0;
-  padding-left: 20px;
-  color: var(--text-muted);
-}
-
-.tips-list li {
-  margin-bottom: 8px;
-}
 
 /* Achievements Content */
 .achievements-content {
@@ -2287,6 +2010,18 @@ async function saveSettings() {
   to {
     transform: translateX(0);
     opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
   }
 }
 
