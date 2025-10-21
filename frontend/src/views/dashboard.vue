@@ -121,61 +121,6 @@
       </v-col>
     </v-row>
 
-    <!-- Quick Actions now below stats -->
-    <v-card class="rounded-xl mb-8" elevation="0" variant="outlined">
-      <v-card-title class="pb-0">Quick Actions</v-card-title>
-      <v-card-subtitle class="pt-0"
-        >Get started with your daily routine</v-card-subtitle
-      >
-      <v-card-text class="py-4">
-        <v-row>
-          <v-col cols="12" sm="6" md="3">
-            <v-btn
-              block
-              variant="outlined"
-              color="grey-darken-1"
-              class="rounded-lg"
-              prepend-icon="mdi-timer-outline"
-            >
-              Start Timer
-            </v-btn>
-          </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-btn
-              block
-              variant="outlined"
-              color="grey-darken-1"
-              class="rounded-lg"
-              prepend-icon="mdi-book-outline"
-            >
-              Add Task
-            </v-btn>
-          </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-btn
-              block
-              variant="outlined"
-              color="grey-darken-1"
-              class="rounded-lg"
-              prepend-icon="mdi-heart-outline"
-            >
-              Daily Check-in
-            </v-btn>
-          </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-btn
-              block
-              variant="outlined"
-              color="grey-darken-1"
-              class="rounded-lg"
-              prepend-icon="mdi-trending-up"
-            >
-              View Progress
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
 
     <!-- Urgent Tasks + Achievements -->
     <v-row dense>
