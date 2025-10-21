@@ -15,8 +15,11 @@ const props = defineProps({
       sleep:  { row: 6, frames: 6, fps: 5,  loop: true,  colStart: 0 },
       click:  { row: 3, frames: 4, fps: 8,  loop: false, colStart: 0 }
     })
-  }
+  },
+  droppedItems: { type: Array, default: () => [] }  // Items dropped on the background
 })
+
+const emit = defineEmits(['item-eaten'])
 
 /* Refs / state */
 const actor = ref(null)
@@ -96,6 +99,145 @@ function chooseDest() {
   const pad = 24
   dest.x = pad + Math.random() * Math.max(0, bounds.w - props.slice * props.scale - pad * 2)
   dest.y = pad + Math.random() * Math.max(0, bounds.h - props.slice * props.scale - pad * 2)
+}
+
+/* Apply physics to dropped items */
+function applyItemPhysics() {
+  if (!props.droppedItems || props.droppedItems.length === 0) return
+
+  const ITEM_GRAVITY = 0.8
+  const ITEM_SIZE = 40
+
+  for (const item of props.droppedItems) {
+    if (item.isOnGround) continue
+
+    // Apply gravity
+    item.velocityY = item.velocityY || 0
+    item.velocityY += ITEM_GRAVITY
+
+    // Update position
+    item.y += item.velocityY
+
+    // Find ground below item using same logic as pet
+    const groundY = findGroundBelowItem(item.x, ITEM_SIZE)
+
+    // Check if item hit the ground
+    if (item.y >= groundY) {
+      item.y = groundY
+      item.velocityY = 0
+      item.isOnGround = true
+    }
+  }
+}
+
+/* Find ground level for dropped items */
+function findGroundBelowItem(itemX, itemSize) {
+  if (!parent) return bounds.h - itemSize
+
+  const allElements = parent.querySelectorAll('*')
+  const itemLeft = itemX - itemSize / 2
+  const itemRight = itemX + itemSize / 2
+
+  let closestGround = bounds.h - itemSize
+
+  for (const el of allElements) {
+    if (el === actor.value || actor.value?.contains(el)) continue
+
+    const computedStyle = window.getComputedStyle(el)
+    const hasBorder = parseFloat(computedStyle.borderWidth) > 0 ||
+                     parseFloat(computedStyle.borderTopWidth) > 0
+
+    if (!hasBorder) continue
+
+    const parentRect = parent.getBoundingClientRect()
+    const rect = el.getBoundingClientRect()
+
+    const relativeTop = rect.top - parentRect.top
+    const relativeLeft = rect.left - parentRect.left
+    const relativeRight = relativeLeft + rect.width
+
+    const horizontalOverlap = itemRight > relativeLeft && itemLeft < relativeRight
+
+    if (horizontalOverlap && relativeTop > 0) {
+      const groundY = relativeTop - itemSize
+      if (groundY < closestGround && groundY >= 0) {
+        closestGround = groundY
+      }
+    }
+  }
+
+  return closestGround
+}
+
+/* Collision detection with dropped items */
+function checkItemCollision() {
+  if (!props.droppedItems || props.droppedItems.length === 0) return false
+
+  const petCenterX = pos.value.x + (props.slice * props.scale) / 2
+  const petCenterY = pos.value.y + (props.slice * props.scale) / 2
+  const COLLISION_DISTANCE = 60  // Increased distance to ensure detection with PNG items
+
+  for (const item of props.droppedItems) {
+    // Only check collision with items that have landed
+    if (!item.isOnGround) continue
+
+    // Calculate distance between pet center and item position
+    const itemCenterX = item.x
+    const itemCenterY = item.y + 20  // Adjust for item center (40px height / 2)
+
+    const dx = itemCenterX - petCenterX
+    const dy = itemCenterY - petCenterY
+    const distance = Math.sqrt(dx * dx + dy * dy)
+
+    if (distance < COLLISION_DISTANCE) {
+      // Pet reached the item, eat it!
+      console.log(`Pet eating ${item.name}! Distance: ${distance.toFixed(2)}px`)
+      emit('item-eaten', item.id)
+
+      // Wake up and become happy
+      sleeping = false
+      idleUntil = performance.now() + 1000
+
+      // Play happy animation if available
+      if (props.animations.click) {
+        setAnim('click', true)
+      }
+
+      return true
+    }
+  }
+  return false
+}
+
+/* Find nearest dropped item */
+function findNearestItem() {
+  if (!props.droppedItems || props.droppedItems.length === 0) return null
+
+  let nearest = null
+  let minDist = Infinity
+
+  const petCenterX = pos.value.x + (props.slice * props.scale) / 2
+  const petCenterY = pos.value.y + (props.slice * props.scale) / 2
+
+  for (const item of props.droppedItems) {
+    // Only pathfind to items that have landed on the ground
+    if (!item.isOnGround) continue
+
+    // Calculate item center position for accurate pathfinding
+    const itemCenterX = item.x
+    const itemCenterY = item.y + 20  // Center of 40px item
+
+    const dx = itemCenterX - petCenterX
+    const dy = itemCenterY - petCenterY
+    const distance = Math.sqrt(dx * dx + dy * dy)
+
+    if (distance < minDist) {
+      minDist = distance
+      nearest = item
+    }
+  }
+
+  return nearest
 }
 
 /* Physics - works within container bounds */
@@ -236,8 +378,18 @@ function handleMouseMove(event) {
     }
 
     const parentRect = parent.getBoundingClientRect()
-    pos.value.x = event.clientX - parentRect.left - dragOffset.x
-    pos.value.y = event.clientY - parentRect.top - dragOffset.y
+    const petSize = props.slice * props.scale
+
+    // Calculate new position
+    let newX = event.clientX - parentRect.left - dragOffset.x
+    let newY = event.clientY - parentRect.top - dragOffset.y
+
+    // Clamp to boundaries
+    newX = Math.max(0, Math.min(newX, bounds.w - petSize))
+    newY = Math.max(0, Math.min(newY, bounds.h - petSize))
+
+    pos.value.x = newX
+    pos.value.y = newY
   }
 }
 
@@ -291,38 +443,56 @@ function loop(t) {
   // Apply physics first
   applyPhysics()
 
+  // Apply physics to dropped items
+  applyItemPhysics()
+
+  // Check for item collision
+  checkItemCollision()
+
   // movement only when not sticky sleeping, not dragging, and on ground
   if (!sleeping && !isDragging.value && isOnGround && !isFalling) {
     const now = performance.now()
     const w = props.slice * props.scale
+
+    // Check for nearby items - prioritize walking to food!
+    const nearestItem = findNearestItem()
+    if (nearestItem) {
+      // Set destination to the nearest item
+      dest.x = nearestItem.x - (props.slice * props.scale) / 2
+      dest.y = nearestItem.y - (props.slice * props.scale) / 2
+      idleUntil = 0  // Override any idle time to move immediately
+    }
 
     if (now >= idleUntil) {
       const dx = dest.x - pos.value.x
       const dist = Math.abs(dx)
 
       if (dist < 2) {
-        // Longer idle: 3–10s, then pick a new target
-        idleUntil = now + (3000 + Math.random() * 7000)
-        randomIdleAnim()
-        chooseDest()
+        // Reached destination
+        if (!nearestItem) {
+          // No item nearby, choose random destination
+          idleUntil = now + (3000 + Math.random() * 7000)
+          randomIdleAnim()
+          chooseDest()
+        }
       } else {
         // walk horizontally (Y controlled by physics)
         const vx = (dx / dist) * props.speed
         const newX = pos.value.x + vx * dt
         const clampedX = Math.min(Math.max(0, newX), bounds.w - w)
-        
+
         // Check if we hit a boundary and change direction
         if (clampedX !== newX) {
           // Hit left or right edge, choose new destination in opposite direction
           chooseDest()
           return
         }
-        
+
         pos.value.x = clampedX
         dir = vx >= 0 ? 1 : -1
 
-        // more frequent loitering: around 12% chance per second to pause 2–5s
-        if (Math.random() < 0.12 * dt) {
+        // more frequent loitering: around 12% chance per second to pause 2–5s (but not if chasing food!)
+        if (!nearestItem && Math.random() < 0.12 * dt) {
           idleUntil = now + (2000 + Math.random() * 3000)
           randomIdleAnim()
         }

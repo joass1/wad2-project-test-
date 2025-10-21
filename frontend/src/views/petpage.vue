@@ -49,15 +49,16 @@ const PETS = {
     falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}}
 }
 
-/* ==== Status / Food ==== */
+/* ==== Status ==== */
 const petStatus = reactive({ happiness: 75, health: 80, energy: 60 })
-const foodIndex = ref(0)
-const availableFood = ref([
-  { icon: '🍎', name: 'Apple', count: 3 },
-  { icon: '🥕', name: 'Carrot', count: 1 },
-  { icon: '🐟', name: 'Fish',  count: 5 },
-  { icon: '🥛', name: 'Milk',  count: 2 }
-])
+
+/* ==== Inventory ==== */
+const INVENTORY_SLOTS = 16  // 4 rows x 4 columns
+const inventory = ref([])  // Empty initially, items added when purchased
+
+/* ==== Dropped Items (on background) ==== */
+const droppedItems = ref([])  // Items dropped on the background for pet to eat
+let nextDroppedItemId = 0
 
 /* ==== Pet picker (sidebar immediately controls the pet) ==== */
 const petKeys = Object.keys(PETS)
@@ -78,15 +79,94 @@ const currentBackground = computed(() => availableBackgrounds.value[bgIndex.valu
 function previousBackground() { if (bgIndex.value > 0) bgIndex.value-- }
 function nextBackground() { if (bgIndex.value < availableBackgrounds.value.length - 1) bgIndex.value++ }
 
-/* ==== Food actions ==== */
-function previousFood() { if (foodIndex.value > 0) foodIndex.value-- }
-function nextFood() { if (foodIndex.value < availableFood.value.length - 1) foodIndex.value++ }
-function feedPet() {
-  const f = availableFood.value[foodIndex.value]
-  if (f.count > 0) {
-    f.count--
+/* ==== Inventory actions ==== */
+function feedPet(slotIndex) {
+  const item = inventory.value[slotIndex]
+  if (item && item.count > 0) {
+    item.count--
     petStatus.happiness = Math.min(100, petStatus.happiness + 10)
-    petStatus.health    = Math.min(100, petStatus.health + 5)
+    petStatus.health = Math.min(100, petStatus.health + 5)
+
+    // Remove item from inventory if count reaches 0
+    if (item.count === 0) {
+      inventory.value.splice(slotIndex, 1)
+    }
+  }
+}
+
+/* ==== Drag and Drop ==== */
+let draggedItem = null
+let draggedItemIndex = null
+
+function startDrag(event, item, index) {
+  draggedItem = item
+  draggedItemIndex = index
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/html', event.target.innerHTML)
+}
+
+function onDrop(event) {
+  event.preventDefault()
+
+  if (!draggedItem) return
+
+  // Get the pet stage element to calculate relative position
+  const petStage = event.currentTarget
+  const rect = petStage.getBoundingClientRect()
+
+  // Calculate drop position relative to pet stage
+  let x = event.clientX - rect.left
+  let y = event.clientY - rect.top
+
+  // Item size (40px emoji)
+  const ITEM_SIZE = 40
+
+  // Clamp X to boundaries (left and right edges)
+  x = Math.max(ITEM_SIZE / 2, Math.min(x, rect.width - ITEM_SIZE / 2))
+
+  // Adjust Y position so the bottom of the item is at cursor position
+  // This prevents the item from being half-buried in the ground
+  y = y - ITEM_SIZE / 2
+
+  // Clamp Y to prevent dropping too high or outside bounds
+  y = Math.max(0, Math.min(y, rect.height - ITEM_SIZE))
+
+  // Add dropped item to the background - will be adjusted by ground physics
+  droppedItems.value.push({
+    id: nextDroppedItemId++,
+    icon: draggedItem.icon,
+    name: draggedItem.name,
+    x: x,
+    y: y,
+    velocityY: 0,  // For physics
+    isOnGround: false  // Will be set by physics
+  })
+
+  // Remove one from inventory
+  if (draggedItem.count > 1) {
+    draggedItem.count--
+  } else {
+    inventory.value.splice(draggedItemIndex, 1)
+  }
+
+  // Clear drag state
+  draggedItem = null
+  draggedItemIndex = null
+}
+
+function onDragOver(event) {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'move'
+}
+
+// Remove dropped item (when pet eats it)
+function removeDroppedItem(itemId) {
+  const index = droppedItems.value.findIndex(item => item.id === itemId)
+  if (index !== -1) {
+    droppedItems.value.splice(index, 1)
+    // Increase pet stats when eating
+    petStatus.happiness = Math.min(100, petStatus.happiness + 10)
+    petStatus.health = Math.min(100, petStatus.health + 5)
   }
 }
 
@@ -97,12 +177,13 @@ const showShop = ref(false)
 const { coins: playerGold, coinsLoading, coinsError, fetchCoins, updateCoins } = useCoins()
 
 const shopItems = ref([
-  { icon: '🍎', name: 'Apple', price: 50, description: 'A crisp, sweet apple that pets love!' },
-  { icon: '🥕', name: 'Carrot', price: 30, description: 'Fresh orange carrots, great for pet health.' },
-  { icon: '🐟', name: 'Fish', price: 80, description: 'Fresh fish, a premium treat for pets.' },
-  { icon: '🥛', name: 'Milk', price: 40, description: 'Fresh milk, good for growing pets.' },
-  { icon: '🍖', name: 'Meat', price: 120, description: 'Premium meat, the ultimate pet treat.' },
-  { icon: '🧀', name: 'Cheese', price: 60, description: 'Rich cheese, a special treat for pets.' }
+  { icon: '/food/fish.png', name: 'Fish', price: 80, description: 'Fresh fish, a premium treat for pets.' },
+  { icon: '/food/milk.png', name: 'Milk', price: 40, description: 'Fresh milk, good for growing pets.' },
+  { icon: '/food/beef.png', name: 'Beef', price: 120, description: 'Premium beef, the ultimate pet treat.' },
+  { icon: '/food/shrimp.png', name: 'Shrimp', price: 90, description: 'Delicious shrimp, a seafood delight.' },
+  { icon: '/food/cherry.png', name: 'Cherry', price: 50, description: 'Sweet cherries, a tasty snack.' },
+  { icon: '/food/pumpkin.png', name: 'Pumpkin', price: 60, description: 'Healthy pumpkin, full of nutrients.' },
+  { icon: '/food/soju.png', name: 'Soju', price: 100, description: 'Special drink for celebrating!' }
 ])
 
 /* ==== Shopkeeper Animation ==== */
@@ -175,18 +256,27 @@ function toggleShop() {
 
 async function buyFood(item) {
   if (playerGold.value !== null && playerGold.value >= item.price) {
+    // Check if inventory is full (16 unique items max)
+    if (inventory.value.length >= INVENTORY_SLOTS) {
+      const existingItem = inventory.value.find(f => f.name === item.name)
+      if (!existingItem) {
+        alert('Inventory is full! Please use some items first.')
+        return
+      }
+    }
+
     const newCoinAmount = playerGold.value - item.price
 
     // Use the shared updateCoins function
     const result = await updateCoins(newCoinAmount)
 
     if (result.success) {
-      // Add to existing food or create new entry
-      const existingFood = availableFood.value.find(f => f.name === item.name)
-      if (existingFood) {
-        existingFood.count++
+      // Add to inventory: if same item exists, increase count; otherwise add new slot
+      const existingItem = inventory.value.find(f => f.name === item.name)
+      if (existingItem) {
+        existingItem.count++
       } else {
-        availableFood.value.push({ icon: item.icon, name: item.name, count: 1 })
+        inventory.value.push({ icon: item.icon, name: item.name, count: 1 })
       }
     } else {
       alert('Failed to purchase item: ' + (result.error || 'Please try again'))
@@ -206,16 +296,32 @@ onMounted(() => {
   <div class="pet-page-container">
     <!-- Main Content -->
     <div class="main-content" :style="{ backgroundImage: `url(${currentBackground})` }">
-      <div class="pet-stage">
+      <div
+        class="pet-stage"
+        @drop="onDrop"
+        @dragover="onDragOver"
+      >
         <!-- 🔑 key makes sure AnimatedPet remounts when selectedPetKey changes -->
-        <AnimatedPet 
-          :key="selectedPetKey" 
+        <AnimatedPet
+          :key="selectedPetKey"
           :sprite-url="PETS[selectedPetKey].config.spriteUrl"
           :slice="PETS[selectedPetKey].config.slice"
           :scale="PETS[selectedPetKey].config.scale"
           :speed="PETS[selectedPetKey].config.speed"
           :animations="PETS[selectedPetKey].config.animations"
+          :dropped-items="droppedItems"
+          @item-eaten="removeDroppedItem"
         />
+
+        <!-- Dropped items on background -->
+        <div
+          v-for="item in droppedItems"
+          :key="item.id"
+          class="dropped-item"
+          :style="{ left: item.x + 'px', top: item.y + 'px' }"
+        >
+          <img :src="item.icon" :alt="item.name" class="dropped-food-image" />
+        </div>
       </div>
       
               <!-- Shop Button -->
@@ -239,25 +345,34 @@ onMounted(() => {
           <div class="status-bar"><div class="status-fill health" :style="{ width: `${petStatus.health}%` }"></div></div>
           <span class="status-value">{{ petStatus.health }}%</span>
         </div>
-        <div class="status-item">
-          <span class="status-label">Energy</span>
-          <div class="status-bar"><div class="status-fill energy" :style="{ width: `${petStatus.energy}%` }"></div></div>
-          <span class="status-value">{{ petStatus.energy }}%</span>
-        </div>
+        
       </div>
 
-      <!-- Food -->
+      <!-- Inventory -->
       <div class="panel-section">
-        <h4 class="section-title">Food</h4>
-        <div class="selection-container">
-          <button class="nav-btn" @click="previousFood" :disabled="foodIndex === 0">‹</button>
-          <div class="item-display">
-            <div class="item-icon">{{ availableFood[foodIndex].icon }}</div>
-            <div class="item-count">{{ availableFood[foodIndex].count }} left</div>
+        <h4 class="section-title">Inventory</h4>
+        <div class="inventory-grid">
+          <div
+            v-for="(item, index) in inventory"
+            :key="index"
+            class="inventory-slot filled"
+            draggable="true"
+            @dragstart="startDrag($event, item, index)"
+            @click="feedPet(index)"
+          >
+            <div class="slot-icon">
+              <img :src="item.icon" :alt="item.name" class="food-image" />
+            </div>
+            <div class="slot-count">{{ item.count }}</div>
           </div>
-          <button class="nav-btn" @click="nextFood" :disabled="foodIndex === availableFood.length - 1">›</button>
+          <!-- Empty slots to fill the grid -->
+          <div
+            v-for="emptySlot in (INVENTORY_SLOTS - inventory.length)"
+            :key="'empty-' + emptySlot"
+            class="inventory-slot empty"
+          >
+          </div>
         </div>
-        <button class="action-btn" @click="feedPet" :disabled="availableFood[foodIndex].count === 0">Feed</button>
       </div>
 
       <!-- Pet Select -->
@@ -353,12 +468,14 @@ onMounted(() => {
             <!-- Shop Items -->
             <div class="items-section">
               <div class="shop-items">
-                <div 
-                  v-for="item in shopItems" 
-                  :key="item.name" 
+                <div
+                  v-for="item in shopItems"
+                  :key="item.name"
                   class="shop-item"
                 >
-                  <div class="item-icon">{{ item.icon }}</div>
+                  <div class="item-icon">
+                    <img :src="item.icon" :alt="item.name" class="food-image" />
+                  </div>
                   <div class="item-info">
                     <div class="item-name">{{ item.name }}</div>
                     <div class="item-description">{{ item.description }}</div>
@@ -408,6 +525,89 @@ onMounted(() => {
 .bg-preview{width:100%;height:48px;border-radius:8px;background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .bg-name{background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;}
 .action-btn{width:100%;padding:10px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;}
+
+/* Inventory Grid */
+.inventory-grid{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  grid-template-rows:repeat(4, 1fr);
+  gap:8px;
+}
+.inventory-slot{
+  position:relative;
+  aspect-ratio:1;
+  border:2px solid var(--surface-lighter);
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--surface-light);
+  transition:all 0.2s ease;
+}
+.inventory-slot.empty{
+  background:var(--surface);
+  opacity:0.5;
+}
+.inventory-slot.filled{
+  cursor:grab;
+  background:var(--surface-light);
+}
+.inventory-slot.filled:active{
+  cursor:grabbing;
+}
+.inventory-slot.filled:hover{
+  border-color:var(--primary);
+  transform:scale(1.05);
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+.slot-icon{
+  font-size:28px;
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.food-image{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  image-rendering:pixelated;
+}
+.slot-count{
+  position:absolute;
+  bottom:4px;
+  right:4px;
+  background:rgba(0,0,0,0.7);
+  color:#fff;
+  font-size:10px;
+  font-weight:bold;
+  padding:2px 6px;
+  border-radius:4px;
+  min-width:16px;
+  text-align:center;
+}
+
+/* Dropped Items on Background */
+.dropped-item{
+  position:absolute;
+  width:40px;
+  height:40px;
+  pointer-events:none;
+  animation:dropBounce 0.5s ease-out;
+  z-index:10;
+}
+.dropped-food-image{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  image-rendering:pixelated;
+}
+@keyframes dropBounce{
+  0%{transform:scale(0) translateY(-20px);opacity:0;}
+  50%{transform:scale(1.2);}
+  100%{transform:scale(1) translateY(0);opacity:1;}
+}
 
 /* Shop Button */
 .shop-button{
