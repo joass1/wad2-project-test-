@@ -1,55 +1,100 @@
 <template>
-  <div class="sidebar-container">
-    <!-- Profile header -->
-    <div class="profile-header">
-      <div class="profile-avatar-container">
-        <div class="profile-avatar">
-          <img v-if="displayAvatar" :src="displayAvatar" alt="Profile Avatar" class="avatar-image" />
-          <span v-else class="avatar-text">{{ displayName.charAt(0).toUpperCase() }}</span>
-        </div>
-        <div class="profile-info">
-          <div class="profile-name">{{ displayName }}</div>
-          <div class="level-badge">Level {{ level }}</div>
+  <v-navigation-drawer
+    :model-value="modelValue"
+    @update:model-value="$emit('update:modelValue', $event)"
+    :rail="!modelValue"
+    app
+    permanent
+    :width="287"
+    class="sb-drawer"
+  >
+    <div class="sidebar-container">
+      <!-- Profile header -->
+      <div class="profile-header">
+        <div class="profile-avatar-container">
+          <div class="profile-avatar">
+            <img v-if="displayAvatar" :src="displayAvatar" alt="Profile Avatar" class="avatar-image" />
+            <span v-else class="avatar-text">{{ displayName.charAt(0).toUpperCase() }}</span>
+          </div>
+          <transition name="slide-fade">
+            <div v-show="modelValue" class="profile-info">
+              <div class="profile-name">{{ displayName }}</div>
+              <div class="level-badge">Level {{ level }}</div>
+            </div>
+          </transition>
         </div>
       </div>
-    </div>
 
-    <!-- Nav -->
-    <v-list nav density="comfortable">
-      <v-list-item to="/dashboard" prepend-icon="mdi-home-outline" title="Dashboard" rounded="lg" />
-      <v-list-item to="/timer" prepend-icon="mdi-timer-outline" title="Study Timer" rounded="lg" />
-      <v-list-item to="/task-tracker" prepend-icon="mdi-checkbox-marked-outline" title="Task Tracker" rounded="lg" />
-      <v-list-item to="/progress" prepend-icon="mdi-chart-line" title="Progress" rounded="lg" />
-      <v-list-item to="/checkin" prepend-icon="mdi-heart-outline" title="Wellness Check-in" rounded="lg" />
-      <v-list-item to="/social-hub" prepend-icon="mdi-account-group-outline" title="Social" rounded="lg" />
-      <v-list-item to="/pet" prepend-icon="mdi-paw" title="Pet" rounded="lg" />
-      <v-list-item to="/profile" prepend-icon="mdi-account-outline" title="Profile" rounded="lg" />
-    </v-list>
+      <!-- Nav -->
+      <v-list nav density="comfortable">
+        <v-list-item to="/dashboard" :prepend-icon="modelValue ? 'mdi-home-outline' : ''" :title="modelValue ? 'Dashboard' : ''" rounded="lg">
+          <v-icon v-if="!modelValue">mdi-home-outline</v-icon>
+          <v-tooltip v-if="!modelValue" activator="parent" location="end">Dashboard</v-tooltip>
+        </v-list-item>
+        
+        <v-list-item to="/timer" :prepend-icon="modelValue ? 'mdi-timer-outline' : ''" :title="modelValue ? 'Study Timer' : ''" rounded="lg">
+          <v-icon v-if="!modelValue">mdi-timer-outline</v-icon>
+          <v-tooltip v-if="!modelValue" activator="parent" location="end">Study Timer</v-tooltip>
+        </v-list-item>
+        
+        <v-list-item to="/task-tracker" :prepend-icon="modelValue ? 'mdi-checkbox-marked-outline' : ''" :title="modelValue ? 'Task Tracker' : ''" rounded="lg">
+          <v-icon v-if="!modelValue">mdi-checkbox-marked-outline</v-icon>
+          <v-tooltip v-if="!modelValue" activator="parent" location="end">Task Tracker</v-tooltip>
+        </v-list-item>
+        
+        <v-list-item to="/progress" :prepend-icon="modelValue ? 'mdi-chart-line' : ''" :title="modelValue ? 'Progress' : ''" rounded="lg">
+          <v-icon v-if="!modelValue">mdi-chart-line</v-icon>
+          <v-tooltip v-if="!modelValue" activator="parent" location="end">Progress</v-tooltip>
+        </v-list-item>
+        
+        <v-list-item to="/checkin" :prepend-icon="modelValue ? 'mdi-heart-outline' : ''" :title="modelValue ? 'Wellness Check-in' : ''" rounded="lg">
+          <v-icon v-if="!modelValue">mdi-heart-outline</v-icon>
+          <v-tooltip v-if="!modelValue" activator="parent" location="end">Wellness Check-in</v-tooltip>
+        </v-list-item>
+        
+        <v-list-item to="/social-hub" :prepend-icon="modelValue ? 'mdi-account-group-outline' : ''" :title="modelValue ? 'Social' : ''" rounded="lg">
+          <v-icon v-if="!modelValue">mdi-account-group-outline</v-icon>
+          <v-tooltip v-if="!modelValue" activator="parent" location="end">Social</v-tooltip>
+        </v-list-item>
+        
+        <v-list-item to="/pet" :prepend-icon="modelValue ? 'mdi-paw' : ''" :title="modelValue ? 'Pet' : ''" rounded="lg">
+          <v-icon v-if="!modelValue">mdi-paw</v-icon>
+          <v-tooltip v-if="!modelValue" activator="parent" location="end">Pet</v-tooltip>
+        </v-list-item>
+        
+        <v-list-item to="/profile" :prepend-icon="modelValue ? 'mdi-account-outline' : ''" :title="modelValue ? 'Profile' : ''" rounded="lg">
+          <v-icon v-if="!modelValue">mdi-account-outline</v-icon>
+          <v-tooltip v-if="!modelValue" activator="parent" location="end">Profile</v-tooltip>
+        </v-list-item>
+      </v-list>
 
-    <div class="spacer"></div>
+      <div class="spacer"></div>
 
-    <!-- Coin display -->
-    <div class="coin-display">
-      <template v-if="coinsLoading">
-        <div class="coin-loading">Loading coins...</div>
-      </template>
-      <template v-else-if="coinsError">
-        <div class="coin-error">
-          <div class="error-icon">⚠️</div>
-          <div class="error-text">{{ coinsError }}</div>
+      <!-- Coin display -->
+      <transition name="slide-fade">
+        <div v-show="modelValue" class="coin-display">
+          <template v-if="coinsLoading">
+            <div class="coin-loading">Loading coins...</div>
+          </template>
+          <template v-else-if="coinsError">
+            <div class="coin-error">
+              <div class="error-icon">⚠️</div>
+              <div class="error-text">{{ coinsError }}</div>
+            </div>
+          </template>
+          <template v-else>
+            <AnimatedCoin :scale="2" :speed="8" />
+            <div class="coin-amount">{{ coins }}</div>
+          </template>
         </div>
-      </template>
-      <template v-else>
-        <AnimatedCoin :scale="2" :speed="8" />
-        <div class="coin-amount">{{ coins }}</div>
-      </template>
-    </div>
+      </transition>
 
-    <!-- Bottom theme toggle -->
-    <div class="theme-toggle-container">
-      <ThemeToggle compact />
+      <!-- Bottom theme toggle -->
+      <div class="theme-toggle-container">
+        <ThemeToggle compact />
+      </div>
     </div>
-  </div>
+  </v-navigation-drawer>
 </template>
 
 <script setup>
@@ -58,6 +103,12 @@ import ThemeToggle from '@/components/ThemeToggle.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import { useCoins } from '@/composables/useCoins.js'
 import { useUserProfile } from '@/composables/useUserProfile.js'
+
+defineProps({
+  modelValue: Boolean
+})
+
+defineEmits(['update:modelValue'])
 
 // Use shared coin state
 const { coins, coinsLoading, coinsError, fetchCoins } = useCoins()
@@ -74,6 +125,30 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.sb-drawer {
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Slide fade transition */
+.slide-fade-enter-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-fade-enter-from {
+  transform: translateX(-20px);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateX(-20px);
+  opacity: 0;
+}
+
 .sidebar-container {
   padding: 24px;
   display: flex;
@@ -99,6 +174,7 @@ onMounted(() => {
 .profile-header {
   margin-bottom: 32px;
   position: relative;
+  overflow: hidden;
 }
 
 .profile-avatar-container {
@@ -145,10 +221,11 @@ onMounted(() => {
   box-shadow: 0 4px 15px rgba(106, 122, 90, 0.3);
   border: 3px solid rgba(255, 255, 255, 0.8);
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .profile-avatar:hover {
-  transform: scale(1.05);
+  transform: scale(1.05) rotate(5deg);
   box-shadow: 0 6px 25px rgba(106, 122, 90, 0.4);
 }
 
@@ -167,6 +244,7 @@ onMounted(() => {
 
 .profile-info {
   flex: 1;
+  min-width: 0;
 }
 
 .profile-name {
