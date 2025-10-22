@@ -25,7 +25,16 @@
       </div>
 
       <div class="check-in-card">
-        <div v-if="!isCompleted">
+        <!-- Show message if already checked in today -->
+        <div v-if="hasCheckedInToday" class="completion-message">
+          <div class="success-icon">✓</div>
+          <h3>Already Checked In Today!</h3>
+          <p>You've completed your wellness check-in for {{ todayFormatted }}.</p>
+          <p class="next-checkin-text">Come back tomorrow for your next check-in!</p>
+        </div>
+
+        <!-- Show check-in form if not checked in today -->
+        <div v-else-if="!isCompleted">
           <h3 class="section-title">Today's Check-in</h3>
           <p class="section-subtitle">How are you feeling today?</p>
 
@@ -110,16 +119,21 @@
             ></textarea>
           </div>
 
-          <button @click="completeCheckIn" class="complete-btn">
-            Complete Check-in
+          <button 
+            @click="completeCheckIn" 
+            :disabled="isSubmitting"
+            class="complete-btn"
+          >
+            {{ isSubmitting ? 'Saving...' : 'Complete Check-in' }}
           </button>
         </div>
 
+        <!-- Show completion message immediately after submitting -->
         <div v-else class="completion-message">
           <div class="success-icon">✓</div>
           <h3>Check-in Complete!</h3>
           <p>Great job tracking your wellness today.</p>
-          <button @click="resetCheckIn" class="reset-btn">Check in Again</button>
+          <p class="next-checkin-text">See you tomorrow!</p>
         </div>
       </div>
     </div>
@@ -156,41 +170,41 @@
           </div>
         </div>
 
-        <div class="pet-stats-panel" v-if="selectedPetStats">
-            <h3 class="section-title">Pet Status for {{ selectedDate.toLocaleDateString() }}</h3>
+        <div class="pet-stats-panel" v-if="selectedCheckInData">
+            <h3 class="section-title">Check-in for {{ selectedDateFormatted }}</h3>
 
                 <div class="pet-stat">
                     <span class="label">Mood:</span>
-                    <span class="value">{{ selectedPetStats.mood }}</span>
+                    <span class="value">{{ selectedCheckInData.mood }}/10</span>
                 </div>
 
                 <div class="pet-stat">
-                    <span class="label">Meals:</span>
-                    <span class="value">{{ selectedPetStats.meals }}</span>
+                    <span class="label">Energy:</span>
+                    <span class="value">{{ selectedCheckInData.energy }}/10</span>
                 </div>
 
                 <div class="pet-stat">
-                    <span class="label">Walks:</span>
-                    <span class="value">{{ selectedPetStats.walks }}</span>
+                    <span class="label">Sleep:</span>
+                    <span class="value">{{ selectedCheckInData.sleep }}/10</span>
                 </div>
 
                 <div class="pet-stat">
-                    <span class="label">Playtime:</span>
-                    <span class="value">{{ selectedPetStats.playTime }}</span>
+                    <span class="label">Stress:</span>
+                    <span class="value">{{ selectedCheckInData.stress }}/10</span>
                 </div>
 
-                <div class="pet-stat">
-                    <span class="label">Growth Stage:</span>
-                    <span class="value">{{ selectedPetStats.growthStage }}</span>
+                <div v-if="selectedCheckInData.notes" class="notes-display">
+                    <span class="label">Notes:</span>
+                    <p class="notes-content">{{ selectedCheckInData.notes }}</p>
                 </div>
             </div>
 
             <div v-else class="pet-stats-empty">
-                <p>No pet stats recorded for this date 🐾</p>
+                <p>No check-in recorded for this date</p>
             </div>
         </div>
     </div>
-
+    
     <div class="wellness-tips">
       <h3 class="section-title">Wellness Tips</h3>
       
@@ -220,7 +234,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted} from 'vue'
+import { getFirestore, collection, addDoc, query, where, getDocs, orderBy } from 'firebase/firestore'
+import { getAuth } from 'firebase/auth'
+
+// Initialize Firebase instances 
+const db = getFirestore()
+const auth = getAuth()
 
 // State
 const mood = ref(7)
@@ -231,34 +251,126 @@ const notes = ref('')
 const isCompleted = ref(false)
 const streak = ref(0)
 const totalCheckIns = ref(0)
+const isSubmitting = ref(false)
+const hasCheckedInToday = ref(false)
+const checkInHistory = ref({})
 
 // Calendar state
 const currentDate = ref(new Date())
 const selectedDate = ref(new Date())
 const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
-// Pet check-in history (replace w/ real data ltr)
-const petHistory = ref({
-  '2025-10-08': {
-    mood: 'Happy 🐶',
-    meals: 3,
-    walks: 2,
-    playTime: '45 mins',
-    growthStage: 'Playful Pup 🌱'
-  },
-  '2025-10-05': {
-    mood: 'Sleepy 😴',
-    meals: 2,
-    walks: 1,
-    playTime: '15 mins',
-    growthStage: 'Rest Day 💤'
-  }
+// Helper function to get date string in YYYY-MM-DD format
+const getDateString = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const todayDateString = computed(() => getDateString(new Date()))
+
+const todayFormatted = computed(() => {
+  return new Date().toLocaleDateString('en-US', { 
+    weekday: 'long',
+    month: 'long', 
+    day: 'numeric',
+    year: 'numeric'
+  })
 })
 
+// Check if user has already checked in today 
+const checkTodayCheckIn = async () => {
+  const user = auth.currentUser
+  if (!user) return
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  try {
+    const q = query(
+      collection(db, 'wellnessCheckIns'),
+      where('userId', '==', user.uid),
+      where('date', '>=', today),
+      where('date', '<', tomorrow)
+    )
+    
+    const querySnapshot = await getDocs(q)
+    hasCheckedInToday.value = !querySnapshot.empty
+  } catch (error) {
+    console.error('Error checking today\'s check-in:', error)
+  }
+}
+
+// Load all check-ins for the user
+const loadCheckIns = async () => {
+  const user = auth.currentUser
+  if (!user) return
+
+  try {
+    const q = query(
+      collection(db, 'wellnessCheckIns'),
+      where('userId', '==', user.uid),
+      orderBy('date', 'desc')
+    )
+    
+    const querySnapshot = await getDocs(q)
+    const history = {}
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data()
+      const dateStr = getDateString(data.date.toDate())
+      history[dateStr] = {
+        mood: data.mood,
+        energy: data.energy,
+        sleep: data.sleep,
+        stress: data.stress,
+        notes: data.notes || ''
+      }
+    })
+    
+    checkInHistory.value = history
+    totalCheckIns.value = querySnapshot.size
+    calculateStreak()
+  } catch (error) {
+    console.error('Error loading check-ins:', error)
+  }
+}
+
+// Calculate current streak
+const calculateStreak = () => {
+  let currentStreak = 0
+  const today = new Date()
+  
+  for (let i = 0; i < 7; i++) {
+    const checkDate = new Date(today)
+    checkDate.setDate(checkDate.getDate() - i)
+    const dateStr = getDateString(checkDate)
+    
+    if (checkInHistory.value[dateStr]) {
+      currentStreak++
+    } else {
+      break
+    }
+  }
+  
+  streak.value = currentStreak
+}
+
 // Computed properties
-const selectedPetStats = computed(() => {
+const selectedCheckInData = computed(() => {
   const key = selectedDate.value.toISOString().split('T')[0]
-  return petHistory.value[key] || null
+  return checkInHistory.value[key] || null
+})
+
+const selectedDateFormatted = computed(() => {
+  return selectedDate.value.toLocaleDateString('en-US', { 
+    month: 'long', 
+    day: 'numeric',
+    year: 'numeric'
+  })
 })
 
 const getMoodFeedback = computed(() => {
@@ -336,7 +448,8 @@ const calendarDates = computed(() => {
         isSelected: i === selectedDate.value.getDate() && 
                     month === selectedDate.value.getMonth() &&
                     year === selectedDate.value.getFullYear(),
-        hasCheckIn: i === 8, // Example: Oct 8 has check-in
+        // Check if there's a check-in for that specific date 
+        hasCheckIn: checkInHistory.value[`${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`] !== undefined,
         key: `current-${i}`
     })
   }
@@ -358,19 +471,45 @@ const calendarDates = computed(() => {
 })
 
 // Methods
-const completeCheckIn = () => {
-  isCompleted.value = true
-  totalCheckIns.value++
-  streak.value++
-}
+const completeCheckIn = async () => {
+  if (hasCheckedInToday.value) {
+    return // Prevent double submission
+  }
 
-const resetCheckIn = () => {
-  isCompleted.value = false
-  mood.value = 7
-  energy.value = 7
-  sleep.value = 7
-  stress.value = 3
-  notes.value = ''
+  isSubmitting.value = true
+  const user = auth.currentUser
+
+  if (!user) {
+    alert('Please log in to save your check-in')
+    isSubmitting.value = false
+    return
+  }
+
+  try {
+    const checkInData = {
+      userId: user.uid,
+      date: new Date(),
+      mood: mood.value,
+      energy: energy.value,
+      sleep: sleep.value,
+      stress: stress.value,
+      notes: notes.value,
+      createdAt: new Date()
+    }
+
+    await addDoc(collection(db, 'wellnessCheckIns'), checkInData)
+    
+    isCompleted.value = true
+    hasCheckedInToday.value = true
+    
+    // Reload data
+    await loadCheckIns()
+  } catch (error) {
+    console.error('Error saving check-in:', error)
+    alert('Failed to save check-in. Please try again.')
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 const previousMonth = () => {
@@ -398,6 +537,14 @@ const selectDate = (date) => {
     )
   }
 }
+
+// Load data when component mounts 
+onMounted(async () => {
+  await checkTodayCheckIn()
+  await loadCheckIns()
+})
+
+
 </script>
 
 <style scoped>
@@ -501,6 +648,32 @@ const selectDate = (date) => {
   color: var(--text-muted);
   margin: 0 0 1.5rem 0;
   font-size: 0.95rem;
+}
+
+.next-checkin-text {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.notes-display {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.notes-display .label {
+  display: block;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.notes-content {
+  color: var(--text-primary);
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
 }
 
 /* Sliders */
