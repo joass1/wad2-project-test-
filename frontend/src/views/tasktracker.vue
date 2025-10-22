@@ -129,7 +129,7 @@
                 class="mb-3"
                 elevation="0"
                 rounded="lg"
-                style="background: var(--surface);"
+                :style="isOverdue(task) ? 'background: rgba(220, 38, 38, 0.05); border-left: 4px solid var(--error);' : 'background: var(--surface);'"
               >
                 <v-card-text class="pa-4">
                   <div class="d-flex justify-space-between align-start mb-2">
@@ -152,10 +152,17 @@
                       {{ task.priority }}
                     </span>
                     <span class="text-caption" style="color: var(--text-muted);">{{ task.category }}</span>
+                    <span 
+                      v-if="isOverdue(task)" 
+                      class="px-2 py-1 text-caption rounded font-weight-medium"
+                      style="background-color: rgba(220, 38, 38, 0.1); color: var(--error);"
+                    >
+                      OVERDUE
+                    </span>
                   </div>
                   <div class="d-flex align-center mb-3">
-                    <v-icon size="14" class="mr-1" style="color: var(--text-muted);">mdi-calendar-blank</v-icon>
-                    <span class="text-caption" style="color: var(--text-muted);">{{ formatDate(task.dueDate) }}</span>
+                    <v-icon size="14" class="mr-1" :style="isOverdue(task) ? 'color: var(--error);' : 'color: var(--text-muted);'">mdi-calendar-blank</v-icon>
+                    <span class="text-caption" :style="isOverdue(task) ? 'color: var(--error); font-weight: 500;' : 'color: var(--text-muted);'">{{ formatDate(task.dueDate) }}</span>
                   </div>
                   <v-select
                     :model-value="task.status"
@@ -187,7 +194,7 @@
             class="mb-3"
             elevation="0"
             rounded="lg"
-            style="background: var(--surface-light);"
+            :style="isOverdue(task) ? 'background: rgba(220, 38, 38, 0.05); border-left: 4px solid var(--error);' : 'background: var(--surface-light);'"
           >
             <v-card-text class="pa-4">
               <div class="d-flex justify-space-between align-start mb-2">
@@ -210,8 +217,15 @@
                   {{ task.priority }}
                 </span>
                 <span class="text-caption" style="color: var(--text-muted);">{{ task.category }}</span>
-                <span class="text-caption d-flex align-center" style="color: var(--text-muted);">
-                  <v-icon size="14" class="mr-1">mdi-calendar-blank</v-icon>
+                <span 
+                  v-if="isOverdue(task)" 
+                  class="px-2 py-1 text-caption rounded font-weight-medium"
+                  style="background-color: rgba(220, 38, 38, 0.1); color: var(--error);"
+                >
+                  OVERDUE
+                </span>
+                <span class="text-caption d-flex align-center" :style="isOverdue(task) ? 'color: var(--error); font-weight: 500;' : 'color: var(--text-muted);'">
+                  <v-icon size="14" class="mr-1" :style="isOverdue(task) ? 'color: var(--error);' : ''">mdi-calendar-blank</v-icon>
                   {{ formatDate(task.dueDate) }}
                 </span>
               </div>
@@ -258,7 +272,7 @@
               class="mb-3"
               elevation="0"
               rounded="lg"
-              style="background: var(--surface-light);"
+              :style="isOverdue(task) ? 'background: rgba(220, 38, 38, 0.05); border-left: 4px solid var(--error);' : 'background: var(--surface-light);'"
             >
               <v-card-text class="pa-4">
                 <div class="d-flex justify-space-between align-start mb-2">
@@ -281,8 +295,15 @@
                     {{ task.priority }}
                   </span>
                   <span class="text-caption" style="color: var(--text-muted);">{{ task.category }}</span>
-                  <span class="text-caption d-flex align-center" style="color: var(--text-muted);">
-                    <v-icon size="14" class="mr-1">mdi-calendar-blank</v-icon>
+                  <span 
+                    v-if="isOverdue(task)" 
+                    class="px-2 py-1 text-caption rounded font-weight-medium"
+                    style="background-color: rgba(220, 38, 38, 0.1); color: var(--error);"
+                  >
+                    OVERDUE
+                  </span>
+                  <span class="text-caption d-flex align-center" :style="isOverdue(task) ? 'color: var(--error); font-weight: 500;' : 'color: var(--text-muted);'">
+                    <v-icon size="14" class="mr-1" :style="isOverdue(task) ? 'color: var(--error);' : ''">mdi-calendar-blank</v-icon>
                     {{ formatDate(task.dueDate) }}
                   </span>
                 </div>
@@ -521,5 +542,14 @@ const getGroupLabel = (key) => {
 const formatDate = (dateString) => {
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// Helper function to check if task is overdue 
+const isOverdue = (task) => {
+  const today = new Date('2025-10-10') // Use your current date
+  today.setHours(0, 0, 0, 0)
+  const dueDate = new Date(task.dueDate)
+  dueDate.setHours(0, 0, 0, 0)
+  return dueDate < today && task.status !== 'done'
 }
 </script>
