@@ -5,24 +5,23 @@
 
     <!-- Authenticated layout: permanent sidebar, scrollable main -->
     <template v-else>
+      <!-- Header - always visible except in fullscreen mode -->
+      <Header v-if="!isFullscreen" v-model="sidebarOpen" />
+
       <!-- Sidebar only shows when NOT in fullscreen mode -->
-      <v-navigation-drawer
+      <Sidebar
         v-if="!isFullscreen"
-        app
-        permanent
-        width="260"
-        class="sb-drawer"
-      >
-        <Sidebar />
-      </v-navigation-drawer>
+        v-model="sidebarOpen"
+      />
 
       <v-main :class="['sb-main', { 'fullscreen-main': isFullscreen }]">
         <!-- Listen for the toggle-fullscreen event from timer page -->
         <router-view @toggle-fullscreen="handleFullscreen" />
       </v-main>
+
+      <!-- NEW: Global floating pet - Always visible on all pages -->
+      <GlobalDesktopPet />
     </template>
-       <!-- NEW: Global floating pet - Always visible on all pages -->
-    <GlobalDesktopPet v-if="!isLogin" />
   </v-app>
 </template>
 
@@ -30,11 +29,14 @@
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from '@/components/sidebar.vue'
+import Header from '@/components/header.vue'
 import GlobalDesktopPet from '@/components/GlobalDesktopPet.vue'
-
 
 const route = useRoute()
 const isLogin = computed(() => route.name === 'Login')
+
+// Sidebar state - starts open
+const sidebarOpen = ref(true)
 
 // Fullscreen mode state
 const isFullscreen = ref(false)
@@ -45,11 +47,6 @@ function handleFullscreen(value) {
 </script>
 
 <style scoped>
-.sb-drawer {
-  border-right: 1px solid var(--surface-lighter);
-  background: #fff;
-}
-
 .sb-main {
   min-height: 100vh;
   background: var(--background);

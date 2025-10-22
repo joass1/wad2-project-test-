@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import './styles/overrides.css'
+import './styles/styles.scss'
 
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'

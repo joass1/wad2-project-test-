@@ -212,7 +212,7 @@ async function submit(mode) {
 
       await signInWithEmailAndPassword(auth, email.value, password.value);
 
-      await api.post("/api/auth/login");
+      // await api.post("/api/auth/login");
     }
 
     // clear form
