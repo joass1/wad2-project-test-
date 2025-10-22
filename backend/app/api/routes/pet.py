@@ -18,20 +18,39 @@ class Position(BaseModel):
 
 @router.get("/config")
 async def get_pet_config():
-    """Get available animations and sprite paths"""
+    """Get sprite sheet configuration with customizable sprite extraction"""
     return {
-        "animations": {
-            "idle": "/static/sprites/cat/idle.gif",
-            "walk_left": "/static/sprites/cat/walking_negative.gif",
-            "walk_right": "/static/sprites/cat/walking_positive.gif",
-            "sleep": "/static/sprites/cat/sleep.gif",
-            "idle_to_sleep": "/static/sprites/cat/idle_to_sleep.gif",
-            "sleep_to_idle": "/static/sprites/cat/sleep_to_idle.gif",
-            "falling": "/static/sprites/cat/walking_negative.gif",
-            "grabbed": "/static/sprites/cat/idle.gif"  
+        "sprite_sheet": {
+            "url": "/cat-spritesheet.png",
+            "slice": 32,  # Size of one sprite cell
+            "scale": 3,   # Display scale multiplier
+            "columns": 12  # Auto-detected on frontend
         },
-        "default_size": {"width": 100, "height": 100},
-        "frame_rate": 100
+        "animations": {
+            # Format: { row, frames, fps, loop, colStart }
+            # You can customize these to extract different sprites from the sheet
+            "idle":     {"row": 0, "frames": 8, "fps": 6,  "loop": True,  "colStart": 0},
+            "idle2":    {"row": 1, "frames": 8, "fps": 6,  "loop": True,  "colStart": 0},
+            "clean":    {"row": 2, "frames": 8, "fps": 8,  "loop": True,  "colStart": 0},
+            "clean2":   {"row": 3, "frames": 8, "fps": 8,  "loop": True,  "colStart": 0},
+            "walk":     {"row": 4, "frames": 8, "fps": 10, "loop": True,  "colStart": 0},
+            "walk2":    {"row": 5, "frames": 8, "fps": 10, "loop": True,  "colStart": 0},
+            "walk_left":  {"row": 4, "frames": 8, "fps": 10, "loop": True,  "colStart": 0},
+            "walk_right": {"row": 5, "frames": 8, "fps": 10, "loop": True,  "colStart": 0},
+            "sleep":    {"row": 6, "frames": 6, "fps": 5,  "loop": True,  "colStart": 0},
+            "grabbed":  {"row": 7, "frames": 6, "fps": 8,  "loop": True,  "colStart": 0},
+            "jump":     {"row": 8, "frames": 8, "fps": 12, "loop": False, "colStart": 0},
+            "falling":  {"row": 9, "frames": 8, "fps": 12, "loop": True,  "colStart": 0},
+            "scared":   {"row": 9, "frames": 8, "fps": 10, "loop": False, "colStart": 0},
+            "idle_to_sleep": {"row": 6, "frames": 3, "fps": 5, "loop": False, "colStart": 0},
+            "sleep_to_idle": {"row": 6, "frames": 3, "fps": 5, "loop": False, "colStart": 3}
+        },
+        "physics": {
+            "gravity": 0.8,
+            "terminal_velocity": 15,
+            "drag_coefficient": 0.95,
+            "walk_speed": 2
+        }
     }
 
 @router.get("/state")

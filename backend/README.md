@@ -12,6 +12,7 @@ basic firebase backend in python
 ```bash
 # sync dependencies
 cd backend
+pip install uv 
 uv sync
 
 # activate environment

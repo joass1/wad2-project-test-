@@ -1,609 +1,856 @@
+<script setup>
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import AnimatedPet from '@/components/AnimatedPet.vue'
+import SpritePreview from '@/components/SpritePreview.vue'
+import AnimatedCoin from '@/components/AnimatedCoin.vue'
+import { useCoins } from '@/composables/useCoins.js'
+
+/* ===== Global size knob ===== */
+const SCALE = 6  // ↓ smaller pet. Try 5 or 4 if you want it even smaller.
+
+/* ================= PET CATALOG ================= */
+const PETS = {
+  cat: { label: 'Cat', config: { spriteUrl: '/cat-spritesheet.png', slice: 32, scale: SCALE, speed: 70,
+    animations: { idle:{row:0,fps:6,loop:true,frames:8,colStart:0}, idle2:{row:1,fps:6,loop:true,frames:8,colStart:0},
+    clean:{row:2,fps:8,loop:true,frames:8,colStart:0}, clean2:{row:3,fps:8,loop:true,frames:8,colStart:0},
+    move:{row:4,fps:10,loop:true,frames:8,colStart:0}, move2:{row:5,fps:10,loop:true,frames:8,colStart:0},
+    sleep:{row:6,fps:5,loop:true,frames:6,colStart:0}, paw:{row:7,fps:10,loop:false,frames:6,colStart:0},
+    grabbed:{row:7,fps:8,loop:true,frames:6,colStart:0}, jump:{row:8,fps:12,loop:false,frames:8,colStart:0},
+    scared:{row:9,fps:10,loop:false,frames:8,colStart:0}, falling:{row:9,fps:8,loop:true,frames:8,colStart:0}}}},
+    
+  catGrey: { label: 'Grey Cat', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat (Grey).png', slice: 32, scale: SCALE, speed: 70,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:3,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
+
+  catBlack: { label: 'Black Cat', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat (Black).png', slice: 32, scale: SCALE, speed: 70,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:3,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
+
+  catNew: { label: 'New Cat', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat.png', slice: 32, scale: SCALE, speed: 70,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:3,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
+
+  dogBlonde: { label: 'Blonde Dog', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Dog (Blonde).png', slice: 32, scale: SCALE, speed: 80,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:2,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
+
+  dogGrey: { label: 'Grey Dog', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Dog (Grey).png', slice: 32, scale: SCALE, speed: 80,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:2,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
+
+  dogLight: { label: 'Light Dog', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Dog (Light Brown).png', slice: 32, scale: SCALE, speed: 80,
+    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
+    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:2,fps:8,loop:false,frames:4,colStart:0},
+    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}}
+}
+
+/* ==== Status ==== */
+const petStatus = reactive({ happiness: 75, health: 80, energy: 60 })
+
+/* ==== Inventory ==== */
+const INVENTORY_SLOTS = 16  // 4 rows x 4 columns
+const inventory = ref([])  // Empty initially, items added when purchased
+
+/* ==== Dropped Items (on background) ==== */
+const droppedItems = ref([])  // Items dropped on the background for pet to eat
+let nextDroppedItemId = 0
+
+/* ==== Pet picker (sidebar immediately controls the pet) ==== */
+const petKeys = Object.keys(PETS)
+const petIndex = ref(0)
+const selectedPetKey = computed(() => petKeys[petIndex.value]) // ← follows arrows instantly
+function previousPet() { if (petIndex.value > 0) petIndex.value-- }
+function nextPet() { if (petIndex.value < petKeys.length - 1) petIndex.value++ }
+// Optional: keep a Select button if you like that UX; it’s no longer required.
+function selectPet() { /* no-op now, left here for compatibility */ }
+
+/* ==== Backgrounds ==== */
+const bgIndex = ref(0)
+const availableBackgrounds = ref([
+  { name: 'Waterfall Valley', preview: '/photos/pixelbg1.jpg', fullImage: '/photos/pixelbg1.jpg' },
+  { name: 'Mountain Peak',    preview: '/photos/pixelbg2.jpg', fullImage: '/photos/pixelbg2.jpg' }
+])
+const currentBackground = computed(() => availableBackgrounds.value[bgIndex.value].fullImage)
+function previousBackground() { if (bgIndex.value > 0) bgIndex.value-- }
+function nextBackground() { if (bgIndex.value < availableBackgrounds.value.length - 1) bgIndex.value++ }
+
+/* ==== Inventory actions ==== */
+function feedPet(slotIndex) {
+  const item = inventory.value[slotIndex]
+  if (item && item.count > 0) {
+    item.count--
+    petStatus.happiness = Math.min(100, petStatus.happiness + 10)
+    petStatus.health = Math.min(100, petStatus.health + 5)
+
+    // Remove item from inventory if count reaches 0
+    if (item.count === 0) {
+      inventory.value.splice(slotIndex, 1)
+    }
+  }
+}
+
+/* ==== Drag and Drop ==== */
+let draggedItem = null
+let draggedItemIndex = null
+
+function startDrag(event, item, index) {
+  draggedItem = item
+  draggedItemIndex = index
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/html', event.target.innerHTML)
+}
+
+function onDrop(event) {
+  event.preventDefault()
+
+  if (!draggedItem) return
+
+  // Get the pet stage element to calculate relative position
+  const petStage = event.currentTarget
+  const rect = petStage.getBoundingClientRect()
+
+  // Calculate drop position relative to pet stage
+  let x = event.clientX - rect.left
+  let y = event.clientY - rect.top
+
+  // Item size (40px emoji)
+  const ITEM_SIZE = 40
+
+  // Clamp X to boundaries (left and right edges)
+  x = Math.max(ITEM_SIZE / 2, Math.min(x, rect.width - ITEM_SIZE / 2))
+
+  // Adjust Y position so the bottom of the item is at cursor position
+  // This prevents the item from being half-buried in the ground
+  y = y - ITEM_SIZE / 2
+
+  // Clamp Y to prevent dropping too high or outside bounds
+  y = Math.max(0, Math.min(y, rect.height - ITEM_SIZE))
+
+  // Add dropped item to the background - will be adjusted by ground physics
+  droppedItems.value.push({
+    id: nextDroppedItemId++,
+    icon: draggedItem.icon,
+    name: draggedItem.name,
+    x: x,
+    y: y,
+    velocityY: 0,  // For physics
+    isOnGround: false  // Will be set by physics
+  })
+
+  // Remove one from inventory
+  if (draggedItem.count > 1) {
+    draggedItem.count--
+  } else {
+    inventory.value.splice(draggedItemIndex, 1)
+  }
+
+  // Clear drag state
+  draggedItem = null
+  draggedItemIndex = null
+}
+
+function onDragOver(event) {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'move'
+}
+
+// Remove dropped item (when pet eats it)
+function removeDroppedItem(itemId) {
+  const index = droppedItems.value.findIndex(item => item.id === itemId)
+  if (index !== -1) {
+    droppedItems.value.splice(index, 1)
+    // Increase pet stats when eating
+    petStatus.happiness = Math.min(100, petStatus.happiness + 10)
+    petStatus.health = Math.min(100, petStatus.health + 5)
+  }
+}
+
+/* ==== Shop ==== */
+const showShop = ref(false)
+
+// Use shared coin state
+const { coins: playerGold, coinsLoading, coinsError, fetchCoins, updateCoins } = useCoins()
+
+const shopItems = ref([
+  { icon: '/food/fish.png', name: 'Fish', price: 80, description: 'Fresh fish, a premium treat for pets.' },
+  { icon: '/food/milk.png', name: 'Milk', price: 40, description: 'Fresh milk, good for growing pets.' },
+  { icon: '/food/beef.png', name: 'Beef', price: 120, description: 'Premium beef, the ultimate pet treat.' },
+  { icon: '/food/shrimp.png', name: 'Shrimp', price: 90, description: 'Delicious shrimp, a seafood delight.' },
+  { icon: '/food/cherry.png', name: 'Cherry', price: 50, description: 'Sweet cherries, a tasty snack.' },
+  { icon: '/food/pumpkin.png', name: 'Pumpkin', price: 60, description: 'Healthy pumpkin, full of nutrients.' },
+  { icon: '/food/soju.png', name: 'Soju', price: 100, description: 'Special drink for celebrating!' }
+])
+
+/* ==== Shopkeeper Animation ==== */
+const shopkeeperState = ref('happytalk')  // happytalk, neutral, annoyedclosed
+let talkingInterval = null
+
+const shopkeeperImage = computed(() => {
+  const images = {
+    happytalk: '/shopkeeper/sk_bb_happytalk.png',
+    neutral: '/shopkeeper/sk_bb_neutral.png',
+    annoyedclosed: '/shopkeeper/sk_bb_annoyedclosed.png'
+  }
+  return images[shopkeeperState.value]
+})
+
+function startTalkingAnimation() {
+  // Reset to happytalk when shop opens
+  shopkeeperState.value = 'happytalk'
+
+  // Alternate between happytalk and neutral for 5 seconds
+  let elapsed = 0
+  let isHappy = true
+
+  talkingInterval = setInterval(() => {
+    if (elapsed >= 3000) {
+      // After 5 seconds, stop at neutral
+      shopkeeperState.value = 'neutral'
+      clearInterval(talkingInterval)
+      talkingInterval = null
+    } else {
+      // Toggle between happytalk and neutral every 500ms
+      isHappy = !isHappy
+      shopkeeperState.value = isHappy ? 'happytalk' : 'neutral'
+      elapsed += 500
+    }
+  }, 500)
+}
+
+function handleShopkeeperClick() {
+  // Clear any ongoing animation
+  if (talkingInterval) {
+    clearInterval(talkingInterval)
+    talkingInterval = null
+  }
+  // Switch to annoyed
+  shopkeeperState.value = 'annoyedclosed'
+
+  // Return to neutral after 1.5 seconds
+  setTimeout(() => {
+    shopkeeperState.value = 'neutral'
+  }, 1500)
+}
+
+// Watch for shop opening
+watch(showShop, (isOpen) => {
+  if (isOpen) {
+    startTalkingAnimation()
+  } else {
+    // Clean up animation when shop closes
+    if (talkingInterval) {
+      clearInterval(talkingInterval)
+      talkingInterval = null
+    }
+  }
+})
+
+function toggleShop() {
+  showShop.value = !showShop.value
+}
+
+async function buyFood(item) {
+  if (playerGold.value !== null && playerGold.value >= item.price) {
+    // Check if inventory is full (16 unique items max)
+    if (inventory.value.length >= INVENTORY_SLOTS) {
+      const existingItem = inventory.value.find(f => f.name === item.name)
+      if (!existingItem) {
+        alert('Inventory is full! Please use some items first.')
+        return
+      }
+    }
+
+    const newCoinAmount = playerGold.value - item.price
+
+    // Use the shared updateCoins function
+    const result = await updateCoins(newCoinAmount)
+
+    if (result.success) {
+      // Add to inventory: if same item exists, increase count; otherwise add new slot
+      const existingItem = inventory.value.find(f => f.name === item.name)
+      if (existingItem) {
+        existingItem.count++
+      } else {
+        inventory.value.push({ icon: item.icon, name: item.name, count: 1 })
+      }
+    } else {
+      alert('Failed to purchase item: ' + (result.error || 'Please try again'))
+    }
+  }
+}
+
+// Fetch coins when component mounts if not already loaded
+onMounted(() => {
+  if (playerGold.value === null && !coinsLoading.value) {
+    fetchCoins()
+  }
+})
+</script>
+
 <template>
   <div class="pet-page-container">
-    <!-- Main Content Area -->
+    <!-- Main Content -->
     <div class="main-content" :style="{ backgroundImage: `url(${currentBackground})` }">
-      <div class="pet-display-area">
-        <div class="pet-container">
-          <div class="pet-character" :class="petAnimation">
-            <div class="pet-avatar">
-              <div class="pet-face" :class="currentPet.type">
-                <div class="pet-eyes">
-                  <div class="eye left"></div>
-                  <div class="eye right"></div>
-                </div>
-                <div class="pet-mouth"></div>
-              </div>
-            </div>
-            <div class="pet-name">{{ currentPet.name }}</div>
-            <div class="pet-level">Level {{ currentPet.level }}</div>
-          </div>
+      <div
+        class="pet-stage"
+        @drop="onDrop"
+        @dragover="onDragOver"
+      >
+        <!-- 🔑 key makes sure AnimatedPet remounts when selectedPetKey changes -->
+        <AnimatedPet
+          :key="selectedPetKey"
+          :sprite-url="PETS[selectedPetKey].config.spriteUrl"
+          :slice="PETS[selectedPetKey].config.slice"
+          :scale="PETS[selectedPetKey].config.scale"
+          :speed="PETS[selectedPetKey].config.speed"
+          :animations="PETS[selectedPetKey].config.animations"
+          :dropped-items="droppedItems"
+          @item-eaten="removeDroppedItem"
+        />
+
+        <!-- Dropped items on background -->
+        <div
+          v-for="item in droppedItems"
+          :key="item.id"
+          class="dropped-item"
+          :style="{ left: item.x + 'px', top: item.y + 'px' }"
+        >
+          <img :src="item.icon" :alt="item.name" class="dropped-food-image" />
         </div>
       </div>
+      
+              <!-- Shop Button -->
+              <button class="shop-button" @click="toggleShop">
+                <img src="/fruitstand.png" alt="Shop" class="shop-icon" />
+              </button>
     </div>
 
     <!-- Right Panel -->
     <div class="right-panel">
-      <!-- Pet Status Section -->
+      <!-- Pet Status -->
       <div class="panel-section">
         <h4 class="section-title">Pet Status</h4>
         <div class="status-item">
           <span class="status-label">Happy</span>
-          <div class="status-bar">
-            <div class="status-fill" :style="{ width: `${petStatus.happiness}%` }"></div>
-          </div>
+          <div class="status-bar"><div class="status-fill" :style="{ width: `${petStatus.happiness}%` }"></div></div>
           <span class="status-value">{{ petStatus.happiness }}%</span>
         </div>
         <div class="status-item">
           <span class="status-label">Health</span>
-          <div class="status-bar">
-            <div class="status-fill health" :style="{ width: `${petStatus.health}%` }"></div>
-          </div>
+          <div class="status-bar"><div class="status-fill health" :style="{ width: `${petStatus.health}%` }"></div></div>
           <span class="status-value">{{ petStatus.health }}%</span>
         </div>
-        <div class="status-item">
-          <span class="status-label">Energy</span>
-          <div class="status-bar">
-            <div class="status-fill energy" :style="{ width: `${petStatus.energy}%` }"></div>
-          </div>
-          <span class="status-value">{{ petStatus.energy }}%</span>
-        </div>
+        
       </div>
 
-      <!-- Food Selection -->
+      <!-- Inventory -->
       <div class="panel-section">
-        <h4 class="section-title">Food you have</h4>
-        <div class="selection-container">
-          <button class="nav-btn" @click="previousFood" :disabled="foodIndex === 0">
-            <span>‹</span>
-          </button>
-          <div class="item-display">
-            <div class="item-icon food-icon">{{ availableFood[foodIndex].icon }}</div>
-            <div class="item-count">{{ availableFood[foodIndex].count }} left</div>
+        <h4 class="section-title">Inventory</h4>
+        <div class="inventory-grid">
+          <div
+            v-for="(item, index) in inventory"
+            :key="index"
+            class="inventory-slot filled"
+            draggable="true"
+            @dragstart="startDrag($event, item, index)"
+            @click="feedPet(index)"
+          >
+            <div class="slot-icon">
+              <img :src="item.icon" :alt="item.name" class="food-image" />
+            </div>
+            <div class="slot-count">{{ item.count }}</div>
           </div>
-          <button class="nav-btn" @click="nextFood" :disabled="foodIndex === availableFood.length - 1">
-            <span>›</span>
-          </button>
+          <!-- Empty slots to fill the grid -->
+          <div
+            v-for="emptySlot in (INVENTORY_SLOTS - inventory.length)"
+            :key="'empty-' + emptySlot"
+            class="inventory-slot empty"
+          >
+          </div>
         </div>
-        <button class="action-btn" @click="feedPet" :disabled="availableFood[foodIndex].count === 0">
-          Feed Pet
-        </button>
       </div>
 
-      <!-- Pet Selection -->
+      <!-- Pet Select -->
       <div class="panel-section">
         <h4 class="section-title">Pet Select</h4>
         <div class="selection-container">
-          <button class="nav-btn" @click="previousPet" :disabled="petIndex === 0">
-            <span>‹</span>
-          </button>
-          <div class="item-display">
-            <div class="pet-preview" :class="availablePets[petIndex].type">
-              <div class="pet-face-small">
-                <div class="pet-eyes-small">
-                  <div class="eye-small left"></div>
-                  <div class="eye-small right"></div>
-                </div>
-                <div class="pet-mouth-small"></div>
-              </div>
-            </div>
-            <div class="pet-name-small">{{ availablePets[petIndex].name }}</div>
+          <button class="nav-btn" @click="previousPet" :disabled="petIndex === 0">‹</button>
+
+          <div class="item-display" @click="nextPet">
+            <!-- 🔑 key forces preview to redraw as you scroll -->
+            <SpritePreview
+              :key="PETS[petKeys[petIndex]].config.spriteUrl + ':' + PETS[petKeys[petIndex]].config.slice"
+              :sprite-url="PETS[petKeys[petIndex]].config.spriteUrl"
+              :slice="PETS[petKeys[petIndex]].config.slice"
+              :scale="2.5"
+              :row="0"
+              :col="0"
+            />
+            <div class="pet-name-small">{{ PETS[petKeys[petIndex]].label }}</div>
           </div>
-          <button class="nav-btn" @click="nextPet" :disabled="petIndex === availablePets.length - 1">
-            <span>›</span>
-          </button>
+
+          <button class="nav-btn" @click="nextPet" :disabled="petIndex === petKeys.length - 1">›</button>
         </div>
-        <button class="action-btn" @click="selectPet">
-          Select Pet
-        </button>
+
+        <!-- Optional now; you can remove if you want instant-switch only -->
+        <button class="action-btn" @click="selectPet">Select Pet</button>
       </div>
 
-      <!-- Background Selector -->
+      <!-- Background -->
       <div class="panel-section">
-        <h4 class="section-title">Bg Selector</h4>
+        <h4 class="section-title">Background</h4>
         <div class="selection-container">
-          <button class="nav-btn" @click="previousBackground" :disabled="bgIndex === 0">
-            <span>‹</span>
-          </button>
+          <button class="nav-btn" @click="previousBackground" :disabled="bgIndex === 0">‹</button>
           <div class="item-display">
             <div class="bg-preview" :style="{ backgroundImage: `url(${availableBackgrounds[bgIndex].preview})` }">
               <div class="bg-name">{{ availableBackgrounds[bgIndex].name }}</div>
             </div>
           </div>
-          <button class="nav-btn" @click="nextBackground" :disabled="bgIndex === availableBackgrounds.length - 1">
-            <span>›</span>
-          </button>
+          <button class="nav-btn" @click="nextBackground" :disabled="bgIndex === availableBackgrounds.length - 1">›</button>
         </div>
-        <button class="action-btn" @click="selectBackground">
-          Select Background
-        </button>
+      </div>
+    </div>
+
+    <!-- Shop Popup -->
+    <div v-if="showShop" class="shop-overlay" @click="toggleShop">
+      <div class="shop-popup" @click.stop>
+        <div class="shop-header">
+          <h3>🛒 Pet Shop</h3>
+          <div class="header-gold">
+            <template v-if="coinsLoading">
+              <span class="gold-amount">Loading...</span>
+            </template>
+            <template v-else-if="coinsError">
+              <span class="gold-amount error">Error: {{ coinsError }}</span>
+            </template>
+            <template v-else>
+              <AnimatedCoin :scale="1.5" :speed="8" />
+              <span class="gold-amount">{{ playerGold }}</span>
+            </template>
+          </div>
+          <button class="close-shop" @click="toggleShop">×</button>
+        </div>
+        
+        <div class="shop-content">
+          <div class="shop-layout">
+                    <!-- Character Dialogue Area -->
+                    <div class="character-section">
+                      <div class="character-portrait" @click="handleShopkeeperClick">
+                        <img :src="shopkeeperImage" alt="Shopkeeper" class="character-image" />
+                      </div>
+                      <div class="character-name">Anya the Petkeeper</div>
+                      <div class="dialogue-box">
+                        <div class="dialogue-text">
+                          <template v-if="coinsLoading">
+                            Please wait while I check your coin balance...
+                          </template>
+                          <template v-else-if="coinsError">
+                            Oh no! I can't check your coins right now. There seems to be a problem: {{ coinsError }}
+                          </template>
+                          <template v-else-if="playerGold === null">
+                            I'm having trouble reading your coin balance. Please try again later.
+                          </template>
+                          <template v-else-if="playerGold > 0">
+                            Welcome to the pet shop! How can I help you today? Be sure to have enough coins when you buy from me!
+                          </template>
+                          <template v-else>
+                            Sorry, but you don't have any coins. Come back when you can afford something!
+                          </template>
+                        </div>
+                      </div>
+                    </div>
+            
+            <!-- Shop Items -->
+            <div class="items-section">
+              <div class="shop-items">
+                <div
+                  v-for="item in shopItems"
+                  :key="item.name"
+                  class="shop-item"
+                >
+                  <div class="item-icon">
+                    <img :src="item.icon" :alt="item.name" class="food-image" />
+                  </div>
+                  <div class="item-info">
+                    <div class="item-name">{{ item.name }}</div>
+                    <div class="item-description">{{ item.description }}</div>
+                  </div>
+                  <div class="item-price">
+                    <div class="price-container">
+                      <AnimatedCoin :scale="1" :speed="8" />
+                      <span class="price">{{ item.price }}</span>
+                    </div>
+                    <button
+                      class="buy-btn"
+                      @click="buyFood(item)"
+                      :disabled="coinsLoading || coinsError || playerGold === null || playerGold < item.price"
+                    >
+                      Buy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, computed } from 'vue'
-
-// Pet data
-const currentPet = ref({
-  name: 'Buddy',
-  type: 'cat',
-  level: 1
-})
-
-const petStatus = reactive({
-  happiness: 75,
-  health: 80,
-  energy: 60
-})
-
-// Food selection
-const foodIndex = ref(0)
-const availableFood = ref([
-  { icon: '🍎', name: 'Apple', count: 3 },
-  { icon: '🥕', name: 'Carrot', count: 1 },
-  { icon: '🐟', name: 'Fish', count: 5 },
-  { icon: '🥛', name: 'Milk', count: 2 }
-])
-
-// Pet selection
-const petIndex = ref(0)
-const availablePets = ref([
-  { name: 'Buddy', type: 'cat' },
-  { name: 'Rex', type: 'dog' },
-  { name: 'Fluffy', type: 'rabbit' },
-  { name: 'Squeaky', type: 'hamster' }
-])
-
-// Background selection
-const bgIndex = ref(0)
-const availableBackgrounds = ref([
-  { 
-    name: 'Waterfall Valley', 
-    preview: '/photos/pixelbg1.jpg',
-    fullImage: '/photos/pixelbg1.jpg',
-    cssClass: 'waterfall-bg'
-  },
-  { 
-    name: 'Mountain Peak', 
-    preview: '/photos/pixelbg2.jpg',
-    fullImage: '/photos/pixelbg2.jpg',
-    cssClass: 'forest-bg'
-  }
-])
-
-const currentBackground = computed(() => availableBackgrounds.value[bgIndex.value].fullImage)
-
-// Pet animation
-const petAnimation = ref('idle')
-
-// Navigation functions
-function previousFood() {
-  if (foodIndex.value > 0) foodIndex.value--
-}
-
-function nextFood() {
-  if (foodIndex.value < availableFood.value.length - 1) foodIndex.value++
-}
-
-function previousPet() {
-  if (petIndex.value > 0) petIndex.value--
-}
-
-function nextPet() {
-  if (petIndex.value < availablePets.value.length - 1) petIndex.value++
-}
-
-function previousBackground() {
-  if (bgIndex.value > 0) bgIndex.value--
-}
-
-function nextBackground() {
-  if (bgIndex.value < availableBackgrounds.value.length - 1) bgIndex.value++
-}
-
-// Action functions
-function feedPet() {
-  if (availableFood[foodIndex.value].count > 0) {
-    availableFood[foodIndex.value].count--
-    petStatus.happiness = Math.min(100, petStatus.happiness + 10)
-    petStatus.health = Math.min(100, petStatus.health + 5)
-    petAnimation.value = 'happy'
-    setTimeout(() => { petAnimation.value = 'idle' }, 2000)
-  }
-}
-
-function selectPet() {
-  currentPet.value = { ...availablePets.value[petIndex.value], level: currentPet.value.level }
-  petAnimation.value = 'excited'
-  setTimeout(() => { petAnimation.value = 'idle' }, 2000)
-}
-
-function selectBackground() {
-  petAnimation.value = 'excited'
-  setTimeout(() => { petAnimation.value = 'idle' }, 2000)
-}
-</script>
-
 <style scoped>
-.pet-page-container {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
+.pet-page-container{display:flex;height:100vh;overflow:hidden;}
+.main-content{flex:1;display:flex;align-items:stretch;justify-content:stretch;padding:24px;position:relative;overflow:hidden;background-size:cover;background-position:center;}
+.pet-stage{position:relative;width:100%;height:100%;overflow:hidden;}
+.right-panel{width:280px;background:var(--surface);border-left:1px solid var(--surface-lighter);padding:24px 16px;overflow-y:auto;}
+.panel-section{margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--surface-lighter);}
+.section-title{font-weight:600;margin-bottom:16px;}
+.status-item{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.status-label{width:60px;text-transform:capitalize;}
+.status-bar{flex:1;height:8px;background:var(--surface-lighter);border-radius:4px;overflow:hidden;}
+.status-fill{height:100%;background:var(--primary);}
+.status-fill.health{background:#4ade80;}
+.status-fill.energy{background:#f59e0b;}
+.selection-container{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.nav-btn{width:32px;height:32px;border:1px solid var(--surface-lighter);background:var(--surface);border-radius:6px;cursor:pointer;}
+.item-display{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.item-icon{font-size:32px;width:48px;height:48px;display:grid;place-items:center;background:var(--surface-light);border-radius:12px;}
+.item-count{font-size:12px;color:var(--text-muted);}
+.pet-name-small{font-size:12px;}
+.bg-preview{width:100%;height:48px;border-radius:8px;background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.bg-name{background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;}
+.action-btn{width:100%;padding:10px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;}
+
+/* Inventory Grid */
+.inventory-grid{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  grid-template-rows:repeat(4, 1fr);
+  gap:8px;
+}
+.inventory-slot{
+  position:relative;
+  aspect-ratio:1;
+  border:2px solid var(--surface-lighter);
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--surface-light);
+  transition:all 0.2s ease;
+}
+.inventory-slot.empty{
+  background:var(--surface);
+  opacity:0.5;
+}
+.inventory-slot.filled{
+  cursor:grab;
+  background:var(--surface-light);
+}
+.inventory-slot.filled:active{
+  cursor:grabbing;
+}
+.inventory-slot.filled:hover{
+  border-color:var(--primary);
+  transform:scale(1.05);
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+.slot-icon{
+  font-size:28px;
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.food-image{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  image-rendering:pixelated;
+}
+.slot-count{
+  position:absolute;
+  bottom:4px;
+  right:4px;
+  background:rgba(0,0,0,0.7);
+  color:#fff;
+  font-size:10px;
+  font-weight:bold;
+  padding:2px 6px;
+  border-radius:4px;
+  min-width:16px;
+  text-align:center;
 }
 
-/* Main Content Area */
-.main-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  position: relative;
-  overflow: hidden;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+/* Dropped Items on Background */
+.dropped-item{
+  position:absolute;
+  width:40px;
+  height:40px;
+  pointer-events:none;
+  animation:dropBounce 0.5s ease-out;
+  z-index:10;
+}
+.dropped-food-image{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  image-rendering:pixelated;
+}
+@keyframes dropBounce{
+  0%{transform:scale(0) translateY(-20px);opacity:0;}
+  50%{transform:scale(1.2);}
+  100%{transform:scale(1) translateY(0);opacity:1;}
 }
 
-.pet-display-area {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Shop Button */
+.shop-button{
+  position:absolute;
+  top:20px;
+  right:20px;
+  background:transparent;
+  border:none;
+  border-radius:8px;
+  padding:8px;
+  cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+  transition:all 0.3s ease;
+}
+.shop-button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(0,0,0,0.3);
+}
+.shop-icon{
+  width:40px;
+  height:40px;
+  object-fit:contain;
 }
 
-.pet-container {
-  width: 400px;
-  height: 400px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  background: transparent;
+/* Shop Popup */
+.shop-overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100vw;
+  height:100vh;
+  background:rgba(0,0,0,0.7);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
 }
-
-.pet-character {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: all 0.3s ease;
+.shop-popup{
+  background:var(--surface);
+  border-radius:12px;
+  width:700px;
+  max-height:80vh;
+  overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,0.3);
 }
-
-.pet-character.idle {
-  animation: idle 3s ease-in-out infinite;
+.shop-header{
+  background:var(--primary);
+  color:#fff;
+  padding:16px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
-
-.pet-character.happy {
-  animation: happy 1s ease-in-out;
+.shop-header h3{
+  margin:0;
+  font-size:18px;
 }
-
-.pet-character.excited {
-  animation: excited 0.5s ease-in-out 3;
+.header-gold{
+  background:rgba(255,255,255,0.2);
+  padding:8px 12px;
+  border-radius:6px;
+  font-weight:600;
+  font-size:14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
-
-.pet-avatar {
-  width: 120px;
-  height: 120px;
-  background-color: #ffd93d;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+.gold-amount{
+  color:#fff;
+  font-weight:600;
+  font-size:14px;
 }
-
-.pet-face {
-  width: 80px;
-  height: 80px;
-  position: relative;
+.gold-amount.error{
+  color:#ff6b6b;
+  font-size:12px;
 }
-
-.pet-eyes {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 12px;
+.close-shop{
+  background:none;
+  border:none;
+  color:#fff;
+  font-size:24px;
+  cursor:pointer;
+  padding:0;
+  width:32px;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  transition:background 0.2s ease;
 }
-
-.eye {
-  width: 8px;
-  height: 8px;
-  background-color: #333;
-  border-radius: 50%;
+.close-shop:hover{
+  background:rgba(255,255,255,0.2);
 }
-
-.pet-mouth {
-  position: absolute;
-  bottom: 15px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 20px;
-  height: 10px;
-  border: 2px solid #333;
-  border-top: none;
-  border-radius: 0 0 20px 20px;
+.shop-content{
+  padding:20px;
+  max-height:60vh;
+  overflow:hidden;
 }
-
-.pet-name {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 8px;
+.shop-layout{
+  display:flex;
+  gap:20px;
+  height:100%;
 }
-
-.pet-level {
-  font-size: 14px;
-  color: var(--text-muted);
-  background-color: var(--surface);
-  padding: 4px 12px;
-  border-radius: 12px;
+.character-section{
+  width:200px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  flex-shrink:0;
 }
-
-/* Right Panel */
-.right-panel {
-  width: 280px;
-  background-color: var(--surface);
-  border-left: 1px solid var(--surface-lighter);
-  padding: 24px 16px;
-  overflow-y: auto;
+.character-portrait{
+  width:100%;
+  height:280px;
+  background:var(--surface-light);
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  cursor:pointer;
+  transition:transform 0.2s ease, box-shadow 0.2s ease;
 }
-
-.panel-section {
-  margin-bottom: 32px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--surface-lighter);
+.character-portrait:hover{
+  transform:scale(1.02);
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
 }
-
-.panel-section:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
+.character-portrait:active{
+  transform:scale(0.98);
 }
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 16px 0;
+.character-image{
+  width:100%;
+  height:100%;
+  object-fit:contain;
 }
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+.character-name{
+  text-align:center;
+  font-weight:600;
+  color:var(--text-primary);
+  font-size:14px;
+  margin-top:8px;
 }
-
-.status-label {
-  font-size: 14px;
-  color: var(--text-muted);
-  min-width: 50px;
+.dialogue-box{
+  background:var(--surface-light);
+  border:2px solid var(--primary);
+  border-radius:8px;
+  padding:12px;
+  position:relative;
 }
-
-.status-bar {
-  flex: 1;
-  height: 8px;
-  background-color: var(--surface-lighter);
-  border-radius: 4px;
-  overflow: hidden;
+.dialogue-box::before{
+  content:"";
+  position:absolute;
+  top:-8px;
+  left:20px;
+  width:0;
+  height:0;
+  border-left:8px solid transparent;
+  border-right:8px solid transparent;
+  border-bottom:8px solid var(--primary);
 }
-
-.status-fill {
-  height: 100%;
-  background-color: var(--primary);
-  border-radius: 4px;
-  transition: width 0.3s ease;
+.dialogue-text{
+  font-size:12px;
+  line-height:1.4;
+  color:var(--text-primary);
+  font-style:italic;
 }
-
-.status-fill.health {
-  background-color: #4ade80;
+.items-section{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  max-height:50vh;
 }
-
-.status-fill.energy {
-  background-color: #f59e0b;
+.shop-items{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
 }
-
-.status-value {
-  font-size: 12px;
-  color: var(--text-muted);
-  min-width: 30px;
-  text-align: right;
+.shop-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px;
+  background:var(--surface-light);
+  border-radius:8px;
+  border:1px solid var(--surface-lighter);
 }
-
-.selection-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+.item-icon{
+  font-size:24px;
+  width:40px;
+  height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--surface);
+  border-radius:6px;
 }
-
-.nav-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--surface-lighter);
-  background-color: var(--surface);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: var(--text-muted);
+.item-info{
+  flex:1;
 }
-
-.nav-btn:hover:not(:disabled) {
-  background-color: var(--surface-light);
-  color: var(--text-primary);
+.item-name{
+  font-weight:600;
+  color:var(--text-primary);
+  margin-bottom:4px;
 }
-
-.nav-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.item-description{
+  font-size:12px;
+  color:var(--text-muted);
+  line-height:1.4;
 }
-
-.item-display {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+.item-price{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:8px;
 }
-
-.item-icon {
-  font-size: 32px;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--surface-light);
-  border-radius: 12px;
+.price-container{
+  display:flex;
+  align-items:center;
+  gap:4px;
 }
-
-.item-count {
-  font-size: 12px;
-  color: var(--text-muted);
+.price{
+  font-weight:600;
+  color:var(--primary);
 }
-
-.pet-preview {
-  width: 48px;
-  height: 48px;
-  background-color: #ffd93d;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.buy-btn{
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:6px 12px;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s ease;
 }
-
-.pet-face-small {
-  width: 32px;
-  height: 32px;
-  position: relative;
+.buy-btn:hover:not(:disabled){
+  background:var(--primary-dark);
+  transform:translateY(-1px);
 }
-
-.pet-eyes-small {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-}
-
-.eye-small {
-  width: 4px;
-  height: 4px;
-  background-color: #333;
-  border-radius: 50%;
-}
-
-.pet-mouth-small {
-  position: absolute;
-  bottom: 6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 10px;
-  height: 5px;
-  border: 1px solid #333;
-  border-top: none;
-  border-radius: 0 0 10px 10px;
-}
-
-.pet-name-small {
-  font-size: 12px;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.bg-preview {
-  width: 100%;
-  height: 48px;
-  border-radius: 8px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.bg-name {
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.action-btn {
-  width: 100%;
-  padding: 10px 16px;
-  background-color: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.action-btn:hover:not(:disabled) {
-  background-color: var(--secondary);
-  transform: translateY(-1px);
-}
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Animations */
-@keyframes idle {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-5px); }
-}
-
-@keyframes happy {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
-@keyframes excited {
-  0%, 100% { transform: translateY(0px) scale(1); }
-  50% { transform: translateY(-10px) scale(1.05); }
-}
-
-
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-  .pet-page-container {
-    flex-direction: column;
-    height: auto;
-  }
-  
-  .main-content {
-    height: 300px;
-    padding: 16px;
-  }
-  
-  .pet-container {
-    width: 250px;
-    height: 250px;
-  }
-  
-  .right-panel {
-    width: 100%;
-    padding: 16px;
-  }
+.buy-btn:disabled{
+  background:var(--surface-lighter);
+  color:var(--text-muted);
+  cursor:not-allowed;
 }
 </style>
