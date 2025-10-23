@@ -12,7 +12,7 @@
           <v-card-text class="text-center">
             <v-icon icon="mdi-clock-time-four-outline" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Study Hours</div>
-            <div class="text-h6 font-weight-bold mt-1">1h 25m</div>
+            <div class="text-h6 font-weight-bold mt-1">{{ studyStats.studyHours }} Hours</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -32,7 +32,7 @@
           <v-card-text class="text-center">
             <v-icon icon="mdi-fire" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Study Streak</div>
-            <div class="text-h6 font-weight-bold mt-1">5 days</div>
+            <div class="text-h6 font-weight-bold mt-1">{{ studyStats.studyStreak }} days</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -111,7 +111,7 @@
                 <v-card-text class="text-center">
                   <v-icon icon="mdi-format-list-checks" size="26" class="mb-2 text-primary" />
                   <div class="text-subtitle-2">Total Tasks</div>
-                  <div class="text-h6 font-weight-bold mt-1">{{ totalTasks.value }}</div>
+                  <div class="text-h6 font-weight-bold mt-1">{{ totalTasks }}</div>
                 </v-card-text>
               </v-card>
             </v-col>
@@ -249,6 +249,7 @@ onMounted(() => {
   getTaskStats();
   getWellnessOverview();
   loadWellnessData();
+  loadStudyData();
 })
 
 const taskStat = reactive({
@@ -264,6 +265,25 @@ const wellnessOverview = reactive({
   lastCheckInDate: "",
 });
 
+const studyStats = reactive({
+  studyHours: 0,
+  studyStreak: 0,
+});
+
+async function loadStudyData() {
+  const user = auth.currentUser;
+  if (!user) return;
+  try {
+
+    const response = await api.get("/api/study-sessions/stats");
+    studyStats.studyHours = response.total_hours || 0;
+    studyStats.studyStreak = response.sessions_this_month || 0;
+  } catch (error) {
+    console.error("Error loading study data:", error);
+    studyStats.studyHours = 0;
+    studyStats.studyStreak = 0;
+  }
+}
 
 async function getTaskStats() {
   try {
@@ -279,14 +299,61 @@ async function getTaskStats() {
 
 async function getWellnessOverview() {
   try {
-    const wellness = await api.get("/api/wellness/overview");
-    Object.assign(wellnessOverview, {
-      streak: wellness.streak,
-      totalCheckIns: wellness.totalCheckIns,
-    });
+    const user = auth.currentUser; // Ensure the user is logged in
+    if (!user) return;
+
+    // Query Firestore for wellness check-ins
+    const q = query(
+      collection(db, "wellnessCheckIns"),
+      where("userId", "==", user.uid),
+      orderBy("date", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+    const checkIns = snapshot.docs.map(doc => doc.data());
+
+    // Total Check-ins
+    wellnessOverview.totalCheckIns = checkIns.length;
+
+    // Last Check-in Date
+    if (checkIns.length > 0) {
+      const lastCheckIn = checkIns[0].date.toDate(); // Get the latest check-in date
+      wellnessOverview.lastCheckInDate = lastCheckIn.toLocaleDateString("en-SG", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    // Calculate Streak (Consecutive Check-ins)
+    wellnessOverview.streak = calculateStreak(checkIns);
+
   } catch (error) {
     console.error("Failed to fetch wellness stats:", error);
   }
+}
+
+// Function to calculate streak based on check-in dates
+function calculateStreak(checkIns) {
+  let streak = 0;
+  const now = new Date();
+
+  // Loop through check-ins in reverse order (most recent to least recent)
+  for (let i = 0; i < checkIns.length; i++) {
+    const checkInDate = checkIns[i].date.toDate();
+
+    // Check if this check-in is on the current day or consecutive days
+    const diff = Math.floor((now - checkInDate) / (1000 * 60 * 60 * 24)); // days difference
+
+    if (diff === streak) {
+      streak++; // Increment streak if consecutive day
+    } else if (diff > streak) {
+      break; // If there's a gap in check-ins, stop counting the streak
+    }
+  }
+
+  return streak;
 }
 
 const tab = ref(0)
@@ -338,10 +405,9 @@ const completedTasks = computed(() => taskStat.completed);
 const completionRate = computed(() =>
   totalTasks.value > 0 ? ((completedTasks.value / totalTasks.value) * 100).toFixed(1) : 0);
 
-// Task Completion Trends Bar Chart (Created vs Completed)
 const taskCompletionSeries = ref([
-  { name: "Created Tasks", data: [2, 3, 1, 2, 4, 3, 2] }, // Example data for tasks created
-  { name: "Completed Tasks", data: [1, 2, 1, 1, 2, 3, 1] }, // Example data for tasks completed
+  { name: "Created Tasks", data: [] }, // Data for tasks created
+  { name: "Completed Tasks", data: [] }, // Data for tasks completed
 ]);
 
 const taskCompletionOptions = ref({
@@ -350,7 +416,7 @@ const taskCompletionOptions = ref({
     toolbar: { show: false },
   },
   xaxis: {
-    categories: ["Oct 02", "Oct 03", "Oct 04", "Oct 05", "Oct 06", "Oct 07", "Oct 08"],
+    categories: [], // Categories will be set dynamically (last 7 days)
   },
   yaxis: {
     min: 0,
@@ -360,13 +426,34 @@ const taskCompletionOptions = ref({
   dataLabels: { enabled: false },
 });
 
-// Dummy Data for Wellness Trends (Mood, Energy, Sleep, Stress)
-// const wellnessSeries = ref([
-//   { name: "Mood", data: [7, 6, 8, 7, 9, 6, 8] },
-//   { name: "Energy", data: [6, 5, 7, 6, 8, 7, 6] },
-//   { name: "Sleep", data: [8, 7, 8, 7, 8, 7, 7] },
-//   { name: "Stress", data: [4, 5, 3, 4, 3, 2, 4] },
-// ]);
+// Fetch task counts from API and update chart data
+// const fetchTaskCounts = async () => {
+//   try {
+//     const response = await api.get('/api/tasks/task-counts'); // API endpoint to fetch task counts
+//     const taskCounts = await response.json();
+
+//     const createdTasks = [];
+//     const completedTasks = [];
+//     const categories = [];
+
+//     // Loop through each day and populate data for the chart
+//     for (const [date, counts] of Object.entries(taskCounts)) {
+//       categories.push(date); // Add date as category
+//       createdTasks.push(counts.created); // Add created task count
+//       completedTasks.push(counts.completed); // Add completed task count
+//     }
+
+//     // Update chart series and categories
+//     taskCompletionSeries.value = [
+//       { name: "Created Tasks", data: createdTasks },
+//       { name: "Completed Tasks", data: completedTasks },
+//     ];
+//     taskCompletionOptions.value.xaxis.categories = categories; // Set categories (dates)
+//   } catch (error) {
+//     console.error("Error fetching task counts:", error);
+//   }
+// };
+
 const wellnessSeries = ref([]);
 
 const wellnessOptions = ref({
@@ -395,7 +482,6 @@ const wellnessOptions = ref({
 });
 
 //Data for Wellness Stats (Mood, Energy, Sleep, Stress)
-
 const mood = ref(0);
 const energy = ref(0);
 const sleep = ref(0);
