@@ -3,52 +3,14 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import AnimatedPet from '@/components/AnimatedPet.vue'
 import SpritePreview from '@/components/SpritePreview.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
+import TileBackground from '@/components/TileBackground.vue'
 import { useCoins } from '@/composables/useCoins.js'
 import { api } from '@/lib/api.js'
-
-/* ===== Global size knob ===== */
-const SCALE = 6  // ↓ smaller pet. Try 5 or 4 if you want it even smaller.
+import { TILE_MAPS, MAP_LIST } from '@/data/tilemaps.js'
+import { PET_CATALOG, PET_KEYS } from '@/data/petCatalog.js'
 
 /* ================= PET CATALOG ================= */
-const PETS = {
-  cat: { label: 'Cat', config: { spriteUrl: '/cat-spritesheet.png', slice: 32, scale: SCALE, speed: 70,
-    animations: { idle:{row:0,fps:6,loop:true,frames:8,colStart:0}, idle2:{row:1,fps:6,loop:true,frames:8,colStart:0},
-    clean:{row:2,fps:8,loop:true,frames:8,colStart:0}, clean2:{row:3,fps:8,loop:true,frames:8,colStart:0},
-    move:{row:4,fps:10,loop:true,frames:8,colStart:0}, move2:{row:5,fps:10,loop:true,frames:8,colStart:0},
-    sleep:{row:6,fps:5,loop:true,frames:6,colStart:0}, paw:{row:7,fps:10,loop:false,frames:6,colStart:0},
-    grabbed:{row:7,fps:8,loop:true,frames:6,colStart:0}, jump:{row:8,fps:12,loop:false,frames:8,colStart:0},
-    scared:{row:9,fps:10,loop:false,frames:8,colStart:0}, falling:{row:9,fps:8,loop:true,frames:8,colStart:0}}}},
-    
-  catGrey: { label: 'Grey Cat', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat (Grey).png', slice: 32, scale: SCALE, speed: 70,
-    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
-    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:3,fps:8,loop:false,frames:4,colStart:0},
-    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
-
-  catBlack: { label: 'Black Cat', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat (Black).png', slice: 32, scale: SCALE, speed: 70,
-    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
-    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:3,fps:8,loop:false,frames:4,colStart:0},
-    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
-
-  catNew: { label: 'New Cat', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat.png', slice: 32, scale: SCALE, speed: 70,
-    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
-    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:3,fps:8,loop:false,frames:4,colStart:0},
-    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
-
-  dogBlonde: { label: 'Blonde Dog', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Dog (Blonde).png', slice: 32, scale: SCALE, speed: 80,
-    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
-    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:2,fps:8,loop:false,frames:4,colStart:0},
-    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
-
-  dogGrey: { label: 'Grey Dog', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Dog (Grey).png', slice: 32, scale: SCALE, speed: 80,
-    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
-    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:2,fps:8,loop:false,frames:4,colStart:0},
-    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}},
-
-  dogLight: { label: 'Light Dog', config: { spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Dog (Light Brown).png', slice: 32, scale: SCALE, speed: 80,
-    animations: { idle:{row:0,fps:4,loop:true,frames:4,colStart:0}, move:{row:1,fps:6,loop:true,frames:4,colStart:0},
-    sleep:{row:2,fps:2,loop:true,frames:4,colStart:0}, click:{row:2,fps:8,loop:false,frames:4,colStart:0},
-    falling:{row:1,fps:6,loop:true,frames:4,colStart:0}, grabbed:{row:0,fps:4,loop:true,frames:4,colStart:0}}}}
-}
+const PETS = PET_CATALOG
 
 /* ==== Status ==== */
 const petStatus = reactive({ happiness: 75, health: 80, energy: 60 })
@@ -64,23 +26,34 @@ const droppedItems = ref([])  // Items dropped on the background for pet to eat
 let nextDroppedItemId = 0
 
 /* ==== Pet picker (sidebar immediately controls the pet) ==== */
-const petKeys = Object.keys(PETS)
+const petKeys = PET_KEYS
 const petIndex = ref(0)
 const selectedPetKey = computed(() => petKeys[petIndex.value]) // ← follows arrows instantly
 function previousPet() { if (petIndex.value > 0) petIndex.value-- }
 function nextPet() { if (petIndex.value < petKeys.length - 1) petIndex.value++ }
-// Optional: keep a Select button if you like that UX; it’s no longer required.
+// Optional: keep a Select button if you like that UX; it's no longer required.
 function selectPet() { /* no-op now, left here for compatibility */ }
 
-/* ==== Backgrounds ==== */
+/* ==== Tile-based Backgrounds ==== */
 const bgIndex = ref(0)
-const availableBackgrounds = ref([
-  { name: 'Waterfall Valley', preview: '/photos/pixelbg1.jpg', fullImage: '/photos/pixelbg1.jpg' },
-  { name: 'Mountain Peak',    preview: '/photos/pixelbg2.jpg', fullImage: '/photos/pixelbg2.jpg' }
-])
-const currentBackground = computed(() => availableBackgrounds.value[bgIndex.value].fullImage)
+const availableBackgrounds = ref(MAP_LIST)
+const currentMapKey = computed(() => availableBackgrounds.value[bgIndex.value].key)
+const currentMapData = computed(() => TILE_MAPS[currentMapKey.value])
+
+// Collision map data from TileBackground component
+const collisionData = ref({
+  collisionMap: [],
+  tileSize: 32,  // No scaling
+  cols: 40,
+  rows: 25
+})
+
 function previousBackground() { if (bgIndex.value > 0) bgIndex.value-- }
 function nextBackground() { if (bgIndex.value < availableBackgrounds.value.length - 1) bgIndex.value++ }
+
+function handleCollisionMapReady(data) {
+  collisionData.value = data
+}
 
 /* ==== Inventory API ==== */
 async function fetchInventory() {
@@ -167,15 +140,13 @@ function onDrop(event) {
   // Clamp Y to prevent dropping too high or outside bounds
   y = Math.max(0, Math.min(y, rect.height - ITEM_SIZE))
 
-  // Add dropped item to the background - will be adjusted by ground physics
+  // Add dropped item to the background
   droppedItems.value.push({
     id: nextDroppedItemId++,
     icon: draggedItem.icon,
     name: draggedItem.name,
     x: x,
-    y: y,
-    velocityY: 0,  // For physics
-    isOnGround: false  // Will be set by physics
+    y: y
   })
 
   // Remove one from inventory
@@ -403,12 +374,21 @@ onMounted(() => {
 <template>
   <div class="pet-page-container">
     <!-- Main Content -->
-    <div class="main-content" :style="{ backgroundImage: `url(${currentBackground})` }">
+    <div class="main-content">
       <div
         class="pet-stage"
         @drop="onDrop"
         @dragover="onDragOver"
       >
+        <!-- Tile-based background -->
+        <TileBackground
+          :key="currentMapKey"
+          :map-data="currentMapData"
+          :tile-size="32"
+          :scale="1"
+          @collision-map-ready="handleCollisionMapReady"
+        />
+
         <!-- 🔑 key makes sure AnimatedPet remounts when selectedPetKey changes -->
         <AnimatedPet
           :key="selectedPetKey"
@@ -418,6 +398,10 @@ onMounted(() => {
           :speed="PETS[selectedPetKey].config.speed"
           :animations="PETS[selectedPetKey].config.animations"
           :dropped-items="droppedItems"
+          :collision-map="collisionData.collisionMap"
+          :tile-size="collisionData.tileSize"
+          :map-cols="collisionData.cols"
+          :map-rows="collisionData.rows"
           @item-eaten="removeDroppedItem"
         />
 
@@ -426,7 +410,8 @@ onMounted(() => {
           v-for="item in droppedItems"
           :key="item.id"
           class="dropped-item"
-          :style="{ left: item.x + 'px', top: item.y + 'px' }"
+          :style="{ left: (item.x) + 'px',
+           top: item.y + 'px' }"
         >
           <img :src="item.icon" :alt="item.name" class="dropped-food-image" />
         </div>
@@ -434,7 +419,7 @@ onMounted(() => {
       
               <!-- Shop Button -->
               <button class="shop-button" @click="toggleShop">
-                <img src="/fruitstand.png" alt="Shop" class="shop-icon" />
+                <img src="/shopkeeper/shop_cart_sized.png" alt="Shop" class="shop-icon" />
               </button>
     </div>
 
@@ -511,13 +496,11 @@ onMounted(() => {
 
       <!-- Background -->
       <div class="panel-section">
-        <h4 class="section-title">Background</h4>
+        <h4 class="section-title">Map</h4>
         <div class="selection-container">
           <button class="nav-btn" @click="previousBackground" :disabled="bgIndex === 0">‹</button>
           <div class="item-display">
-            <div class="bg-preview" :style="{ backgroundImage: `url(${availableBackgrounds[bgIndex].preview})` }">
-              <div class="bg-name">{{ availableBackgrounds[bgIndex].name }}</div>
-            </div>
+            <div class="map-name-display">{{ availableBackgrounds[bgIndex].name }}</div>
           </div>
           <button class="nav-btn" @click="nextBackground" :disabled="bgIndex === availableBackgrounds.length - 1">›</button>
         </div>
@@ -632,6 +615,7 @@ onMounted(() => {
 .pet-name-small{font-size:12px;}
 .bg-preview{width:100%;height:48px;border-radius:8px;background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .bg-name{background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;}
+.map-name-display{text-align:center;font-weight:600;color:var(--text-primary);padding:8px;background:var(--surface-light);border-radius:8px;font-size:14px;}
 .action-btn{width:100%;padding:10px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;}
 
 /* Inventory Grid */

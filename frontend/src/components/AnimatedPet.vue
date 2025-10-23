@@ -2,21 +2,20 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
-  spriteUrl: { type: String, default: 'cat-spritesheet.png' },
+  spriteUrl: { type: String, required: true },
   slice: { type: Number, default: 32 },          // size of one cell/frame
-  columns: { type: Number, default: 12 },        // fallback; we auto-detect from image
-  scale: { type: Number, default: 8 },           // BIGGER pet (was 6)
+  columns: { type: Number, default: 4 },         // fallback; we auto-detect from image
+  scale: { type: Number, default: 5 },           // pet scale
   speed: { type: Number, default: 70 },
   animations: {
     type: Object,
-    default: () => ({
-      idle:   { row: 0, frames: 8, fps: 6,  loop: true,  colStart: 0 },
-      move:   { row: 4, frames: 8, fps: 10, loop: true,  colStart: 0 },
-      sleep:  { row: 6, frames: 6, fps: 5,  loop: true,  colStart: 0 },
-      click:  { row: 3, frames: 4, fps: 8,  loop: false, colStart: 0 }
-    })
+    required: true
   },
-  droppedItems: { type: Array, default: () => [] }  // Items dropped on the background
+  droppedItems: { type: Array, default: () => [] },  // Items dropped on the background
+  collisionMap: { type: Array, default: () => [] },  // 2D boolean array for tile collision
+  tileSize: { type: Number, default: 32 },  // Size of each tile (32px, no scaling)
+  mapCols: { type: Number, default: 40 },
+  mapRows: { type: Number, default: 25 }
 })
 
 const emit = defineEmits(['item-eaten'])
@@ -36,19 +35,11 @@ let parent, bounds = { w: 0, h: 0 }
 const pos = ref({ x: 0, y: 0 })
 let dest = { x: 0, y: 0 }
 let idleUntil = 0
-let dir = 1               // 1=right, -1=left
 let sheetCols = props.columns
 let randomEvt = 0
 let sleeping = false      // sticky sleep flag
+let sleepTimeout = 0      // Timer to auto-wake after sleeping
 let eatingItemId = null   // Track which item is being eaten to prevent duplicate emissions
-
-// Physics state
-let velocity = { x: 0, y: 0 }
-const GRAVITY = 0.8
-const TERMINAL_VELOCITY = 15
-const DRAG_COEFFICIENT = 0.95
-let isFalling = false
-let isOnGround = false
 
 // Drag state
 const isDragging = ref(false)
@@ -58,16 +49,13 @@ let mouseDownPos = { x: 0, y: 0 }
 
 /* Helpers */
 function setAnim(key, once = false, queueNext = null) {
-  // For Stardew pets (identified by having a 'click' animation), only allow
-  // side-to-side animations (no forward/backward variants)
-  if (props.animations.click) {
-    const allowed = ['idle', 'move', 'sleep', 'click', 'falling', 'grabbed']
-    if (!allowed.includes(key)) {
-      key = 'idle' // fallback to idle for any disallowed animation
-    }
+  // Check if animation exists
+  if (!props.animations[key]) {
+    // Fallback to idle if animation doesn't exist
+    if (!props.animations.idle) return
+    key = 'idle'
   }
 
-  if (!props.animations[key]) return
   animKey = key
   anim = props.animations[key]
   frame = 0
@@ -75,99 +63,88 @@ function setAnim(key, once = false, queueNext = null) {
   nextOnceKey = queueNext
 
   // sticky sleep -> freeze movement until click
-  if (key === 'sleep') {
+  if (key === 'sleep' || key === 'sleep_loop') {
     sleeping = true
     idleUntil = Number.POSITIVE_INFINITY
   }
 }
 
 function randomIdleAnim() {
-  // Stardew pets: only simple idles; Original cat: richer set
-  if (props.animations.click) {
-    // Stardew sprites: stick to simple idle or sleep
-    const pool = Math.random() < 0.3 ? ['sleep'] : ['idle']
-    setAnim(pool[Math.floor(Math.random() * pool.length)])
-  } else {
-    // Original cat keeps richer ambient idles
-    const pool = Math.random() < 0.35
-      ? ['sleep']
-      : ['idle', 'idle2', 'clean', 'clean2']
-    setAnim(pool[Math.floor(Math.random() * pool.length)])
+  // Use animations that exist in the current pet's config
+  const idleOptions = []
+
+  // Check which idle animations are available
+  // Note: Don't include 'sit' here - it will transition to idle automatically
+  // We only want one-shot animations like clean
+  if (props.animations.clean && Math.random() < 0.3) {
+    idleOptions.push('clean')
   }
+
+  // Most of the time, just sit (which transitions to idle)
+  if (idleOptions.length === 0 || Math.random() < 0.7) {
+    if (props.animations.sit) {
+      setAnim('sit', true)  // Play sit once, then it stays on idle frame
+    } else {
+      setAnim('idle')
+    }
+    return
+  }
+
+  const chosen = idleOptions[Math.floor(Math.random() * idleOptions.length)]
+  setAnim(chosen, true)
+}
+
+/* Tile-based collision detection */
+function isPositionValid(x, y) {
+  if (!props.collisionMap || props.collisionMap.length === 0) return true
+
+  const petSize = props.slice * props.scale
+
+  // Check all four corners of the pet's bounding box
+  const corners = [
+    { px: x, py: y },                           // top-left
+    { px: x + petSize, py: y },                 // top-right
+    { px: x, py: y + petSize },                 // bottom-left
+    { px: x + petSize, py: y + petSize }        // bottom-right
+  ]
+
+  for (const corner of corners) {
+    const tileCol = Math.floor(corner.px / props.tileSize)
+    const tileRow = Math.floor(corner.py / props.tileSize)
+
+    // Check bounds
+    if (tileRow < 0 || tileRow >= props.mapRows || tileCol < 0 || tileCol >= props.mapCols) {
+      return false // Out of bounds
+    }
+
+    // Check if tile is solid
+    if (props.collisionMap[tileRow] && props.collisionMap[tileRow][tileCol]) {
+      return false // Solid tile
+    }
+  }
+
+  return true
 }
 
 function chooseDest() {
   const pad = 24
-  dest.x = pad + Math.random() * Math.max(0, bounds.w - props.slice * props.scale - pad * 2)
-  dest.y = pad + Math.random() * Math.max(0, bounds.h - props.slice * props.scale - pad * 2)
-}
+  const petSize = props.slice * props.scale
+  let attempts = 0
+  const maxAttempts = 50
 
-/* Apply physics to dropped items */
-function applyItemPhysics() {
-  if (!props.droppedItems || props.droppedItems.length === 0) return
+  while (attempts < maxAttempts) {
+    const newX = pad + Math.random() * Math.max(0, bounds.w - petSize - pad * 2)
+    const newY = pad + Math.random() * Math.max(0, bounds.h - petSize - pad * 2)
 
-  const ITEM_GRAVITY = 0.8
-  const ITEM_SIZE = 40
-
-  for (const item of props.droppedItems) {
-    if (item.isOnGround) continue
-
-    // Apply gravity
-    item.velocityY = item.velocityY || 0
-    item.velocityY += ITEM_GRAVITY
-
-    // Update position
-    item.y += item.velocityY
-
-    // Find ground below item using same logic as pet
-    const groundY = findGroundBelowItem(item.x, ITEM_SIZE)
-
-    // Check if item hit the ground
-    if (item.y >= groundY) {
-      item.y = groundY
-      item.velocityY = 0
-      item.isOnGround = true
+    if (isPositionValid(newX, newY)) {
+      dest.x = newX
+      dest.y = newY
+      return
     }
-  }
-}
-
-/* Find ground level for dropped items */
-function findGroundBelowItem(itemX, itemSize) {
-  if (!parent) return bounds.h - itemSize
-
-  const allElements = parent.querySelectorAll('*')
-  const itemLeft = itemX - itemSize / 2
-  const itemRight = itemX + itemSize / 2
-
-  let closestGround = bounds.h - itemSize
-
-  for (const el of allElements) {
-    if (el === actor.value || actor.value?.contains(el)) continue
-
-    const computedStyle = window.getComputedStyle(el)
-    const hasBorder = parseFloat(computedStyle.borderWidth) > 0 ||
-                     parseFloat(computedStyle.borderTopWidth) > 0
-
-    if (!hasBorder) continue
-
-    const parentRect = parent.getBoundingClientRect()
-    const rect = el.getBoundingClientRect()
-
-    const relativeTop = rect.top - parentRect.top
-    const relativeLeft = rect.left - parentRect.left
-    const relativeRight = relativeLeft + rect.width
-
-    const horizontalOverlap = itemRight > relativeLeft && itemLeft < relativeRight
-
-    if (horizontalOverlap && relativeTop > 0) {
-      const groundY = relativeTop - itemSize
-      if (groundY < closestGround && groundY >= 0) {
-        closestGround = groundY
-      }
-    }
+    attempts++
   }
 
-  return closestGround
+  // Fallback: keep current destination if we can't find a valid one
 }
 
 /* Collision detection with dropped items */
@@ -182,9 +159,6 @@ function checkItemCollision() {
   const COLLISION_DISTANCE = 60  // Increased distance to ensure detection with PNG items
 
   for (const item of props.droppedItems) {
-    // Only check collision with items that have landed
-    if (!item.isOnGround) continue
-
     // Calculate distance between pet center and item position
     const itemCenterX = item.x
     const itemCenterY = item.y + 20  // Adjust for item center (40px height / 2)
@@ -200,8 +174,12 @@ function checkItemCollision() {
         console.log(`Pet eating ${item.name}! Distance: ${distance.toFixed(2)}px, Item ID: ${item.id}`)
         emit('item-eaten', item.id)
 
-        // Wake up and become happy
-        sleeping = false
+        // Wake up if sleeping
+        if (sleeping) {
+          wakeUpPet()
+        }
+
+        // Become happy
         idleUntil = performance.now() + 1000
 
         // Play happy animation if available
@@ -229,9 +207,6 @@ function findNearestItem() {
   const petCenterY = pos.value.y + (props.slice * props.scale) / 2
 
   for (const item of props.droppedItems) {
-    // Only pathfind to items that have landed on the ground
-    if (!item.isOnGround) continue
-
     // Calculate item center position for accurate pathfinding
     const itemCenterX = item.x
     const itemCenterY = item.y + 20  // Center of 40px item
@@ -249,111 +224,49 @@ function findNearestItem() {
   return nearest
 }
 
-/* Physics - works within container bounds */
-function findGroundBelow() {
-  if (!parent) return bounds.h
-
-  const allElements = parent.querySelectorAll('*')
-  const petBottom = pos.value.y + props.slice * props.scale
-  const petLeft = pos.value.x
-  const petRight = pos.value.x + props.slice * props.scale
-
-  let closestGround = bounds.h - props.slice * props.scale
-
-  for (const el of allElements) {
-    if (el === actor.value || actor.value?.contains(el)) continue
-
-    const computedStyle = window.getComputedStyle(el)
-    const hasBorder = parseFloat(computedStyle.borderWidth) > 0 ||
-                     parseFloat(computedStyle.borderTopWidth) > 0
-
-    if (!hasBorder) continue
-
-    const parentRect = parent.getBoundingClientRect()
-    const rect = el.getBoundingClientRect()
-
-    // Convert to parent-relative coordinates
-    const relativeTop = rect.top - parentRect.top
-    const relativeLeft = rect.left - parentRect.left
-    const relativeRight = relativeLeft + rect.width
-
-    const horizontalOverlap = petRight > relativeLeft && petLeft < relativeRight
-
-    if (horizontalOverlap && relativeTop > petBottom - 20) {
-      const groundY = relativeTop - props.slice * props.scale
-      if (groundY < closestGround && groundY >= pos.value.y - 5) {
-        closestGround = groundY
-      }
-    }
-  }
-
-  return closestGround
-}
-
-function applyPhysics() {
-  if (isDragging.value) {
-    velocity.y = 0
-    velocity.x = 0
-    isFalling = false
-    return
-  }
-
-  const groundY = findGroundBelow()
-  const petBottom = pos.value.y
-
-  if (Math.abs(petBottom - groundY) < 3) {
-    isOnGround = true
-    isFalling = false
-    pos.value.y = groundY
-    velocity.y = 0
-
-    if (animKey === 'falling') {
-      setAnim('idle')
-    }
-  } else if (petBottom < groundY) {
-    isOnGround = false
-    isFalling = true
-
-    if (animKey !== 'falling' && animKey !== 'grabbed') {
-      setAnim('falling')
-    }
-
-    velocity.y += GRAVITY
-    velocity.y = Math.min(velocity.y, TERMINAL_VELOCITY)
-    velocity.y *= DRAG_COEFFICIENT
-
-    pos.value.y += velocity.y
-
-    if (pos.value.y > groundY) {
-      pos.value.y = groundY
-      velocity.y = 0
-    }
-  }
-
-  // Keep within container bounds
-  const maxX = bounds.w - props.slice * props.scale
-  pos.value.x = Math.max(0, Math.min(maxX, pos.value.x))
-}
 
 function scheduleRandomEvent() {
-  // Stardew Valley pets sleep every minute, original cat has random events
-  const ms = props.animations.click ? 60000 : (10000 + Math.random() * 20000) // 1min for Stardew, 10-30s for original
+  // Schedule sleep events periodically (every 60 seconds)
+  const ms = 60000
   randomEvt = window.setTimeout(() => {
-    if (props.animations.click) {
-      // Stardew Valley pets: sleep every minute
-      if (!sleeping && !playingOnce) {
-        setAnim('sleep')
+    if (!sleeping && !playingOnce && !isDragging.value) {
+      // Only sleep if idle (not moving)
+      const idleStates = ['idle', 'sit', 'clean']
+      if (idleStates.includes(animKey) && props.animations.sleep && props.animations.sleep_loop) {
+        // Play row 6 falling asleep animation, then transition to row 7 first frame (sleep_loop)
+        setAnim('sleep', true, 'sleep_loop')
+        // Set sleeping flag after animation starts
         sleeping = true
-        idleUntil = Number.POSITIVE_INFINITY // Stay asleep until clicked
-      }
-    } else {
-      // Original cat: random events
-      if (!sleeping && !playingOnce && ['idle','idle2','clean','clean2'].includes(animKey)) {
-        setAnim(Math.random() < 0.5 ? 'scared' : 'jump', true)
+        idleUntil = Number.POSITIVE_INFINITY // Stay asleep until woken
+
+        // Auto-wake after 10 seconds
+        sleepTimeout = window.setTimeout(() => {
+          if (sleeping) {
+            wakeUpPet()
+          }
+        }, 10000)
       }
     }
     scheduleRandomEvent()
   }, ms)
+}
+
+function wakeUpPet() {
+  sleeping = false
+  idleUntil = 0
+
+  // Clear sleep timeout if it exists
+  if (sleepTimeout) {
+    window.clearTimeout(sleepTimeout)
+    sleepTimeout = 0
+  }
+
+  // Play wake animation if available
+  if (props.animations.wake) {
+    setAnim('wake', true)
+  } else {
+    setAnim('idle')
+  }
 }
 
 /* Mouse handlers */
@@ -382,8 +295,18 @@ function handleMouseMove(event) {
   if (distance > 5) {
     if (!isDragging.value) {
       isDragging.value = true
-      setAnim('grabbed')
-      sleeping = false // wake up if sleeping
+
+      // Wake up if sleeping
+      if (sleeping) {
+        wakeUpPet()
+      }
+
+      // Use clean animation when grabbed if available, otherwise idle
+      if (props.animations.clean) {
+        setAnim('clean')
+      } else {
+        setAnim('idle')
+      }
     }
 
     const parentRect = parent.getBoundingClientRect()
@@ -397,8 +320,11 @@ function handleMouseMove(event) {
     newX = Math.max(0, Math.min(newX, bounds.w - petSize))
     newY = Math.max(0, Math.min(newY, bounds.h - petSize))
 
-    pos.value.x = newX
-    pos.value.y = newY
+    // Check if new position is valid (not on solid tiles)
+    if (isPositionValid(newX, newY)) {
+      pos.value.x = newX
+      pos.value.y = newY
+    }
   }
 }
 
@@ -411,30 +337,23 @@ function handleMouseUp(event) {
   const distance = Math.sqrt(dx * dx + dy * dy)
 
   if (holdDuration < 200 && distance < 5) {
-    // Quick click - use appropriate animation based on pet type
+    // Quick click - wake up pet if sleeping
     if (sleeping) {
-      sleeping = false
-      idleUntil = 0
-    }
-    
-    // Check if this is a Stardew Valley pet (has click animation) or original cat
-    if (props.animations.click) {
-      // Stardew Valley pets: use flat animation for click
-      setAnim('click', true)
+      wakeUpPet()
     } else {
-      setAnim('scared', true, 'jump')
+      // Play click animation if available, otherwise use clean
+      if (props.animations.click) {
+        setAnim('click', true)
+      } else if (props.animations.clean) {
+        setAnim('clean', true)
+      } else {
+        setAnim('idle')
+      }
     }
   } else if (isDragging.value) {
     isDragging.value = false
-
-    const groundY = findGroundBelow()
-    if (pos.value.y < groundY - 5) {
-      setAnim('falling')
-      isFalling = true
-    } else {
-      setAnim('idle')
-      idleUntil = performance.now() + (1000 + Math.random() * 2000)
-    }
+    setAnim('idle')
+    idleUntil = performance.now() + (1000 + Math.random() * 2000)
   }
 
   document.removeEventListener('mousemove', handleMouseMove)
@@ -449,34 +368,29 @@ function loop(t) {
   last = t
   acc += dt
 
-  // Apply physics first
-  applyPhysics()
-
-  // Apply physics to dropped items
-  applyItemPhysics()
-
   // Check for item collision
   checkItemCollision()
 
-  // movement only when not sticky sleeping, not dragging, and on ground
-  if (!sleeping && !isDragging.value && isOnGround && !isFalling) {
+  // movement only when not sticky sleeping and not dragging
+  if (!sleeping && !isDragging.value) {
     const now = performance.now()
-    const w = props.slice * props.scale
+    const petSize = props.slice * props.scale
 
     // Check for nearby items - prioritize walking to food!
     const nearestItem = findNearestItem()
     if (nearestItem) {
       // Set destination to the nearest item
-      dest.x = nearestItem.x - (props.slice * props.scale) / 2
-      dest.y = nearestItem.y - (props.slice * props.scale) / 2
+      dest.x = nearestItem.x - petSize / 2
+      dest.y = nearestItem.y - petSize / 2
       idleUntil = 0  // Override any idle time to move immediately
     }
 
     if (now >= idleUntil) {
       const dx = dest.x - pos.value.x
-      const dist = Math.abs(dx)
+      const dy = dest.y - pos.value.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
 
-      if (dist < 2) {
+      if (dist < 5) {
         // Reached destination
         if (!nearestItem) {
           // No item nearby, choose random destination
@@ -485,34 +399,50 @@ function loop(t) {
           chooseDest()
         }
       } else {
-        // walk horizontally (Y controlled by physics)
+        // Move in both X and Y directions
         const vx = (dx / dist) * props.speed
-        const newX = pos.value.x + vx * dt
-        const clampedX = Math.min(Math.max(0, newX), bounds.w - w)
+        const vy = (dy / dist) * props.speed
+        let newX = pos.value.x + vx * dt
+        let newY = pos.value.y + vy * dt
 
-        // Check if we hit a boundary and change direction
-        if (clampedX !== newX) {
-          // Hit left or right edge, choose new destination in opposite direction
+        // Clamp to boundaries
+        newX = Math.min(Math.max(0, newX), bounds.w - petSize)
+        newY = Math.min(Math.max(0, newY), bounds.h - petSize)
+
+        // Check if new position is valid (not on solid tiles)
+        if (isPositionValid(newX, newY)) {
+          pos.value.x = newX
+          pos.value.y = newY
+
+          // Determine which direction is dominant for animation
+          const absDx = Math.abs(dx)
+          const absDy = Math.abs(dy)
+
+          // Choose animation based on dominant direction
+          if (absDx > absDy) {
+            // Moving horizontally more than vertically
+            if (vx > 0) {
+              if (animKey !== 'move_right') setAnim('move_right')
+            } else {
+              if (animKey !== 'move_left') setAnim('move_left')
+            }
+          } else {
+            // Moving vertically more than horizontally
+            if (vy > 0) {
+              if (animKey !== 'move_down') setAnim('move_down')
+            } else {
+              if (animKey !== 'move_up') setAnim('move_up')
+            }
+          }
+        } else {
+          // Can't move to destination, choose new one
           chooseDest()
-          return
         }
-
-        pos.value.x = clampedX
-        dir = vx >= 0 ? 1 : -1
 
         // more frequent loitering: around 12% chance per second to pause 2–5s (but not if chasing food!)
         if (!nearestItem && Math.random() < 0.12 * dt) {
           idleUntil = now + (2000 + Math.random() * 3000)
           randomIdleAnim()
-        }
-
-        if (!playingOnce && animKey !== 'move') {
-          // Stardew pets always use 'move'; original cat can alternate
-          if (props.animations.click) {
-            setAnim('move')
-          } else {
-            setAnim(Math.random() < 0.7 ? 'move' : 'move2')
-          }
         }
       }
     }
@@ -535,8 +465,14 @@ function loop(t) {
           setAnim(nxt, true)
         } else {
           playingOnce = false
-          // if it ended while sleeping, remain asleep; else mellow out
-          if (!sleeping) randomIdleAnim()
+          // Stay on last frame if it's sit animation (last frame is idle)
+          // Otherwise trigger random idle animation
+          if (animKey === 'sit') {
+            // Sit animation ended on idle frame, just stay there
+            frame = seqLen - 1
+          } else if (!sleeping) {
+            randomIdleAnim()
+          }
         }
       }
     }
@@ -570,10 +506,7 @@ function drawFrame() {
 
   ctx.save()
   ctx.clearRect(0, 0, s, s)
-  if (dir === -1) {
-    ctx.translate(s, 0)
-    ctx.scale(-1, 1)
-  }
+  // No flipping - using directional sprites
   ctx.drawImage(img, sx, sy, s, s, 0, 0, s, s)
   ctx.restore()
 
@@ -642,6 +575,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
   window.clearTimeout(randomEvt)
+  window.clearTimeout(sleepTimeout)
 
   // Clean up ResizeObserver
   if (actor.value?._resizeObserver) {

@@ -19,25 +19,31 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 
 // Removed backend dependencies - fully frontend pet system
 
-// Sprite sheet configuration - customizable via props or config
+// Sprite sheet configuration - Black Cat with 4-directional movement
+// Row 0: Moving down, Row 1: Moving right, Row 2: Moving up, Row 3: Moving left
+// Row 4: Sitting animation (frames 0-2), Idle standing (frame 3)
+// Row 5: Cleaning/grooming
+// Row 6: Falling asleep animation (last frame is sleeping)
+// Row 7: Sleeping curled up (first frame - loop this), Waking up animation (frames 1-3)
 const spriteConfig = ref({
-  spriteUrl: '/cat-spritesheet.png',
+  spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat (Black).png',
   slice: 32,           // Size of one sprite cell
   scale: 3,            // Display scale
-  columns: 12,         // Auto-detected from image
+  columns: 4,          // Auto-detected from image
 
-  // Sprite extraction configuration - specify row and column ranges
+  // Animation configuration - ONLY horizontal movement for global pet
   animations: {
-    idle:     { row: 0, frames: 8, fps: 10,  loop: true,  colStart: 0 },
-    idle2:    { row: 1, frames: 8, fps: 10,  loop: true,  colStart: 0 },
-    clean:    { row: 2, frames: 8, fps: 8,  loop: true,  colStart: 0 },
-    walk:     { row: 4, frames: 8, fps: 8, loop: true,  colStart: 0 },
-    walk2:    { row: 5, frames: 8, fps: 8, loop: true,  colStart: 0 },
-    sleep:    { row: 6, frames: 6, fps: 8,  loop: true,  colStart: 0 },
-    grabbed:  { row: 7, frames: 6, fps: 8,  loop: true,  colStart: 0 },  // Paw animation when grabbed
-    jump:     { row: 8, frames: 8, fps: 12, loop: false, colStart: 0 },
-    falling:  { row: 9 , frames: 8, fps: 8, loop: true,  colStart: 0 },  // Scared animation when falling
-    scared:   { row: 9, frames: 8, fps: 10, loop: false, colStart: 0 }
+    idle:      { row: 4, frames: 1, fps: 1,  loop: true,  colStart: 3 },  // Last frame of row 4 (idle standing)
+    sit:       { row: 4, frames: 4, fps: 4,  loop: false, colStart: 0 },  // Sitting animation (transitions to idle on frame 3)
+    clean:     { row: 5, frames: 4, fps: 8,  loop: false, colStart: 0 },
+    walk:      { row: 1, frames: 4, fps: 6,  loop: true,  colStart: 0 },  // Moving right
+    walk_left: { row: 3, frames: 4, fps: 6,  loop: true,  colStart: 0 },  // Moving left
+    sleep:     { row: 6, frames: 4, fps: 3,  loop: false, colStart: 0 },  // Row 6: Falling asleep animation
+    sleep_loop:{ row: 7, frames: 1, fps: 1,  loop: true,  colStart: 0 },  // Row 7 frame 0: Sleeping curled up (looping)
+    wake:      { row: 7, frames: 3, fps: 6,  loop: false, colStart: 1 },  // Row 7 frames 1-3: Waking up animation
+    grabbed:   { row: 5, frames: 4, fps: 8,  loop: true,  colStart: 0 },  // Clean animation when grabbed
+    falling:   { row: 1, frames: 4, fps: 6,  loop: true,  colStart: 0 },  // Use walk animation when falling
+    scared:    { row: 5, frames: 4, fps: 10, loop: false, colStart: 0 }   // Clean animation when scared
   }
 })
 
@@ -52,7 +58,6 @@ let frame = 0
 let animKey = 'idle'
 let anim
 let acc = 0, last = 0
-let dir = 1  // 1=right, -1=left
 let sheetCols = spriteConfig.value.columns
 
 // Position and movement
@@ -78,30 +83,32 @@ const WALK_SPEED = 0.5
 // Sleep behavior
 let isSleeping = false
 let sleepTimer = 0
-const SLEEP_CHECK_INTERVAL = 15000 // Check every 15 seconds if should sleep
 const SLEEP_CHANCE = 0.6 // 60% chance to sleep when idle
-const SLEEP_DURATION = 8000 // Sleep for 8 seconds
 
 // Scare behavior
 let isScared = false
-let scareTimer = 0
 
 /* Helper functions */
-function setAnim(key) {
+let playingOnce = false
+let nextOnceKey = null
+
+function setAnim(key, once = false, queueNext = null) {
   if (!spriteConfig.value.animations[key]) {
-    console.warn(` Animation ${key} not found, using idle`)
+    console.warn(`Animation ${key} not found, using idle`)
     key = 'idle'
   }
 
   // Only change if it's actually different
-  if (animKey === key) return
+  if (animKey === key && !once) return
 
   animKey = key
   anim = spriteConfig.value.animations[key]
   frame = 0
-  lastDrawnFrame = -1  // Add this line to force redraw on animation change
+  lastDrawnFrame = -1
+  playingOnce = once && !anim.loop
+  nextOnceKey = queueNext
 
-  console.log(`🎬 Animation changed to: ${key}`)
+  console.log(`🎬 Animation changed to: ${key}${once ? ' (one-shot)' : ''}`)
 }
 
 function getSeqLength(a) {
@@ -132,15 +139,11 @@ function drawFrame() {
   const sy = anim.row * s
 
   ctx.save()
-  
+
   // Clear only when actually redrawing
   ctx.clearRect(0, 0, s, s)
 
-  // Flip horizontally based on direction
-  if (dir === -1) {
-    ctx.translate(s, 0)
-    ctx.scale(-1, 1)
-  }
+  // No flipping needed - sprites have directional animations
 
   // Draw the sprite
   ctx.drawImage(img, sx, sy, s, s, 0, 0, s, s)
@@ -250,7 +253,10 @@ function updateWalking(dt) {
     walkCooldown = 0
 
     if (Math.abs(walkTarget - pos.value.x) > 10) {
-      setAnim(Math.random() < 0.5 ? 'walk' : 'walk2')
+      // Use walk animation for longer distances, sit (which transitions to idle) for closer
+      if (animKey !== 'walk' && animKey !== 'walk_left') {
+        setAnim('walk')
+      }
     }
   }
 
@@ -261,16 +267,20 @@ function updateWalking(dt) {
       // Reached target
       walkTarget = null
       walkCooldown = 2 + Math.random() * 5  // Wait 2-7 seconds
-      setAnim(Math.random() < 0.3 ? 'clean' : 'idle')
+      // Play sit animation (which transitions to idle), or occasionally clean
+      setAnim(Math.random() < 0.2 ? 'clean' : 'sit', true)
     } else {
-      // Move towards target - KEEP WALKING ANIMATION
+      // Move towards target - use directional animation
       const moveAmount = Math.sign(dx) * Math.min(WALK_SPEED, Math.abs(dx))
       pos.value.x += moveAmount
-      dir = dx > 0 ? 1 : -1
 
-      // Ensure walk animation is active while moving
-      if (animKey !== 'walk' && animKey !== 'walk2') {
-        setAnim(Math.random() < 0.5 ? 'walk' : 'walk2')
+      // Use directional animations (no flipping needed)
+      if (dx > 0) {
+        // Moving right
+        if (animKey !== 'walk') setAnim('walk')
+      } else {
+        // Moving left
+        if (animKey !== 'walk_left') setAnim('walk_left')
       }
     }
   }
@@ -279,17 +289,31 @@ function updateWalking(dt) {
 
 function goToSleep() {
   isSleeping = true
-  sleepTimer = 0
-  setAnim('sleep')
-  console.log('😴 Pet is sleeping...')
+  // Play falling asleep animation, then transition to sleep_loop
+  setAnim('sleep', true, 'sleep_loop')
+  console.log('Pet is falling asleep...')
+
+  // Auto-wake after 10 seconds
+  sleepTimer = window.setTimeout(() => {
+    if (isSleeping) {
+      wakeUp()
+    }
+  }, 10000)
 }
 
 function wakeUp() {
   isSleeping = false
-  sleepTimer = 0
-  setAnim('idle')
+
+  // Clear sleep timer if it exists
+  if (sleepTimer) {
+    window.clearTimeout(sleepTimer)
+    sleepTimer = 0
+  }
+
+  // Play wake animation, then return to idle
+  setAnim('wake', true)
   walkCooldown = 1 + Math.random() * 2
-  console.log('👀 Pet woke up!')
+  console.log('Pet is waking up!')
 }
 
 function getScarred() {
@@ -305,12 +329,12 @@ function getScarred() {
   const maxX = window.innerWidth - spriteConfig.value.slice * spriteConfig.value.scale
   walkTarget = Math.random() < 0.5 ? 0 : maxX
 
-  console.log('😱 Pet got scared!')
+  console.log('Pet got scared!')
 
   // Recover after 1 second
   setTimeout(() => {
     isScared = false
-    setAnim(Math.random() < 0.5 ? 'walk' : 'walk2')
+    setAnim('idle')
   }, 1000)
 }
 
@@ -322,14 +346,6 @@ function loop(t) {
   const dt = (t - last) / 1000
   last = t
   acc += dt
-
-  // Update sleep timer
-  if (isSleeping) {
-    sleepTimer += dt * 1000 // Convert to milliseconds
-    if (sleepTimer >= SLEEP_DURATION) {
-      wakeUp()
-    }
-  }
 
   // Apply physics
   applyPhysics()
@@ -350,7 +366,17 @@ function loop(t) {
         if (anim.loop) {
           frame = 0
         } else {
-          frame = seqLen - 1
+          // One-shot animation finished
+          if (nextOnceKey) {
+            const nxt = nextOnceKey
+            nextOnceKey = null
+            setAnim(nxt, true)
+          } else if (playingOnce) {
+            playingOnce = false
+            setAnim('idle')
+          } else {
+            frame = seqLen - 1
+          }
         }
       }
     }
@@ -451,39 +477,39 @@ onMounted(async () => {
     c.style.width = `${slice * scale}px`
     c.style.height = `${slice * scale}px`
 
-    console.log(`�� Canvas size: ${c.width}x${c.height}, display: ${c.style.width}x${c.style.height}`)
+    console.log(`Canvas size: ${c.width}x${c.height}, display: ${c.style.width}x${c.style.height}`)
 
     ctx = c.getContext('2d')
     ctx.imageSmoothingEnabled = false
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
     // Load sprite sheet
-    console.log(`📥 Loading sprite sheet from: ${spriteConfig.value.spriteUrl}`)
+    console.log(`Loading sprite sheet from: ${spriteConfig.value.spriteUrl}`)
     img = new Image()
     img.src = spriteConfig.value.spriteUrl
 
     img.onerror = () => {
-      console.error(`❌ Failed to load sprite sheet: ${spriteConfig.value.spriteUrl}`)
+      console.error(`Failed to load sprite sheet: ${spriteConfig.value.spriteUrl}`)
     }
 
     await img.decode()
 
     // Auto-detect columns
     sheetCols = Math.max(1, Math.floor(img.naturalWidth / slice))
-    console.log(`✅ Sprite sheet loaded: ${img.naturalWidth}x${img.naturalHeight}px, ${sheetCols} columns`)
+    console.log(`Sprite sheet loaded: ${img.naturalWidth}x${img.naturalHeight}px, ${sheetCols} columns`)
 
     // Set initial position
     pos.value.x = Math.random() * (window.innerWidth - slice * scale)
     pos.value.y = 100
 
-    console.log(`📍 Initial position: ${pos.value.x}, ${pos.value.y}`)
+    console.log(`Initial position: ${pos.value.x}, ${pos.value.y}`)
 
     setAnim('idle')
     rafId = requestAnimationFrame(loop)
 
-    console.log('✅ Pet initialized successfully!')
+    console.log('Pet initialized successfully!')
   } catch (error) {
-    console.error('❌ Error initializing GlobalDesktopPet:', error)
+    console.error('Error initializing GlobalDesktopPet:', error)
   }
 })
 
@@ -491,6 +517,9 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(rafId)
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
+  if (sleepTimer) {
+    window.clearTimeout(sleepTimer)
+  }
 })
 </script>
 
