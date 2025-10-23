@@ -41,6 +41,11 @@ const decorationImages = {
   lillies: '/background/decorations/lillies.png'
 }
 
+// Define which decorations take up multiple tiles (size in tiles)
+const multiTileDecorations = {
+  tree: { width: 6, height: 6 }  // Trees take up 6x6 tiles (192px x 192px)
+}
+
 // Define which tiles/decorations are solid (non-walkable)
 const solidTiles = new Set(['water'])
 const solidDecorations = new Set(['tree', 'rock', 'log'])
@@ -78,15 +83,39 @@ function generateCollisionMap() {
 
   const collisionMap = []
 
+  // Initialize collision map
   for (let row = 0; row < rows; row++) {
     collisionMap[row] = []
     for (let col = 0; col < cols; col++) {
       const groundTile = groundLayer[row][col]
+      collisionMap[row][col] = solidTiles.has(groundTile)
+    }
+  }
+
+  // Add decoration collisions (including multi-tile decorations)
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
       const decoration = objectLayer[row][col]
 
-      // Tile is solid if ground is solid OR decoration is solid
-      const isSolid = solidTiles.has(groundTile) || solidDecorations.has(decoration)
-      collisionMap[row][col] = isSolid
+      if (decoration && solidDecorations.has(decoration)) {
+        const multiTile = multiTileDecorations[decoration]
+
+        if (multiTile) {
+          // Multi-tile decoration - mark all tiles it occupies as solid
+          for (let dy = 0; dy < multiTile.height; dy++) {
+            for (let dx = 0; dx < multiTile.width; dx++) {
+              const targetRow = row + dy
+              const targetCol = col + dx
+              if (targetRow < rows && targetCol < cols) {
+                collisionMap[targetRow][targetCol] = true
+              }
+            }
+          }
+        } else {
+          // Single tile decoration
+          collisionMap[row][col] = true
+        }
+      }
     }
   }
 
@@ -143,13 +172,30 @@ function renderBackground() {
         const img = loadedImages[decoration]
 
         if (img) {
-          ctx.drawImage(
-            img,
-            col * scaledTileSize.value,
-            row * scaledTileSize.value,
-            scaledTileSize.value,
-            scaledTileSize.value
-          )
+          const multiTile = multiTileDecorations[decoration]
+
+          if (multiTile) {
+            // Multi-tile decoration - render scaled to multiple tiles
+            const width = multiTile.width * scaledTileSize.value
+            const height = multiTile.height * scaledTileSize.value
+
+            ctx.drawImage(
+              img,
+              col * scaledTileSize.value,
+              row * scaledTileSize.value,
+              width,
+              height
+            )
+          } else {
+            // Single tile decoration
+            ctx.drawImage(
+              img,
+              col * scaledTileSize.value,
+              row * scaledTileSize.value,
+              scaledTileSize.value,
+              scaledTileSize.value
+            )
+          }
         }
       }
     }

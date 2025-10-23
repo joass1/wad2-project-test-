@@ -46,6 +46,7 @@ const isDragging = ref(false)
 let dragOffset = { x: 0, y: 0 }
 let mouseDownTime = 0
 let mouseDownPos = { x: 0, y: 0 }
+let lastValidPos = { x: 0, y: 0 }  // Store last valid position for collision snap-back
 
 /* Helpers */
 function setAnim(key, once = false, queueNext = null) {
@@ -296,6 +297,10 @@ function handleMouseMove(event) {
     if (!isDragging.value) {
       isDragging.value = true
 
+      // Store current position as last valid position
+      lastValidPos.x = pos.value.x
+      lastValidPos.y = pos.value.y
+
       // Wake up if sleeping
       if (sleeping) {
         wakeUpPet()
@@ -322,9 +327,13 @@ function handleMouseMove(event) {
 
     // Check if new position is valid (not on solid tiles)
     if (isPositionValid(newX, newY)) {
+      // Valid position - update and store as last valid
       pos.value.x = newX
       pos.value.y = newY
+      lastValidPos.x = newX
+      lastValidPos.y = newY
     }
+    // If invalid, pet stays at lastValidPos (no update)
   }
 }
 
@@ -413,6 +422,9 @@ function loop(t) {
         if (isPositionValid(newX, newY)) {
           pos.value.x = newX
           pos.value.y = newY
+          // Update last valid position during automatic movement
+          lastValidPos.x = newX
+          lastValidPos.y = newY
 
           // Determine which direction is dominant for animation
           const absDx = Math.abs(dx)
@@ -555,6 +567,10 @@ onMounted(async () => {
 
   pos.value.x = Math.random() * 120 + 40
   pos.value.y = Math.random() * 80 + 40
+
+  // Initialize last valid position
+  lastValidPos.x = pos.value.x
+  lastValidPos.y = pos.value.y
 
   chooseDest()
   setAnim('idle')
