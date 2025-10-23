@@ -105,7 +105,20 @@
           </div>
 
           <!-- Statistics Cards -->
-          <div class="stats-grid">
+          <div class="stats-section">
+            <div class="stats-header">
+              <h3 class="section-title">Wellness Statistics</h3>
+              <button 
+                class="refresh-btn" 
+                @click="refreshWellnessData"
+                :disabled="isLoadingWellnessData"
+                title="Refresh wellness data"
+              >
+                <span class="refresh-icon" :class="{ spinning: isLoadingWellnessData }">🔄</span>
+                Refresh
+              </button>
+            </div>
+            <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-icon blue">🕐</div>
               <div class="stat-value">{{ stats.studyHours }}</div>
@@ -113,18 +126,25 @@
             </div>
             <div class="stat-card">
               <div class="stat-icon green">🎯</div>
-              <div class="stat-value">{{ stats.studyStreak }}</div>
+              <div class="stat-value">
+                <span v-if="isLoadingWellnessData">...</span>
+                <span v-else>{{ stats.checkinStreak }}</span>
+              </div>
               <div class="stat-label">Current Streak</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon red">❤️</div>
-              <div class="stat-value">{{ stats.checkinStreak }}</div>
+              <div class="stat-value">
+                <span v-if="isLoadingWellnessData">...</span>
+                <span v-else>{{ stats.wellnessStreak }}</span>
+              </div>
               <div class="stat-label">Longest Streak</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon purple">🏆</div>
               <div class="stat-value">{{ stats.achievements }}</div>
               <div class="stat-label">Achievements</div>
+            </div>
             </div>
           </div>
 
@@ -504,7 +524,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from "vue";
+import { onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { useAuth } from "@/composables/useAuth.js";
@@ -542,6 +562,9 @@ const stats = reactive({
   xp: 0,
 });
 
+// Loading states for dynamic data
+const isLoadingWellnessData = ref(false);
+
 const defaultNotificationSettings = {
   notifications: true,
   studyReminders: true,
@@ -574,6 +597,37 @@ const isLoadingSettings = ref(false);
 let shouldRehydrate = false;
 
 // Profile data is now managed by useUserProfile composable
+
+// Function to fetch wellness overview data
+async function loadWellnessData() {
+  if (isLoadingWellnessData.value) return;
+  
+  isLoadingWellnessData.value = true;
+  try {
+    const wellnessOverview = await api.get("/api/wellness/overview");
+    
+    // Update streak data from wellness API
+    stats.checkinStreak = wellnessOverview.streak || 0; // Current streak
+    stats.wellnessStreak = wellnessOverview.longestStreak || 0; // Longest streak from API
+    
+    // You can also update total check-ins if needed
+    // stats.totalCheckIns = wellnessOverview.totalCheckIns || 0;
+    
+  } catch (error) {
+    console.log("Failed to load wellness data:", error);
+    // Keep default values on error
+  } finally {
+    isLoadingWellnessData.value = false;
+  }
+}
+
+// Function to refresh wellness data (can be called from other components)
+function refreshWellnessData() {
+  loadWellnessData();
+}
+
+// Global function to trigger wellness data refresh (for other components)
+window.refreshWellnessData = refreshWellnessData;
 
 function openEditModal() {
   editForm.name = displayName.value;
@@ -744,12 +798,38 @@ watch(
   (firebaseUser) => {
     if (firebaseUser) {
       hydrateSettings();
+      loadWellnessData(); // Load wellness data when user is authenticated
     } else {
       resetNotificationSettings();
       resetPreferences();
     }
   },
   { immediate: true }
+);
+
+// Load wellness data when component mounts
+onMounted(() => {
+  if (authUser.value) {
+    loadWellnessData();
+  }
+  
+  // Listen for wellness check-in events from other pages
+  window.addEventListener('wellness-checkin-submitted', refreshWellnessData);
+});
+
+// Clean up event listener when component unmounts
+onUnmounted(() => {
+  window.removeEventListener('wellness-checkin-submitted', refreshWellnessData);
+});
+
+// Refresh wellness data when user navigates to this page
+watch(
+  () => router.currentRoute.value.path,
+  (newPath) => {
+    if (newPath === '/profile' && authUser.value) {
+      loadWellnessData();
+    }
+  }
 );
 
 async function hydrateSettings() {
@@ -1185,6 +1265,59 @@ async function saveSettings() {
 
 .btn-icon {
   font-size: 12px;
+}
+
+.stats-section {
+  margin-bottom: 28px;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--surface), var(--surface-light));
+  border: 2px solid var(--primary);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(106, 122, 90, 0.3);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refresh-icon {
+  font-size: 16px;
+  transition: transform 0.3s ease;
+}
+
+.refresh-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .stats-grid {
