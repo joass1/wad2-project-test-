@@ -384,12 +384,25 @@
             </p>
             <div class="account-actions">
               <button class="signout-btn" @click="confirmLogout">
-                <span class="btn-icon"></span>
-                Sign Out
+                <span class="btn-icon-wrapper">
+                  <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                </span>
+                <span class="btn-text">Sign Out</span>
               </button>
               <button class="delete-btn" @click="confirmDeleteAccount">
-                <span class="btn-icon"></span>
-                Delete Account
+                <span class="btn-icon-wrapper">
+                  <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <line x1="10" y1="11" x2="10" y2="17"/>
+                    <line x1="14" y1="11" x2="14" y2="17"/>
+                  </svg>
+                </span>
+                <span class="btn-text">Delete Account</span>
               </button>
             </div>
           </div>
@@ -2668,23 +2681,29 @@ async function saveSettings() {
 
 .account-actions {
   display: flex;
-  gap: 16px;
-  align-items: center;
+  gap: 20px;
+  align-items: stretch;
   justify-content: space-between;
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .account-actions .signout-btn,
 .account-actions .delete-btn {
-  flex: 1 1 280px;
-  min-height: 48px;
-  border-radius: 12px;
+  flex: 1 1 calc(50% - 10px);
+  min-height: 56px;
+  border-radius: 14px;
   font-weight: 600;
   font-size: 15px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  border: none;
 }
 
 .account-actions .signout-btn::before,
@@ -2696,7 +2715,7 @@ async function saveSettings() {
   width: 100%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
+  transition: left 0.6s;
 }
 
 .account-actions .signout-btn:hover::before,
@@ -2705,37 +2724,82 @@ async function saveSettings() {
 }
 
 .signout-btn {
-  background: linear-gradient(135deg, var(--surface), var(--surface-light));
+  background: linear-gradient(135deg, rgba(106, 122, 90, 0.1), rgba(106, 122, 90, 0.05));
   border: 2px solid var(--primary);
   color: var(--primary);
-  justify-content: center;
+  box-shadow: 0 4px 15px rgba(106, 122, 90, 0.1);
 }
 
 .signout-btn:hover {
   background: linear-gradient(135deg, var(--primary), var(--secondary));
   color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(106, 122, 90, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(106, 122, 90, 0.35);
+  border-color: var(--secondary);
+}
+
+.signout-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(106, 122, 90, 0.3);
 }
 
 .delete-btn {
-  background: linear-gradient(135deg, var(--error), #dc3545);
-  color: white;
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05));
+  color: var(--error);
   border: 2px solid var(--error);
-  justify-content: center;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
 }
 
 .delete-btn:hover {
-  background: linear-gradient(135deg, #c82333, #a71e2a);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+  background: linear-gradient(135deg, var(--error), #c82333);
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(220, 53, 69, 0.4);
+  border-color: #c82333;
 }
 
-.btn-icon {
-  font-size: 18px;
+.delete-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.35);
+}
+
+.account-actions .btn-icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 22px;
+  height: 22px;
+  transition: transform 0.3s ease;
+}
+
+.account-actions .signout-btn:hover .btn-icon-wrapper,
+.account-actions .delete-btn:hover .btn-icon-wrapper {
+  transform: scale(1.1);
+}
+
+.account-actions .btn-icon {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5;
+}
+
+.account-actions .btn-text {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .account-actions {
+    flex-direction: column;
+  }
+  
+  .account-actions .signout-btn,
+  .account-actions .delete-btn {
+    flex: 1 1 100%;
+    width: 100%;
+  }
 }
 
 /* Save Settings Section */
