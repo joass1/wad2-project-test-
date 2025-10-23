@@ -19,8 +19,8 @@
         <router-view @toggle-fullscreen="handleFullscreen" />
       </v-main>
 
-      <!-- NEW: Global floating pet - Always visible on all pages -->
-      <GlobalDesktopPet />
+      <!-- Global floating pet - Visible on all pages except pet page -->
+      <GlobalDesktopPet v-if="!isPetPage" />
     </template>
   </v-app>
 </template>
@@ -34,6 +34,7 @@ import GlobalDesktopPet from '@/components/GlobalDesktopPet.vue'
 
 const route = useRoute()
 const isLogin = computed(() => route.name === 'Login')
+const isPetPage = computed(() => route.path === '/pet')
 
 // Sidebar state - starts open
 const sidebarOpen = ref(true)

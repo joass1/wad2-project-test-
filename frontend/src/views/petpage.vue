@@ -4,6 +4,7 @@ import AnimatedPet from '@/components/AnimatedPet.vue'
 import SpritePreview from '@/components/SpritePreview.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import { useCoins } from '@/composables/useCoins.js'
+import { api } from '@/lib/api.js'
 
 /* ===== Global size knob ===== */
 const SCALE = 6  // ↓ smaller pet. Try 5 or 4 if you want it even smaller.
@@ -55,6 +56,8 @@ const petStatus = reactive({ happiness: 75, health: 80, energy: 60 })
 /* ==== Inventory ==== */
 const INVENTORY_SLOTS = 16  // 4 rows x 4 columns
 const inventory = ref([])  // Empty initially, items added when purchased
+const inventoryLoading = ref(false)
+const inventoryError = ref(null)
 
 /* ==== Dropped Items (on background) ==== */
 const droppedItems = ref([])  // Items dropped on the background for pet to eat
@@ -79,6 +82,36 @@ const currentBackground = computed(() => availableBackgrounds.value[bgIndex.valu
 function previousBackground() { if (bgIndex.value > 0) bgIndex.value-- }
 function nextBackground() { if (bgIndex.value < availableBackgrounds.value.length - 1) bgIndex.value++ }
 
+/* ==== Inventory API ==== */
+async function fetchInventory() {
+  inventoryLoading.value = true
+  inventoryError.value = null
+  try {
+    const response = await api.get('/api/profile/inventory')
+    if (response && Array.isArray(response.inventory)) {
+      inventory.value = response.inventory
+    } else {
+      inventoryError.value = 'Invalid inventory response'
+    }
+  } catch (error) {
+    console.error('Failed to fetch inventory:', error)
+    inventoryError.value = error.message || 'Failed to load inventory'
+  } finally {
+    inventoryLoading.value = false
+  }
+}
+
+async function saveInventory() {
+  try {
+    const response = await api.put('/api/profile/inventory', { inventory: inventory.value })
+    if (!response || !response.ok) {
+      console.error('Failed to save inventory:', response)
+    }
+  } catch (error) {
+    console.error('Failed to save inventory:', error)
+  }
+}
+
 /* ==== Inventory actions ==== */
 function feedPet(slotIndex) {
   const item = inventory.value[slotIndex]
@@ -91,6 +124,9 @@ function feedPet(slotIndex) {
     if (item.count === 0) {
       inventory.value.splice(slotIndex, 1)
     }
+
+    // Save inventory to backend
+    saveInventory()
   }
 }
 
@@ -149,6 +185,9 @@ function onDrop(event) {
     inventory.value.splice(draggedItemIndex, 1)
   }
 
+  // Save inventory to backend
+  saveInventory()
+
   // Clear drag state
   draggedItem = null
   draggedItemIndex = null
@@ -161,12 +200,20 @@ function onDragOver(event) {
 
 // Remove dropped item (when pet eats it)
 function removeDroppedItem(itemId) {
+  console.log('removeDroppedItem called with ID:', itemId)
+  console.log('Current droppedItems:', droppedItems.value)
   const index = droppedItems.value.findIndex(item => item.id === itemId)
+  console.log('Found index:', index)
   if (index !== -1) {
+    const removedItem = droppedItems.value[index]
+    console.log('Removing item:', removedItem)
     droppedItems.value.splice(index, 1)
     // Increase pet stats when eating
     petStatus.happiness = Math.min(100, petStatus.happiness + 10)
     petStatus.health = Math.min(100, petStatus.health + 5)
+    console.log('Updated stats - Happiness:', petStatus.happiness, 'Health:', petStatus.health)
+  } else {
+    console.log('Item not found in droppedItems array!')
   }
 }
 
@@ -187,19 +234,51 @@ const shopItems = ref([
 ])
 
 /* ==== Shopkeeper Animation ==== */
-const shopkeeperState = ref('happytalk')  // happytalk, neutral, annoyedclosed
+const shopkeeperState = ref('happytalk')  // happytalk, neutral, annoyedclosed, disbeliefsmile
 let talkingInterval = null
 
 const shopkeeperImage = computed(() => {
   const images = {
     happytalk: '/shopkeeper/sk_bb_happytalk.png',
     neutral: '/shopkeeper/sk_bb_neutral.png',
-    annoyedclosed: '/shopkeeper/sk_bb_annoyedclosed.png'
+    annoyedclosed: '/shopkeeper/sk_bb_annoyedclosed.png',
+    disbeliefsmile: '/shopkeeper/sk_bb_disbeliefsmile.png',
+    disbelieflaugh: '/shopkeeper/sk_bb_disbelieflaugh.png'
   }
+
   return images[shopkeeperState.value]
 })
 
+function startNoMoneyAnimation() {
+  // Start with disbelieflaugh when player has no money
+  shopkeeperState.value = 'disbelieflaugh'
+
+  // Alternate between disbelieflaugh and disbeliefsmile for 3 seconds
+  let elapsed = 0
+  let isLaugh = true
+
+  talkingInterval = setInterval(() => {
+    if (elapsed >= 3000) {
+      // After 3 seconds, stop at disbeliefsmile
+      shopkeeperState.value = 'disbeliefsmile'
+      clearInterval(talkingInterval)
+      talkingInterval = null
+    } else {
+      // Toggle between disbelieflaugh and disbeliefsmile every 500ms
+      isLaugh = !isLaugh
+      shopkeeperState.value = isLaugh ? 'disbelieflaugh' : 'disbeliefsmile'
+      elapsed += 500
+    }
+  }, 500)
+}
+
 function startTalkingAnimation() {
+  // Check if player has no money - use different animation
+  if (playerGold.value === 0) {
+    startNoMoneyAnimation()
+    return
+  }
+
   // Reset to happytalk when shop opens
   shopkeeperState.value = 'happytalk'
 
@@ -278,17 +357,46 @@ async function buyFood(item) {
       } else {
         inventory.value.push({ icon: item.icon, name: item.name, count: 1 })
       }
+
+      // Save inventory to backend
+      saveInventory()
+
+      // Check if player can't afford any item after purchase
+      const cheapestPrice = Math.min(...shopItems.value.map(i => i.price))
+      if (newCoinAmount < cheapestPrice) {
+        // Clear any ongoing animation
+        if (talkingInterval) {
+          clearInterval(talkingInterval)
+          talkingInterval = null
+        }
+        // Start the no-money animation
+        startNoMoneyAnimation()
+      }
     } else {
       alert('Failed to purchase item: ' + (result.error || 'Please try again'))
     }
+  } else if (playerGold.value !== null && playerGold.value < item.price) {
+    // Not enough money - show disbeliefsmile animation
+    if (talkingInterval) {
+      clearInterval(talkingInterval)
+      talkingInterval = null
+    }
+    shopkeeperState.value = 'disbeliefsmile'
+
+    // Return to disbeliefsmile after 2 seconds (stay in no-money state)
+    setTimeout(() => {
+      shopkeeperState.value = 'disbeliefsmile'
+    }, 2000)
   }
 }
 
-// Fetch coins when component mounts if not already loaded
+// Fetch coins and inventory when component mounts
 onMounted(() => {
   if (playerGold.value === null && !coinsLoading.value) {
     fetchCoins()
   }
+  // Always fetch inventory on mount
+  fetchInventory()
 })
 </script>
 
@@ -507,7 +615,7 @@ onMounted(() => {
 .pet-page-container{display:flex;height:100vh;overflow:hidden;}
 .main-content{flex:1;display:flex;align-items:stretch;justify-content:stretch;padding:24px;position:relative;overflow:hidden;background-size:cover;background-position:center;}
 .pet-stage{position:relative;width:100%;height:100%;overflow:hidden;}
-.right-panel{width:280px;background:var(--surface);border-left:1px solid var(--surface-lighter);padding:24px 16px;overflow-y:auto;}
+.right-panel{width:280px;background:var(--surface);border-left:1px solid var(--surface-lighter);padding:24px 16px;overflow-y:auto;max-height:100vh;}
 .panel-section{margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--surface-lighter);}
 .section-title{font-weight:600;margin-bottom:16px;}
 .status-item{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
@@ -621,6 +729,7 @@ onMounted(() => {
   cursor:pointer;
   box-shadow:0 2px 8px rgba(0,0,0,0.2);
   transition:all 0.3s ease;
+  z-index:100;
 }
 .shop-button:hover{
   transform:translateY(-2px);

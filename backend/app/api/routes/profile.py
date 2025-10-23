@@ -129,3 +129,47 @@ def update_user_coins(payload: dict, user: dict = Depends(require_user)):
     )
 
     return {"ok": True, "coins": new_coins, "message": "Coins updated successfully"}
+
+
+@router.get("/inventory")
+def get_user_inventory(user: dict = Depends(require_user)):
+    """Get the user's inventory"""
+    uid = user["uid"]
+    doc_snapshot = db.collection("users").document(uid).get()
+
+    if not doc_snapshot.exists:
+        raise Exception("User profile not found")
+
+    user_data = doc_snapshot.to_dict() or {}
+    inventory = user_data.get("inventory", [])
+
+    return {"inventory": inventory}
+
+
+@router.put("/inventory")
+def update_user_inventory(payload: dict, user: dict = Depends(require_user)):
+    """Update the user's inventory"""
+    uid = user["uid"]
+    inventory = payload.get("inventory")
+
+    if inventory is None:
+        return {"ok": False, "message": "Missing 'inventory' field"}
+
+    if not isinstance(inventory, list):
+        return {"ok": False, "message": "Inventory must be an array"}
+
+    # Validate inventory items
+    for item in inventory:
+        if not isinstance(item, dict):
+            return {"ok": False, "message": "Each inventory item must be an object"}
+        if "icon" not in item or "name" not in item or "count" not in item:
+            return {"ok": False, "message": "Each item must have icon, name, and count"}
+        if not isinstance(item["count"], int) or item["count"] < 1:
+            return {"ok": False, "message": "Item count must be a positive integer"}
+
+    db.collection("users").document(uid).set(
+        {"inventory": inventory},
+        merge=True,
+    )
+
+    return {"ok": True, "inventory": inventory, "message": "Inventory updated successfully"}

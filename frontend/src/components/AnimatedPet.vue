@@ -40,6 +40,7 @@ let dir = 1               // 1=right, -1=left
 let sheetCols = props.columns
 let randomEvt = 0
 let sleeping = false      // sticky sleep flag
+let eatingItemId = null   // Track which item is being eaten to prevent duplicate emissions
 
 // Physics state
 let velocity = { x: 0, y: 0 }
@@ -171,7 +172,10 @@ function findGroundBelowItem(itemX, itemSize) {
 
 /* Collision detection with dropped items */
 function checkItemCollision() {
-  if (!props.droppedItems || props.droppedItems.length === 0) return false
+  if (!props.droppedItems || props.droppedItems.length === 0) {
+    eatingItemId = null  // Reset when no items
+    return false
+  }
 
   const petCenterX = pos.value.x + (props.slice * props.scale) / 2
   const petCenterY = pos.value.y + (props.slice * props.scale) / 2
@@ -190,22 +194,27 @@ function checkItemCollision() {
     const distance = Math.sqrt(dx * dx + dy * dy)
 
     if (distance < COLLISION_DISTANCE) {
-      // Pet reached the item, eat it!
-      console.log(`Pet eating ${item.name}! Distance: ${distance.toFixed(2)}px`)
-      emit('item-eaten', item.id)
+      // Only emit once per item to prevent duplicate emissions
+      if (eatingItemId !== item.id) {
+        eatingItemId = item.id
+        console.log(`Pet eating ${item.name}! Distance: ${distance.toFixed(2)}px, Item ID: ${item.id}`)
+        emit('item-eaten', item.id)
 
-      // Wake up and become happy
-      sleeping = false
-      idleUntil = performance.now() + 1000
+        // Wake up and become happy
+        sleeping = false
+        idleUntil = performance.now() + 1000
 
-      // Play happy animation if available
-      if (props.animations.click) {
-        setAnim('click', true)
+        // Play happy animation if available
+        if (props.animations.click) {
+          setAnim('click', true)
+        }
       }
-
       return true
     }
   }
+
+  // Reset eatingItemId when not colliding with any item
+  eatingItemId = null
   return false
 }
 
@@ -585,6 +594,15 @@ onMounted(async () => {
   measure()
   window.addEventListener('resize', measure)
 
+  // Watch for parent size changes (e.g., when sidebar toggles)
+  let resizeObserver
+  if (parent && window.ResizeObserver) {
+    resizeObserver = new ResizeObserver(() => {
+      measure()
+    })
+    resizeObserver.observe(parent)
+  }
+
   const c = canvasRef.value
   const dpr = window.devicePixelRatio || 1
   c.width = props.slice * dpr
@@ -604,7 +622,7 @@ onMounted(async () => {
 
   pos.value.x = Math.random() * 120 + 40
   pos.value.y = Math.random() * 80 + 40
-  
+
   chooseDest()
   setAnim('idle')
   idleUntil = 0
@@ -612,6 +630,9 @@ onMounted(async () => {
   scheduleRandomEvent()
   rafId = requestAnimationFrame(loop)
   c.addEventListener('mousedown', handleMouseDown)
+
+  // Store resizeObserver for cleanup
+  actor.value._resizeObserver = resizeObserver
 })
 
 onBeforeUnmount(() => {
@@ -621,6 +642,11 @@ onBeforeUnmount(() => {
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
   window.clearTimeout(randomEvt)
+
+  // Clean up ResizeObserver
+  if (actor.value?._resizeObserver) {
+    actor.value._resizeObserver.disconnect()
+  }
 })
 </script>
 
