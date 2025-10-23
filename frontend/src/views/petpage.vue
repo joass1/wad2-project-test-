@@ -547,7 +547,7 @@ onMounted(() => {
           :class="{ active: manualControlEnabled }"
           @click="toggleManualControl"
         >
-          <span class="control-icon">{{ manualControlEnabled ? '🎮' : '🤖' }}</span>
+          
           <span class="control-text">{{ manualControlEnabled ? 'Manual (WASD)' : 'Auto Roam' }}</span>
         </button>
         <div v-if="manualControlEnabled" class="control-hint">
