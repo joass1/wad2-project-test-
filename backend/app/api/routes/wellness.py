@@ -13,6 +13,7 @@ router = APIRouter(prefix="/wellness", tags=["wellness"])
 
 BASE_OVERVIEW = {
     "streak": 0,
+    "longestStreak": 0,
     "totalCheckIns": 0,
     "lastCheckInDate": None,
 }
@@ -41,6 +42,7 @@ class CheckInPayload(BaseModel):
 
 class OverviewResponse(BaseModel):
     streak: int = 0
+    longestStreak: int = 0
     totalCheckIns: int = 0
     lastCheckInDate: str | None = Field(
         None, description="Most recent check-in date in YYYY-MM-DD format"
@@ -295,7 +297,48 @@ def get_pet_history(
 
     payload = cast(Dict[str, Any], doc.to_dict() or {})
     payload["date"] = formatted_date
-    return PetHistoryResponse.model_validate(payload)
+    return PetHistoryResponse(**payload)
+
+
+@router.delete(
+    "/reset",
+    response_model=Dict[str, str],
+    summary="Reset wellness data",
+)
+def reset_wellness_data(user: dict = Depends(require_user)):
+    """Reset all wellness data (streaks, check-ins, pet history) for the authenticated user."""
+    uid = user["uid"]
+    
+    print(f"DEBUG: Resetting wellness data for user {uid}")
+    
+    # Delete all wellness check-ins
+    checkins_ref = _checkins_collection(uid)
+    checkins = checkins_ref.stream()
+    checkin_count = 0
+    for checkin in checkins:
+        checkin.reference.delete()
+        checkin_count += 1
+    print(f"DEBUG: Deleted {checkin_count} check-ins")
+    
+    # Delete all pet history
+    pet_history_ref = _pet_history_collection(uid)
+    pet_history = pet_history_ref.stream()
+    pet_count = 0
+    for pet in pet_history:
+        pet.reference.delete()
+        pet_count += 1
+    print(f"DEBUG: Deleted {pet_count} pet history records")
+    
+    # Delete the summary document (if it exists)
+    summary_ref = _summary_doc(uid)
+    summary_snapshot = summary_ref.get()
+    if summary_snapshot.exists:
+        summary_ref.delete()
+        print(f"DEBUG: Deleted summary document")
+    else:
+        print(f"DEBUG: No summary document found to delete")
+    
+    return {"message": "All wellness data has been reset successfully"}
 
 
 @router.post(
@@ -305,15 +348,26 @@ def get_pet_history(
 )
 def submit_checkin(payload: CheckInPayload, user: dict = Depends(require_user)):
     """Create or update the current user's check-in for the supplied date."""
-    uid = user["uid"]
-    new_date = _parse_date(payload.date)
-    timestamp = datetime.now(timezone.utc)
+    try:
+        uid = user["uid"]
+        new_date = _parse_date(payload.date)
+        timestamp = datetime.now(timezone.utc)
+        print(f"DEBUG: Processing check-in for user {uid}, date {payload.date}")
 
-    checkins_ref = _checkins_collection(uid)
-    checkin_doc = checkins_ref.document(payload.date)
-    summary_doc = _summary_doc(uid)
+        checkins_ref = _checkins_collection(uid)
+        checkin_doc = checkins_ref.document(payload.date)
+        summary_doc = _summary_doc(uid)
+        print(f"DEBUG: Created Firebase references")
 
-    transaction = db.transaction()
+        transaction = db.transaction()
+        print(f"DEBUG: Created transaction")
+    except Exception as e:
+        print(f"DEBUG: Error in setup: {e}")
+        raise HTTPException(status_code=500, detail=f"Setup error: {str(e)}")
+
+    # Check if document exists before transaction
+    existing_doc = checkin_doc.get()
+    is_new_entry = not existing_doc.exists
 
     @firestore.transactional
     def _perform(transaction: firestore.Transaction):
@@ -321,11 +375,6 @@ def submit_checkin(payload: CheckInPayload, user: dict = Depends(require_user)):
         overview = summary["overview"]
         today_checkin = summary["todayCheckIn"]
         checkin_dates: List[str] = list(summary.get("checkInDates") or [])
-
-        existing_checkin = cast(
-            firestore.DocumentSnapshot, transaction.get(checkin_doc)
-        )
-        is_new_entry = not existing_checkin.exists
 
         checkin_record = {
             **payload.model_dump(),
@@ -346,13 +395,28 @@ def submit_checkin(payload: CheckInPayload, user: dict = Depends(require_user)):
             if last_date:
                 delta_days = (new_date - last_date).days
                 if delta_days == 1:
-                    overview["streak"] = int(overview.get("streak") or 0) + 1
+                    # Consecutive day - increment streak
+                    current_streak = int(overview.get("streak") or 0) + 1
+                    overview["streak"] = current_streak
+                    
+                    # Update longest streak if current streak is higher
+                    longest_streak = int(overview.get("longestStreak") or 0)
+                    if current_streak > longest_streak:
+                        overview["longestStreak"] = current_streak
                 else:
+                    # Gap in days - reset streak to 1
                     overview["streak"] = 1
+                    # Check if this single day beats the longest streak
+                    longest_streak = int(overview.get("longestStreak") or 0)
+                    if longest_streak == 0:
+                        overview["longestStreak"] = 1
             else:
+                # First check-in
                 overview["streak"] = 1
+                overview["longestStreak"] = 1
             overview["lastCheckInDate"] = payload.date
         elif new_date == last_date:
+            # Same day - keep current streak
             overview["streak"] = int(overview.get("streak") or 0)
 
         if payload.date not in checkin_dates:
@@ -372,8 +436,16 @@ def submit_checkin(payload: CheckInPayload, user: dict = Depends(require_user)):
             "overview": overview,
         }
 
-    result = _perform(transaction)
-    overview = result["overview"]
+    try:
+        print(f"DEBUG: Executing transaction")
+        result = _perform(transaction)
+        overview = result["overview"]
+        print(f"DEBUG: Transaction completed successfully")
+    except Exception as e:
+        print(f"DEBUG: Error executing transaction: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Transaction error: {str(e)}")
 
     return SubmitCheckInResponse(
         success=True,
