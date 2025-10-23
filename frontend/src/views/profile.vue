@@ -178,30 +178,67 @@
 
           <!-- Recent Activity -->
           <div class="recent-activity">
-            <h3 class="section-title">Recent Activity</h3>
-            <div class="activity-list">
-              <div class="activity-item">
-                <div class="activity-icon blue">🕐</div>
-                <div class="activity-content">
-                  <div class="activity-title">Completed study session</div>
-                  <div class="activity-time">2 hours ago</div>
-                </div>
+            <div class="activity-header">
+              <div class="activity-title-section">
+                <div class="activity-icon-main">📊</div>
+                <h3 class="section-title">Recent Activity</h3>
               </div>
-              <div class="activity-item">
-                <div class="activity-icon green">❤️</div>
-                <div class="activity-content">
-                  <div class="activity-title">Daily wellness check-in</div>
-                  <div class="activity-time">1 day ago</div>
-                </div>
+            </div>
+            
+            <!-- Loading State -->
+            <div v-if="isLoadingActivities" class="activity-loading">
+              <div class="loading-spinner">
+                <div class="spinner"></div>
+                <span>Loading activities...</span>
               </div>
-              <div class="activity-item">
-                <div class="activity-icon purple">🏆</div>
+            </div>
+            
+            <!-- Empty State -->
+            <div v-else-if="recentActivities.length === 0" class="activity-empty">
+              <div class="empty-icon">📭</div>
+              <h4 class="empty-title">No Recent Activity</h4>
+              <p class="empty-text">Start your wellness journey to see your activities here!</p>
+              <div class="empty-suggestions">
+                <span class="suggestion">• Complete a study session</span>
+                <span class="suggestion">• Do a wellness check-in</span>
+                <span class="suggestion">• Claim an achievement</span>
+              </div>
+            </div>
+            
+            <!-- Activity List -->
+            <div v-else class="activity-list">
+              <div 
+                v-for="(activity, index) in displayedActivities" 
+                :key="activity.timestamp"
+                class="activity-item"
+                :style="{ 'animation-delay': `${index * 0.1}s` }"
+              >
+                <div class="activity-icon" :class="activity.color">
+                  <span class="icon-emoji">{{ activity.icon }}</span>
+                </div>
                 <div class="activity-content">
-                  <div class="activity-title">
-                    Unlocked "Early Bird" achievement
+                  <div class="activity-title">{{ activity.title }}</div>
+                  <div class="activity-time">{{ getRelativeTime(activity.timestamp) }}</div>
+                </div>
+                <div class="activity-indicator" :class="activity.color"></div>
+              </div>
+              
+              <!-- Show More/Less Button -->
+              <div v-if="recentActivities.length > 3" class="show-more-container">
+                <button 
+                  @click="toggleShowMore" 
+                  class="show-more-btn"
+                  :class="{ 'expanded': showAllActivities }"
+                >
+                  <span class="btn-text">
+                    {{ showAllActivities ? 'Show Less' : `Show More (${recentActivities.length - 3})` }}
+                  </span>
+                  <div class="btn-icon" :class="{ 'rotated': showAllActivities }">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
                   </div>
-                  <div class="activity-time">3 days ago</div>
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -572,7 +609,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { onMounted, onUnmounted, reactive, ref, watch, computed } from "vue";
 import { useRouter } from "vue-router";
 
 import { useAuth } from "@/composables/useAuth.js";
@@ -615,6 +652,11 @@ const isLoadingWellnessData = ref(false);
 const isLoadingStudyData = ref(false);
 const isLoadingAchievements = ref(false);
 const claimingAchievementId = ref(null);
+
+// Recent activity data
+const recentActivities = ref([]);
+const isLoadingActivities = ref(false);
+const showAllActivities = ref(false);
 
 // Achievements data
 const achievementsData = ref({
@@ -684,6 +726,7 @@ function refreshWellnessData() {
   loadWellnessData();
   loadStudyData(); // Also refresh study data
   loadAchievements(); // Also refresh achievements
+  loadRecentActivity(); // Also refresh recent activities
 }
 
 // Function to load study statistics
@@ -705,6 +748,7 @@ async function loadStudyData() {
 // Function to refresh study data (can be called from other components)
 function refreshStudyData() {
   loadStudyData();
+  loadRecentActivity(); // Also refresh activities when study sessions update
 }
 
 // Function to load achievements
@@ -731,6 +775,61 @@ async function loadAchievements() {
 // Function to refresh achievements (can be called from other components)
 function refreshAchievements() {
   loadAchievements();
+  loadRecentActivity(); // Also refresh activities when achievements update
+}
+
+// Function to load recent activities
+async function loadRecentActivity() {
+  if (!authUser.value) return;
+  
+  isLoadingActivities.value = true;
+  try {
+    const response = await api.get("/api/profile/recent-activity");
+    recentActivities.value = response.activities || [];
+  } catch (error) {
+    console.error("Error loading recent activity:", error);
+    recentActivities.value = [];
+  } finally {
+    isLoadingActivities.value = false;
+  }
+}
+
+// Helper function to format timestamp as relative time
+function getRelativeTime(timestamp) {
+  if (!timestamp) return '';
+  
+  const now = new Date();
+  const date = new Date(timestamp);
+  const diffInSeconds = Math.floor((now - date) / 1000);
+  
+  if (diffInSeconds < 60) {
+    return 'Just now';
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  } else if (diffInSeconds < 604800) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  } else if (diffInSeconds < 2592000) {
+    const weeks = Math.floor(diffInSeconds / 604800);
+    return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+  } else {
+    const months = Math.floor(diffInSeconds / 2592000);
+    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+  }
+}
+
+// Computed property for displayed activities
+const displayedActivities = computed(() => {
+  return showAllActivities.value ? recentActivities.value : recentActivities.value.slice(0, 3);
+});
+
+// Function to toggle show more/less
+function toggleShowMore() {
+  showAllActivities.value = !showAllActivities.value;
 }
 
 // Function to claim an achievement
@@ -1062,7 +1161,7 @@ function toNumber(value, fallback) {
 
 // Profile data synchronization is now handled by useUserProfile composable
 
-watch(
+  watch(
   () => authUser.value,
   (firebaseUser) => {
     if (firebaseUser) {
@@ -1070,6 +1169,7 @@ watch(
       loadWellnessData(); // Load wellness data when user is authenticated
       loadStudyData(); // Load study data when user is authenticated
       loadAchievements(); // Load achievements when user is authenticated
+      loadRecentActivity(); // Load recent activities when user is authenticated
     } else {
       resetNotificationSettings();
       resetPreferences();
@@ -1084,6 +1184,7 @@ onMounted(() => {
     loadWellnessData();
     loadStudyData();
     loadAchievements();
+    loadRecentActivity();
   }
   
   // Listen for wellness check-in events from other pages
@@ -1758,13 +1859,13 @@ async function saveSettings() {
 
 .recent-activity {
   background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
-  border-radius: 20px;
-  padding: 32px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--surface-lighter);
   position: relative;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .recent-activity::before {
@@ -1773,14 +1874,36 @@ async function saveSettings() {
   top: 0;
   left: 0;
   right: 0;
-  height: 6px;
+  height: 4px;
   background: linear-gradient(90deg, var(--primary), var(--secondary), var(--primary));
-  border-radius: 20px 20px 0 0;
+  border-radius: 24px 24px 0 0;
 }
 
 .recent-activity:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  transform: translateY(-6px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+}
+
+.activity-header {
+  margin-bottom: 24px;
+}
+
+.activity-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.activity-icon-main {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 4px 16px rgba(106, 122, 90, 0.3);
 }
 
 .section-title {
@@ -1793,60 +1916,93 @@ async function saveSettings() {
 .activity-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .activity-item {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  animation: slideInUp 0.6s ease-out forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+@keyframes slideInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Dark mode activity items */
 [data-theme="dark"] .activity-item {
-  background: #000000 !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 .activity-item:hover {
-  background: rgba(255, 255, 255, 0.8);
-  transform: translateX(8px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateX(12px) scale(1.02);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 /* Dark mode activity item hover */
 [data-theme="dark"] .activity-item:hover {
   background: rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
 }
 
 .activity-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.8);
+  font-size: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  position: relative;
+  overflow: hidden;
+}
+
+.activity-icon::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.activity-item:hover .activity-icon::before {
+  transform: translateX(100%);
 }
 
 .activity-icon.blue {
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
 }
 .activity-icon.green {
-  background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+  background: linear-gradient(135deg, #56ab2f, #a8e6cf);
 }
 .activity-icon.purple {
-  background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+  background: linear-gradient(135deg, #8360c3, #2ebf91);
+}
+
+.icon-emoji {
+  position: relative;
+  z-index: 1;
 }
 
 .activity-content {
@@ -1854,16 +2010,190 @@ async function saveSettings() {
 }
 
 .activity-title {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  line-height: 1.3;
 }
 
 .activity-time {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
+  font-weight: 500;
 }
+
+.activity-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.activity-indicator.blue {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  box-shadow: 0 0 12px rgba(106, 122, 90, 0.6);
+}
+.activity-indicator.green {
+  background: linear-gradient(135deg, #56ab2f, #a8e6cf);
+  box-shadow: 0 0 12px rgba(86, 171, 47, 0.6);
+}
+.activity-indicator.purple {
+  background: linear-gradient(135deg, #8360c3, #2ebf91);
+  box-shadow: 0 0 12px rgba(131, 96, 195, 0.6);
+}
+
+.activity-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+}
+
+.activity-loading .loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.activity-loading .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(106, 122, 90, 0.2);
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.activity-loading span {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.activity-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+  opacity: 0.6;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.empty-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.suggestion {
+  font-size: 13px;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.show-more-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.show-more-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--surface-light), var(--surface-lighter));
+  border: 1px solid var(--surface-lighter);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.show-more-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: transform 0.6s ease;
+}
+
+.show-more-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.show-more-btn:hover {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(106, 122, 90, 0.3);
+  border-color: var(--primary);
+}
+
+.show-more-btn.expanded {
+  background: linear-gradient(135deg, var(--secondary), var(--primary));
+  color: white;
+  border-color: var(--secondary);
+}
+
+.btn-text {
+  font-weight: 600;
+}
+
+.btn-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s ease;
+}
+
+.btn-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.btn-icon.rotated {
+  transform: rotate(180deg);
+}
+
 
 
 /* Achievements Content */
