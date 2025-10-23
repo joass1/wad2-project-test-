@@ -223,9 +223,10 @@
                 v-for="index in 8" 
                 :key="index"
                 class="star-slot"
-                :class="{ filled: index <= achievementsData.totalUnlocked }"
+                :class="{ filled: index <= achievementsData.totalUnlocked, empty: index > achievementsData.totalUnlocked }"
               >
-                {{ index <= achievementsData.totalUnlocked ? '⭐' : '☆' }}
+                <span v-if="index <= achievementsData.totalUnlocked" class="filled-star">⭐</span>
+                <span v-else class="empty-star">⭐</span>
               </div>
             </div>
             <p class="achievements-subtitle">
@@ -1913,12 +1914,46 @@ async function saveSettings() {
 .star-slot {
   font-size: 32px;
   transition: all 0.3s ease;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  position: relative;
 }
 
-.star-slot.filled {
+.filled-star {
+  filter: drop-shadow(0 4px 8px rgba(255, 215, 0, 0.6));
+  display: inline-block;
+}
+
+.star-slot.filled .filled-star {
   animation: starPop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  filter: drop-shadow(0 4px 8px rgba(255, 215, 0, 0.5));
+}
+
+.empty-star {
+  opacity: 0.3;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+  display: inline-block;
+  position: relative;
+  background: linear-gradient(135deg, 
+    rgba(200, 200, 220, 0.4) 0%, 
+    rgba(180, 180, 200, 0.3) 50%,
+    rgba(200, 200, 220, 0.4) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 0 rgba(160, 160, 180, 0.5);
+}
+
+.star-slot.empty {
+  animation: emptyStarPulse 2s ease-in-out infinite;
+}
+
+@keyframes emptyStarPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.6;
+  }
 }
 
 @keyframes starPop {
