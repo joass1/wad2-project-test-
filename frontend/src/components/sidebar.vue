@@ -26,7 +26,8 @@
       </div>
 
       <!-- Nav -->
-      <v-list nav density="comfortable">
+      <div class="nav-container">
+        <v-list nav density="comfortable">
         <v-list-item to="/dashboard" :prepend-icon="modelValue ? 'mdi-home-outline' : ''" :title="modelValue ? 'Dashboard' : ''" rounded="lg">
           <v-icon v-if="!modelValue">mdi-home-outline</v-icon>
           <v-tooltip v-if="!modelValue" activator="parent" location="end">Dashboard</v-tooltip>
@@ -66,7 +67,8 @@
           <v-icon v-if="!modelValue">mdi-account-outline</v-icon>
           <v-tooltip v-if="!modelValue" activator="parent" location="end">Profile</v-tooltip>
         </v-list-item>
-      </v-list>
+        </v-list>
+      </div>
 
       <div class="spacer"></div>
 
@@ -157,6 +159,7 @@ onMounted(() => {
   background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
   position: relative;
   overflow: hidden;
+  min-height: 0;
 }
 
 .sidebar-container::before {
@@ -175,6 +178,7 @@ onMounted(() => {
   margin-bottom: 32px;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .profile-avatar-container {
@@ -276,9 +280,18 @@ onMounted(() => {
   box-shadow: 0 4px 20px rgba(106, 122, 90, 0.4);
 }
 
+/* Navigation Container */
+.nav-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 16px;
+}
+
 /* Spacer */
 .spacer {
-  flex: 1;
+  flex: 0 0 16px;
 }
 
 /* Coin Display */
@@ -294,6 +307,7 @@ onMounted(() => {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .coin-display::before {
@@ -368,6 +382,7 @@ onMounted(() => {
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .theme-toggle-container:hover {
@@ -396,6 +411,8 @@ onMounted(() => {
   transition: all 0.3s ease !important;
   position: relative !important;
   overflow: hidden !important;
+  min-height: 48px !important;
+  max-height: 60px !important;
 }
 
 :deep(.v-list-item::before) {
@@ -520,5 +537,165 @@ onMounted(() => {
 
 [data-theme="dark"] :deep(.v-list-item--active:hover .v-icon) {
   color: white !important;
+}
+
+/* Height responsive adjustments */
+@media (max-height: 800px) {
+  .sidebar-container {
+    padding: 16px;
+  }
+  
+  .profile-header {
+    margin-bottom: 20px;
+  }
+  
+  .profile-avatar-container {
+    padding: 16px;
+  }
+  
+  .profile-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+  
+  .profile-name {
+    font-size: 16px;
+  }
+  
+  .level-badge {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+  
+  .nav-container {
+    margin-bottom: 12px;
+  }
+  
+  :deep(.v-list-item) {
+    margin-bottom: 6px !important;
+    min-height: 44px !important;
+    max-height: 56px !important;
+  }
+  
+  .coin-display {
+    padding: 12px 16px;
+    margin-bottom: 16px;
+  }
+  
+  .coin-amount {
+    font-size: 16px;
+  }
+  
+  .theme-toggle-container {
+    padding: 10px;
+  }
+}
+
+@media (max-height: 600px) {
+  .sidebar-container {
+    padding: 12px;
+  }
+  
+  .profile-header {
+    margin-bottom: 16px;
+  }
+  
+  .profile-avatar-container {
+    padding: 12px;
+    gap: 12px;
+  }
+  
+  .profile-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+  
+  .profile-name {
+    font-size: 15px;
+  }
+  
+  .level-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+  
+  .nav-container {
+    margin-bottom: 8px;
+  }
+  
+  :deep(.v-list-item) {
+    margin-bottom: 4px !important;
+    min-height: 40px !important;
+    max-height: 52px !important;
+  }
+  
+  .coin-display {
+    padding: 10px 14px;
+    margin-bottom: 12px;
+  }
+  
+  .coin-amount {
+    font-size: 15px;
+  }
+  
+  .theme-toggle-container {
+    padding: 8px;
+  }
+}
+
+/* Very small heights */
+@media (max-height: 500px) {
+  .sidebar-container {
+    padding: 8px;
+  }
+  
+  .profile-header {
+    margin-bottom: 12px;
+  }
+  
+  .profile-avatar-container {
+    padding: 10px;
+    gap: 10px;
+  }
+  
+  .profile-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  
+  .profile-name {
+    font-size: 14px;
+  }
+  
+  .level-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+  
+  .nav-container {
+    margin-bottom: 6px;
+  }
+  
+  :deep(.v-list-item) {
+    margin-bottom: 3px !important;
+    min-height: 36px !important;
+    max-height: 48px !important;
+  }
+  
+  .coin-display {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+  
+  .coin-amount {
+    font-size: 14px;
+  }
+  
+  .theme-toggle-container {
+    padding: 6px;
+  }
 }
 </style>
