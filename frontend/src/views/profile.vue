@@ -98,33 +98,81 @@
                 </div>
               </div>
               <button class="edit-profile-btn" @click="openEditModal">
-                <span class="btn-icon">✏️</span>
-                Edit Profile
+                <div class="btn-icon-wrapper">
+                  <svg 
+                    class="btn-icon" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    stroke-width="2"
+                  >
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </div>
+                <span class="btn-text">Edit Profile</span>
               </button>
             </div>
           </div>
 
           <!-- Statistics Cards -->
+          <div class="stats-section">
+            <div class="stats-header">
+              <h3 class="section-title">Statistics</h3>
+              <button 
+                class="refresh-btn" 
+                @click="refreshWellnessData"
+                :disabled="isLoadingWellnessData || isLoadingStudyData"
+                title="Refresh wellness and study data"
+              >
+                <div class="refresh-icon-wrapper">
+                  <svg 
+                    class="refresh-icon" 
+                    :class="{ spinning: isLoadingWellnessData || isLoadingStudyData }"
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    stroke-width="2"
+                  >
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                    <path d="M3 21v-5h5"/>
+                  </svg>
+                </div>
+                <span class="refresh-text">{{ (isLoadingWellnessData || isLoadingStudyData) ? 'Refreshing...' : 'Refresh' }}</span>
+              </button>
+            </div>
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-icon blue">🕐</div>
-              <div class="stat-value">{{ stats.studyHours }}</div>
+              <div class="stat-value">
+                <span v-if="isLoadingStudyData">...</span>
+                <span v-else>{{ stats.studyHours }}</span>
+              </div>
               <div class="stat-label">Study Hours</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon green">🎯</div>
-              <div class="stat-value">{{ stats.studyStreak }}</div>
+              <div class="stat-value">
+                <span v-if="isLoadingWellnessData">...</span>
+                <span v-else>{{ stats.checkinStreak }}</span>
+              </div>
               <div class="stat-label">Current Streak</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon red">❤️</div>
-              <div class="stat-value">{{ stats.checkinStreak }}</div>
+              <div class="stat-value">
+                <span v-if="isLoadingWellnessData">...</span>
+                <span v-else>{{ stats.wellnessStreak }}</span>
+              </div>
               <div class="stat-label">Longest Streak</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon purple">🏆</div>
               <div class="stat-value">{{ stats.achievements }}</div>
               <div class="stat-label">Achievements</div>
+            </div>
             </div>
           </div>
 
@@ -165,74 +213,94 @@
           <div class="achievements-header">
             <div class="achievements-title-section">
               <div class="crown-icon">👑</div>
-              <h3 class="achievements-title">Achievements (1/8)</h3>
+              <h3 class="achievements-title">
+                Achievements ({{ achievementsData.totalUnlocked }}/{{ achievementsData.totalAchievements }})
+              </h3>
+            </div>
+            <!-- Star Counter -->
+            <div class="star-counter" id="star-counter">
+              <div 
+                v-for="index in 8" 
+                :key="index"
+                class="star-slot"
+                :class="{ filled: index <= achievementsData.totalUnlocked, empty: index > achievementsData.totalUnlocked }"
+              >
+                <span v-if="index <= achievementsData.totalUnlocked" class="filled-star">⭐</span>
+                <span v-else class="empty-star">⭐</span>
+              </div>
             </div>
             <p class="achievements-subtitle">
-              Track your progress and unlock rewards
+              Track your progress and unlock rewards - {{ achievementsData.completionPercentage }}% complete
             </p>
           </div>
-          <div class="achievements-grid">
-            <div class="achievement-card unlocked">
-              <div class="achievement-icon unlocked-icon">⭐</div>
+          
+          <!-- Loading state -->
+          <div v-if="isLoadingAchievements" class="loading-achievements">
+            <div class="loading-spinner">Loading achievements...</div>
+              </div>
+          
+          <!-- Achievements Grid -->
+          <div v-else class="achievements-grid">
+            <div 
+              v-for="achievement in achievementsData.achievements" 
+              :key="achievement.id"
+              class="achievement-card"
+              :class="{ 
+                claimed: achievement.claimed, 
+                earned: achievement.earned && !achievement.claimed,
+                locked: !achievement.earned,
+                claiming: claimingAchievementId === achievement.id
+              }"
+            >
+              <div class="achievement-icon" :class="{ 
+                'claimed-icon': achievement.claimed, 
+                'earned-icon': achievement.earned && !achievement.claimed,
+                'locked-icon': !achievement.earned 
+              }">
+                {{ achievement.icon }}
+              </div>
               <div class="achievement-info">
-                <h4 class="achievement-title">Early Bird</h4>
-                <p class="achievement-desc">Joined StudyBuddy</p>
+                <h4 class="achievement-title">{{ achievement.title }}</h4>
+                <p class="achievement-desc">{{ achievement.description }}</p>
+                <!-- Progress bar for locked achievements -->
+                <div v-if="!achievement.earned && achievement.required > 1" class="achievement-progress">
+                  <div class="progress-bar">
+                    <div 
+                      class="progress-fill" 
+                      :style="{ width: `${(achievement.progress / achievement.required) * 100}%` }"
+                    ></div>
               </div>
-              <div class="achievement-status unlocked-badge">
-                <span class="status-icon">⭐</span>
-                <span class="status-text">Unlocked</span>
-              </div>
+                  <span class="progress-text">{{ achievement.progress }}/{{ achievement.required }}</span>
             </div>
-            <div class="achievement-card locked">
-              <div class="achievement-icon locked-icon">👣</div>
-              <div class="achievement-info">
-                <h4 class="achievement-title">First Steps</h4>
-                <p class="achievement-desc">Completed first study session</p>
               </div>
+              
+              <!-- Status badges and buttons -->
+              <div v-if="achievement.claimed" class="achievement-actions">
+                <div class="achievement-status claimed-badge">
+                  <span class="status-icon">⭐</span>
+                  <span class="status-text">Claimed</span>
             </div>
-            <div class="achievement-card locked">
-              <div class="achievement-icon locked-icon">📚</div>
-              <div class="achievement-info">
-                <h4 class="achievement-title">Dedicated Learner</h4>
-                <p class="achievement-desc">Studied for 10 hours total</p>
+                <!-- Unclaim button (for testing) -->
+                <button 
+                  class="unclaim-btn"
+                  :disabled="claimingAchievementId === achievement.id"
+                  @click="unclaimAchievement(achievement)"
+                  title="Unclaim for testing"
+                >
+                  <span class="unclaim-icon">🔄</span>
+                </button>
               </div>
-            </div>
-            <div class="achievement-card locked">
-              <div class="achievement-icon locked-icon">🔥</div>
-              <div class="achievement-info">
-                <h4 class="achievement-title">Streak Master</h4>
-                <p class="achievement-desc">Maintain a 7-day study streak</p>
-              </div>
-            </div>
-            <div class="achievement-card locked">
-              <div class="achievement-icon locked-icon">❤️</div>
-              <div class="achievement-info">
-                <h4 class="achievement-title">Wellness Warrior</h4>
-                <p class="achievement-desc">Complete 5 wellness activities</p>
-              </div>
-            </div>
-            <div class="achievement-card locked">
-              <div class="achievement-icon locked-icon">🦋</div>
-              <div class="achievement-info">
-                <h4 class="achievement-title">Social Butterfly</h4>
-                <p class="achievement-desc">Connect with 5 study buddies</p>
-              </div>
-            </div>
-            <div class="achievement-card locked">
-              <div class="achievement-icon locked-icon">🏆</div>
-              <div class="achievement-info">
-                <h4 class="achievement-title">Challenge Champion</h4>
-                <p class="achievement-desc">Complete 10 study challenges</p>
-              </div>
-            </div>
-            <div class="achievement-card locked">
-              <div class="achievement-icon locked-icon">🐾</div>
-              <div class="achievement-info">
-                <h4 class="achievement-title">Pet Lover</h4>
-                <p class="achievement-desc">
-                  Take care of your pet for 30 days
-                </p>
-              </div>
+              
+              <!-- Claim button for earned but unclaimed achievements -->
+              <button 
+                v-else-if="achievement.earned && !achievement.claimed" 
+                class="claim-btn"
+                :disabled="claimingAchievementId === achievement.id"
+                @click="claimAchievement(achievement)"
+              >
+                <span class="claim-icon">🎁</span>
+                <span class="claim-text">{{ claimingAchievementId === achievement.id ? 'Claiming...' : 'Claim' }}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -248,19 +316,6 @@
               Customize how and when you receive notifications to stay informed without being overwhelmed.
             </p>
             <div class="settings-list">
-              <div class="setting-item">
-                <div class="setting-info">
-                  <div class="setting-title">Notifications</div>
-                  <div class="setting-desc">
-                    Manage your notification preferences.
-                  </div>
-                </div>
-                <div
-                  class="toggle-switch"
-                  :class="{ active: notificationSettings.notifications }"
-                  @click="toggleNotification('notifications')"
-                ></div>
-              </div>
               <div class="setting-item">
                 <div class="setting-info">
                   <div class="setting-title">Study Reminders</div>
@@ -329,12 +384,25 @@
             </p>
             <div class="account-actions">
               <button class="signout-btn" @click="confirmLogout">
-                <span class="btn-icon"></span>
-                Sign Out
+                <span class="btn-icon-wrapper">
+                  <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                </span>
+                <span class="btn-text">Sign Out</span>
               </button>
               <button class="delete-btn" @click="confirmDeleteAccount">
-                <span class="btn-icon"></span>
-                Delete Account
+                <span class="btn-icon-wrapper">
+                  <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <line x1="10" y1="11" x2="10" y2="17"/>
+                    <line x1="14" y1="11" x2="14" y2="17"/>
+                  </svg>
+                </span>
+                <span class="btn-text">Delete Account</span>
               </button>
             </div>
           </div>
@@ -504,7 +572,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from "vue";
+import { onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { useAuth } from "@/composables/useAuth.js";
@@ -542,8 +610,21 @@ const stats = reactive({
   xp: 0,
 });
 
+// Loading states for dynamic data
+const isLoadingWellnessData = ref(false);
+const isLoadingStudyData = ref(false);
+const isLoadingAchievements = ref(false);
+const claimingAchievementId = ref(null);
+
+// Achievements data
+const achievementsData = ref({
+  achievements: [],
+  totalUnlocked: 0,
+  totalAchievements: 8,
+  completionPercentage: 0,
+});
+
 const defaultNotificationSettings = {
-  notifications: true,
   studyReminders: true,
   dailyCheckin: true,
   achievementNotifications: false,
@@ -574,6 +655,248 @@ const isLoadingSettings = ref(false);
 let shouldRehydrate = false;
 
 // Profile data is now managed by useUserProfile composable
+
+// Function to fetch wellness overview data
+async function loadWellnessData() {
+  if (isLoadingWellnessData.value) return;
+  
+  isLoadingWellnessData.value = true;
+  try {
+    const wellnessOverview = await api.get("/api/wellness/overview");
+    
+    // Update streak data from wellness API
+    stats.checkinStreak = wellnessOverview.streak || 0; // Current streak
+    stats.wellnessStreak = wellnessOverview.longestStreak || 0; // Longest streak from API
+    
+    // You can also update total check-ins if needed
+    // stats.totalCheckIns = wellnessOverview.totalCheckIns || 0;
+    
+  } catch (error) {
+    console.log("Failed to load wellness data:", error);
+    // Keep default values on error
+  } finally {
+    isLoadingWellnessData.value = false;
+  }
+}
+
+// Function to refresh wellness data (can be called from other components)
+function refreshWellnessData() {
+  loadWellnessData();
+  loadStudyData(); // Also refresh study data
+  loadAchievements(); // Also refresh achievements
+}
+
+// Function to load study statistics
+async function loadStudyData() {
+  if (!authUser.value) return;
+  
+  isLoadingStudyData.value = true;
+  try {
+    const studyStats = await api.get("/api/study-sessions/stats");
+    stats.studyHours = studyStats.total_hours || 0;
+  } catch (error) {
+    console.error("Error loading study data:", error);
+    stats.studyHours = 0;
+  } finally {
+    isLoadingStudyData.value = false;
+  }
+}
+
+// Function to refresh study data (can be called from other components)
+function refreshStudyData() {
+  loadStudyData();
+}
+
+// Function to load achievements
+async function loadAchievements() {
+  if (!authUser.value) return;
+  
+  isLoadingAchievements.value = true;
+  try {
+    const achievementsResponse = await api.get("/api/achievements/");
+    achievementsData.value.achievements = achievementsResponse.achievements || [];
+    achievementsData.value.totalUnlocked = achievementsResponse.total_unlocked || 0;
+    achievementsData.value.totalAchievements = achievementsResponse.total_achievements || 8;
+    achievementsData.value.completionPercentage = achievementsResponse.completion_percentage || 0;
+    
+    // Update stats card
+    stats.achievements = achievementsResponse.total_unlocked || 0;
+  } catch (error) {
+    console.error("Error loading achievements:", error);
+  } finally {
+    isLoadingAchievements.value = false;
+  }
+}
+
+// Function to refresh achievements (can be called from other components)
+function refreshAchievements() {
+  loadAchievements();
+}
+
+// Function to claim an achievement
+async function claimAchievement(achievement) {
+  if (claimingAchievementId.value) return; // Prevent multiple claims at once
+  
+  claimingAchievementId.value = achievement.id;
+  
+  try {
+    // Call claim endpoint
+    const response = await api.post(`/api/achievements/${achievement.id}/claim`);
+    
+    // Show celebration animation with star glide callback
+    showClaimAnimation(achievement, async () => {
+      // After celebration, create gliding star
+      createGlidingStar();
+      
+      // Reload achievements AFTER gliding star animation completes
+      setTimeout(async () => {
+        await loadAchievements();
+        
+        // Dispatch custom event for other components
+        window.dispatchEvent(new CustomEvent('achievement-claimed', {
+          detail: { achievement, response }
+        }));
+      }, 1800); // Wait for star glide animation to complete
+    });
+    
+  } catch (error) {
+    console.error("Error claiming achievement:", error);
+    alert(error.response?.data?.detail || "Failed to claim achievement");
+  } finally {
+    claimingAchievementId.value = null;
+  }
+}
+
+// Show celebration animation when claiming
+function showClaimAnimation(achievement, onComplete) {
+  console.log('🎊 Showing celebration animation for:', achievement.title);
+  
+  // Create confetti effect container
+  const confettiContainer = document.createElement('div');
+  confettiContainer.className = 'confetti-container';
+  confettiContainer.innerHTML = `
+    <div class="gift-box-container">
+      <div class="gift-box">
+        <div class="gift-box-lid">🎁</div>
+        <div class="gift-box-body">🎁</div>
+      </div>
+    </div>
+    <div class="claim-celebration hidden">
+      <div class="celebration-icon celebration-icon-main">${achievement.icon}</div>
+      <div class="celebration-title">Achievement Claimed!</div>
+      <div class="celebration-subtitle">${achievement.title}</div>
+      <div class="confetti-pieces">
+        ${'<div class="confetti"></div>'.repeat(150)}
+      </div>
+    </div>
+  `;
+  
+  console.log('📦 Appending confetti container to body');
+  document.body.appendChild(confettiContainer);
+  
+  // Get elements
+  const giftBox = confettiContainer.querySelector('.gift-box-container');
+  const celebration = confettiContainer.querySelector('.claim-celebration');
+  
+  // Wait for user to click the gift box
+  giftBox.addEventListener('click', () => {
+    console.log('🎁 Gift box clicked! Starting explosion...');
+    
+    // Add exploding class to trigger shake
+    giftBox.classList.add('exploding');
+    
+    // Hide gift box and show celebration after shake completes
+    setTimeout(() => {
+      giftBox.style.display = 'none';
+      celebration.classList.remove('hidden');
+    }, 800); // Shake duration
+    
+    // Remove everything after confetti completes
+    setTimeout(() => {
+      console.log('🧹 Removing confetti container');
+      confettiContainer.remove();
+      
+      // Trigger star glide AFTER celebration is dismissed
+      if (onComplete) {
+        onComplete();
+      }
+    }, 2700); // 800ms shake + 1900ms confetti
+  });
+}
+
+// Create gliding star animation
+function createGlidingStar() {
+  console.log('⭐ Creating gliding star animation');
+  
+  // Get star counter position
+  const starCounter = document.getElementById('star-counter');
+  if (!starCounter) return;
+  
+  const starCounterRect = starCounter.getBoundingClientRect();
+  
+  // Create the gliding star element
+  const glidingStar = document.createElement('div');
+  glidingStar.className = 'gliding-star';
+  glidingStar.textContent = '⭐';
+  
+  // Position it at center of screen (where celebration was)
+  glidingStar.style.position = 'fixed';
+  glidingStar.style.left = '50%';
+  glidingStar.style.top = '50%';
+  glidingStar.style.transform = 'translate(-50%, -50%)';
+  
+  document.body.appendChild(glidingStar);
+  
+  // Calculate target position (star counter)
+  const targetX = starCounterRect.left + (starCounterRect.width / 2);
+  const targetY = starCounterRect.top + (starCounterRect.height / 2);
+  
+  // Trigger animation after a brief delay
+  setTimeout(() => {
+    glidingStar.style.left = `${targetX}px`;
+    glidingStar.style.top = `${targetY}px`;
+    glidingStar.style.transform = 'translate(-50%, -50%) scale(0.5)';
+    glidingStar.style.opacity = '0';
+  }, 50);
+  
+  // Remove gliding star after animation completes
+  setTimeout(() => {
+    glidingStar.remove();
+    // Trigger star counter pulse animation
+    starCounter.classList.add('star-counter-pulse');
+    setTimeout(() => {
+      starCounter.classList.remove('star-counter-pulse');
+    }, 600);
+  }, 1050); // Match CSS transition duration
+}
+
+// Function to unclaim an achievement (for testing)
+async function unclaimAchievement(achievement) {
+  if (claimingAchievementId.value) return; // Prevent multiple operations at once
+  
+  if (!confirm(`Unclaim "${achievement.title}"? This is for testing purposes only.`)) {
+    return;
+  }
+  
+  claimingAchievementId.value = achievement.id;
+  
+  try {
+    // Call unclaim endpoint
+    await api.post(`/api/achievements/${achievement.id}/unclaim`);
+    
+    // Reload achievements to get updated data
+    await loadAchievements();
+    
+  } catch (error) {
+    console.error("Error unclaiming achievement:", error);
+    alert(error.response?.data?.detail || "Failed to unclaim achievement");
+  } finally {
+    claimingAchievementId.value = null;
+  }
+}
+
+// Global function to trigger wellness data refresh (for other components)
+window.refreshWellnessData = refreshWellnessData;
 
 function openEditModal() {
   editForm.name = displayName.value;
@@ -744,12 +1067,48 @@ watch(
   (firebaseUser) => {
     if (firebaseUser) {
       hydrateSettings();
+      loadWellnessData(); // Load wellness data when user is authenticated
+      loadStudyData(); // Load study data when user is authenticated
+      loadAchievements(); // Load achievements when user is authenticated
     } else {
       resetNotificationSettings();
       resetPreferences();
     }
   },
   { immediate: true }
+);
+
+// Load wellness data when component mounts
+onMounted(() => {
+  if (authUser.value) {
+    loadWellnessData();
+    loadStudyData();
+    loadAchievements();
+  }
+  
+  // Listen for wellness check-in events from other pages
+  window.addEventListener('wellness-checkin-submitted', refreshWellnessData);
+  // Listen for study session events from other pages
+  window.addEventListener('study-session-completed', refreshStudyData);
+  // Listen for achievement events
+  window.addEventListener('achievement-unlocked', refreshAchievements);
+});
+
+// Clean up event listener when component unmounts
+onUnmounted(() => {
+  window.removeEventListener('wellness-checkin-submitted', refreshWellnessData);
+  window.removeEventListener('study-session-completed', refreshStudyData);
+  window.removeEventListener('achievement-unlocked', refreshAchievements);
+});
+
+// Refresh wellness data when user navigates to this page
+watch(
+  () => router.currentRoute.value.path,
+  (newPath) => {
+    if (newPath === '/profile' && authUser.value) {
+      loadWellnessData();
+    }
+  }
 );
 
 async function hydrateSettings() {
@@ -773,8 +1132,6 @@ async function loadNotificationSettings() {
   try {
     const settings = await api.get("/api/notifications/settings");
     const mappedSettings = {
-      notifications:
-        settings.notifications ?? defaultNotificationSettings.notifications,
       studyReminders:
         settings.study_reminders ?? defaultNotificationSettings.studyReminders,
       dailyCheckin:
@@ -821,7 +1178,6 @@ async function loadUserPreferences() {
 async function saveSettings() {
   try {
     const notificationPayload = {
-      notifications: notificationSettings.notifications,
       study_reminders: notificationSettings.studyReminders,
       daily_checkin: notificationSettings.dailyCheckin,
       achievement_notifications: notificationSettings.achievementNotifications,
@@ -1163,28 +1519,154 @@ async function saveSettings() {
   right: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 12px 20px;
-  background: linear-gradient(135deg, var(--surface), var(--surface-light));
-  border: 2px solid var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border: none;
   border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-  color: var(--primary);
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(106, 122, 90, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.edit-profile-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.edit-profile-btn:hover::before {
+  left: 100%;
 }
 
 .edit-profile-btn:hover {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  color: white;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(106, 122, 90, 0.3);
+  box-shadow: 0 8px 25px rgba(106, 122, 90, 0.4);
+  background: linear-gradient(135deg, var(--secondary), var(--primary));
+}
+
+.edit-profile-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(106, 122, 90, 0.3);
+}
+
+.btn-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
 }
 
 .btn-icon {
-  font-size: 12px;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease;
+}
+
+.btn-text {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.stats-section {
+  margin-bottom: 28px;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(106, 122, 90, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.refresh-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.refresh-btn:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(106, 122, 90, 0.4);
+  background: linear-gradient(135deg, var(--secondary), var(--primary));
+}
+
+.refresh-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(106, 122, 90, 0.3);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 4px 12px rgba(106, 122, 90, 0.15);
+}
+
+.refresh-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.refresh-icon {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease;
+}
+
+.refresh-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+.refresh-text {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .stats-grid {
@@ -1416,6 +1898,87 @@ async function saveSettings() {
   border: 2px solid rgba(255, 255, 255, 0.8);
 }
 
+/* Star Counter */
+.star-counter {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 12px 20px;
+}
+
+.star-slot {
+  font-size: 32px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.filled-star {
+  filter: drop-shadow(0 4px 8px rgba(255, 215, 0, 0.6));
+  display: inline-block;
+}
+
+.star-slot.filled .filled-star {
+  animation: starPop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.empty-star {
+  opacity: 0.3;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+  display: inline-block;
+  position: relative;
+  background: linear-gradient(135deg, 
+    rgba(200, 200, 220, 0.4) 0%, 
+    rgba(180, 180, 200, 0.3) 50%,
+    rgba(200, 200, 220, 0.4) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 0 rgba(160, 160, 180, 0.5);
+}
+
+.star-slot.empty {
+  animation: emptyStarPulse 2s ease-in-out infinite;
+}
+
+@keyframes emptyStarPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.6;
+  }
+}
+
+@keyframes starPop {
+  0% {
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.3) rotate(180deg);
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+.star-counter-pulse {
+  animation: starCounterPulse 0.6s ease-out;
+}
+
+@keyframes starCounterPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 8px 30px rgba(255, 215, 0, 0.4);
+  }
+}
+
 .achievements-title {
   font-size: 28px;
   font-weight: 700;
@@ -1470,14 +2033,29 @@ async function saveSettings() {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
 }
 
-.achievement-card.unlocked {
+.achievement-card.claimed {
   border-color: var(--primary);
   background: linear-gradient(135deg, rgba(106, 122, 90, 0.1), rgba(106, 122, 90, 0.05));
   box-shadow: 0 6px 25px rgba(106, 122, 90, 0.2);
 }
 
-.achievement-card.unlocked::before {
+.achievement-card.claimed::before {
   background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.achievement-card.earned {
+  border-color: #ffd700;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.05));
+  box-shadow: 0 6px 30px rgba(255, 215, 0, 0.3);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.achievement-card.earned::before {
+  background: linear-gradient(90deg, #ffd700, #ffed4e);
+}
+
+.achievement-card.claiming {
+  animation: claiming-shake 0.5s ease-in-out;
 }
 
 .achievement-card.locked {
@@ -1487,6 +2065,21 @@ async function saveSettings() {
 
 .achievement-card.locked::before {
   background: linear-gradient(90deg, #ccc, #999);
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 6px 30px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 8px 40px rgba(255, 215, 0, 0.5);
+  }
+}
+
+@keyframes claiming-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px) rotate(-2deg); }
+  75% { transform: translateX(5px) rotate(2deg); }
 }
 
 .achievement-icon {
@@ -1502,10 +2095,17 @@ async function saveSettings() {
   transition: all 0.3s ease;
 }
 
-.achievement-icon.unlocked-icon {
+.achievement-icon.claimed-icon {
   background: linear-gradient(135deg, #ffd700, #ffed4e);
   color: #8b6914;
   box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+}
+
+.achievement-icon.earned-icon {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #8b6914;
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+  animation: bounce-icon 1s ease-in-out infinite;
 }
 
 .achievement-icon.locked-icon {
@@ -1513,8 +2113,13 @@ async function saveSettings() {
   color: var(--text-muted);
 }
 
-.achievement-card.unlocked .achievement-icon:hover {
+.achievement-card.claimed .achievement-icon:hover {
   transform: scale(1.1) rotate(5deg);
+}
+
+@keyframes bounce-icon {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
 .achievement-info {
@@ -1539,6 +2144,49 @@ async function saveSettings() {
   line-height: 1.4;
 }
 
+.achievement-progress {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-lighter);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 50px;
+  text-align: right;
+}
+
+.loading-achievements {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+}
+
+.loading-spinner {
+  font-size: 18px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .achievement-card.locked .achievement-desc {
   color: var(--text-muted);
   opacity: 0.7;
@@ -1550,25 +2198,214 @@ async function saveSettings() {
   gap: 4px;
 }
 
-.unlocked-badge {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  color: white;
-  padding: 6px 12px;
-  border-radius: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  font-size: 12px;
-  font-weight: 600;
+.achievement-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 12px rgba(106, 122, 90, 0.3);
-  transition: all 0.3s ease;
+  gap: 8px;
 }
 
-.unlocked-badge:hover {
-  transform: scale(1.05);
+.claimed-badge {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: 2px solid var(--primary);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   box-shadow: 0 4px 20px rgba(106, 122, 90, 0.4);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
+
+.claimed-badge::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.claimed-badge:hover::before {
+  width: 200px;
+  height: 200px;
+}
+
+.claimed-badge:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 30px rgba(106, 122, 90, 0.6);
+  border-color: var(--secondary);
+}
+
+.claimed-badge .status-icon {
+  animation: twinkle 2s ease-in-out infinite;
+  font-size: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.2) rotate(20deg);
+    filter: brightness(1.3);
+  }
+}
+
+.claimed-badge .status-text {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+/* Unclaim Button (for testing) */
+.unclaim-btn {
+  background: linear-gradient(135deg, #ff6b6b, #ff8787);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 2px solid #ff5252;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(255, 107, 107, 0.3);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+}
+
+.unclaim-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 20px rgba(255, 107, 107, 0.5);
+  background: linear-gradient(135deg, #ff5252, #ff6b6b);
+}
+
+.unclaim-btn:active {
+  transform: scale(0.95);
+}
+
+.unclaim-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.unclaim-icon {
+  font-size: 16px;
+  display: block;
+  animation: rotate-reverse 2s linear infinite;
+}
+
+@keyframes rotate-reverse {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+/* Claim Button Styles */
+.claim-btn {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #8b6914;
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: 2px solid #ffc107;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.claim-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.claim-btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.claim-btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 30px rgba(255, 215, 0, 0.6);
+  border-color: #ffd700;
+}
+
+.claim-btn:active {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.claim-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  animation: pulse-btn 1s ease-in-out infinite;
+}
+
+@keyframes pulse-btn {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+  transform: scale(1.05);
+  }
+}
+
+.claim-icon {
+  font-size: 18px;
+  position: relative;
+  z-index: 1;
+  animation: rotate-gift 3s linear infinite;
+}
+
+@keyframes rotate-gift {
+  0%, 90%, 100% {
+    transform: rotate(0deg);
+  }
+  92%, 98% {
+    transform: rotate(20deg);
+  }
+  94%, 96% {
+    transform: rotate(-20deg);
+  }
+}
+
+.claim-text {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
 
 .status-icon {
   font-size: 14px;
@@ -1844,23 +2681,29 @@ async function saveSettings() {
 
 .account-actions {
   display: flex;
-  gap: 16px;
-  align-items: center;
+  gap: 20px;
+  align-items: stretch;
   justify-content: space-between;
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .account-actions .signout-btn,
 .account-actions .delete-btn {
-  flex: 1 1 280px;
-  min-height: 48px;
-  border-radius: 12px;
+  flex: 1 1 calc(50% - 10px);
+  min-height: 56px;
+  border-radius: 14px;
   font-weight: 600;
   font-size: 15px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  border: none;
 }
 
 .account-actions .signout-btn::before,
@@ -1872,7 +2715,7 @@ async function saveSettings() {
   width: 100%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
+  transition: left 0.6s;
 }
 
 .account-actions .signout-btn:hover::before,
@@ -1881,37 +2724,82 @@ async function saveSettings() {
 }
 
 .signout-btn {
-  background: linear-gradient(135deg, var(--surface), var(--surface-light));
+  background: linear-gradient(135deg, rgba(106, 122, 90, 0.1), rgba(106, 122, 90, 0.05));
   border: 2px solid var(--primary);
   color: var(--primary);
-  justify-content: center;
+  box-shadow: 0 4px 15px rgba(106, 122, 90, 0.1);
 }
 
 .signout-btn:hover {
   background: linear-gradient(135deg, var(--primary), var(--secondary));
   color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(106, 122, 90, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(106, 122, 90, 0.35);
+  border-color: var(--secondary);
+}
+
+.signout-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(106, 122, 90, 0.3);
 }
 
 .delete-btn {
-  background: linear-gradient(135deg, var(--error), #dc3545);
-  color: white;
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05));
+  color: var(--error);
   border: 2px solid var(--error);
-  justify-content: center;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
 }
 
 .delete-btn:hover {
-  background: linear-gradient(135deg, #c82333, #a71e2a);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+  background: linear-gradient(135deg, var(--error), #c82333);
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(220, 53, 69, 0.4);
+  border-color: #c82333;
 }
 
-.btn-icon {
-  font-size: 18px;
+.delete-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.35);
+}
+
+.account-actions .btn-icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 22px;
+  height: 22px;
+  transition: transform 0.3s ease;
+}
+
+.account-actions .signout-btn:hover .btn-icon-wrapper,
+.account-actions .delete-btn:hover .btn-icon-wrapper {
+  transform: scale(1.1);
+}
+
+.account-actions .btn-icon {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5;
+}
+
+.account-actions .btn-text {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .account-actions {
+    flex-direction: column;
+  }
+  
+  .account-actions .signout-btn,
+  .account-actions .delete-btn {
+    flex: 1 1 100%;
+    width: 100%;
+  }
 }
 
 /* Save Settings Section */
@@ -2325,6 +3213,479 @@ async function saveSettings() {
     right: 16px;
     left: 16px;
     max-width: none;
+  }
+}
+</style>
+
+<!-- Unscoped styles for celebration animation (appended to document.body) -->
+<style>
+/* Celebration Animation Styles - UNSCOPED */
+
+/* Gliding Star Animation */
+.gliding-star {
+  position: fixed;
+  font-size: 64px;
+  z-index: 10002;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 12px rgba(255, 215, 0, 0.8));
+  transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Gift Box Animation */
+.gift-box-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.gift-box-container:hover .gift-box {
+  transform: scale(1.08);
+}
+
+.gift-box {
+  position: relative;
+  font-size: 280px;
+  animation: giftBoxAppear 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), giftBoxFloat 1.5s ease-in-out 0.5s infinite;
+  filter: drop-shadow(0 20px 50px rgba(255, 215, 0, 0.8));
+  transition: transform 0.3s ease;
+}
+
+@keyframes giftBoxAppear {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes giftBoxFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-36px) rotate(8deg);
+  }
+}
+
+.gift-box-lid,
+.gift-box-body {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: all 0.3s ease;
+}
+
+.gift-box-container.exploding .gift-box {
+  animation: giftBoxShake 1.2s ease-in-out;
+}
+
+@keyframes giftBoxShake {
+  0%, 100% { transform: translateX(0) translateY(0) rotate(0deg) scale(1); }
+  5% { transform: translateX(-25px) translateY(-15px) rotate(-15deg) scale(1.05); }
+  10% { transform: translateX(25px) translateY(10px) rotate(15deg) scale(0.95); }
+  15% { transform: translateX(-30px) translateY(-20px) rotate(-18deg) scale(1.08); }
+  20% { transform: translateX(30px) translateY(15px) rotate(18deg) scale(0.92); }
+  25% { transform: translateX(-35px) translateY(-10px) rotate(-20deg) scale(1.1); }
+  30% { transform: translateX(35px) translateY(20px) rotate(20deg) scale(0.9); }
+  35% { transform: translateX(-30px) translateY(-25px) rotate(-22deg) scale(1.12); }
+  40% { transform: translateX(30px) translateY(10px) rotate(22deg) scale(0.88); }
+  45% { transform: translateX(-40px) translateY(-15px) rotate(-25deg) scale(1.15); }
+  50% { transform: translateX(40px) translateY(25px) rotate(25deg) scale(0.85); }
+  55% { transform: translateX(-35px) translateY(-20px) rotate(-22deg) scale(1.12); }
+  60% { transform: translateX(35px) translateY(15px) rotate(22deg) scale(0.88); }
+  65% { transform: translateX(-30px) translateY(-10px) rotate(-18deg) scale(1.08); }
+  70% { transform: translateX(30px) translateY(20px) rotate(18deg) scale(0.92); }
+  75% { transform: translateX(-25px) translateY(-15px) rotate(-15deg) scale(1.05); }
+  80% { transform: translateX(25px) translateY(10px) rotate(15deg) scale(0.95); }
+  85% { transform: translateX(-20px) translateY(-8px) rotate(-12deg) scale(1.03); }
+  90% { transform: translateX(20px) translateY(8px) rotate(12deg) scale(0.97); }
+  95% { transform: translateX(-10px) translateY(-5px) rotate(-8deg) scale(1.02); }
+}
+
+.gift-box-container.exploding .gift-box-lid {
+  animation: lidExplode 0.8s ease-out forwards;
+}
+
+.gift-box-container.exploding .gift-box-body {
+  animation: bodyExplode 0.8s ease-out forwards;
+}
+
+@keyframes lidExplode {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-80px, -120px) rotate(-30deg) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes bodyExplode {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(80px, 120px) rotate(30deg) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Explosion Effects */
+.explosion-smoke {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.smoke-particle {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(200, 200, 200, 0.4) 50%, transparent 100%);
+  animation: smokeExpand 0.8s ease-out forwards;
+  top: 50%;
+  left: 50%;
+}
+
+.smoke-particle:nth-child(1) { animation-delay: 0s; }
+.smoke-particle:nth-child(2) { animation-delay: 0.05s; }
+.smoke-particle:nth-child(3) { animation-delay: 0.1s; }
+.smoke-particle:nth-child(4) { animation-delay: 0.15s; }
+.smoke-particle:nth-child(5) { animation-delay: 0.2s; }
+.smoke-particle:nth-child(6) { animation-delay: 0.05s; }
+.smoke-particle:nth-child(7) { animation-delay: 0.1s; }
+.smoke-particle:nth-child(8) { animation-delay: 0.15s; }
+.smoke-particle:nth-child(9) { animation-delay: 0.2s; }
+.smoke-particle:nth-child(10) { animation-delay: 0s; }
+.smoke-particle:nth-child(11) { animation-delay: 0.1s; }
+.smoke-particle:nth-child(12) { animation-delay: 0.05s; }
+.smoke-particle:nth-child(13) { animation-delay: 0.15s; }
+.smoke-particle:nth-child(14) { animation-delay: 0.1s; }
+.smoke-particle:nth-child(15) { animation-delay: 0.2s; }
+.smoke-particle:nth-child(16) { animation-delay: 0.05s; }
+.smoke-particle:nth-child(17) { animation-delay: 0.1s; }
+.smoke-particle:nth-child(18) { animation-delay: 0.15s; }
+.smoke-particle:nth-child(19) { animation-delay: 0.05s; }
+.smoke-particle:nth-child(20) { animation-delay: 0.1s; }
+
+@keyframes smokeExpand {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px))) scale(3);
+    opacity: 0;
+  }
+}
+
+/* Evenly distributed smoke particles in a circle pattern */
+.smoke-particle:nth-child(1) { --tx: 0px; --ty: -150px; }
+.smoke-particle:nth-child(2) { --tx: 75px; --ty: -130px; }
+.smoke-particle:nth-child(3) { --tx: 130px; --ty: -75px; }
+.smoke-particle:nth-child(4) { --tx: 150px; --ty: 0px; }
+.smoke-particle:nth-child(5) { --tx: 130px; --ty: 75px; }
+.smoke-particle:nth-child(6) { --tx: 75px; --ty: 130px; }
+.smoke-particle:nth-child(7) { --tx: 0px; --ty: 150px; }
+.smoke-particle:nth-child(8) { --tx: -75px; --ty: 130px; }
+.smoke-particle:nth-child(9) { --tx: -130px; --ty: 75px; }
+.smoke-particle:nth-child(10) { --tx: -150px; --ty: 0px; }
+.smoke-particle:nth-child(11) { --tx: -130px; --ty: -75px; }
+.smoke-particle:nth-child(12) { --tx: -75px; --ty: -130px; }
+.smoke-particle:nth-child(13) { --tx: 106px; --ty: -106px; }
+.smoke-particle:nth-child(14) { --tx: 106px; --ty: 106px; }
+.smoke-particle:nth-child(15) { --tx: -106px; --ty: 106px; }
+.smoke-particle:nth-child(16) { --tx: -106px; --ty: -106px; }
+.smoke-particle:nth-child(17) { --tx: 53px; --ty: -143px; }
+.smoke-particle:nth-child(18) { --tx: 143px; --ty: -53px; }
+.smoke-particle:nth-child(19) { --tx: 143px; --ty: 53px; }
+.smoke-particle:nth-child(20) { --tx: 53px; --ty: 143px; }
+
+.spark-particle {
+  position: absolute;
+  font-size: 24px;
+  animation: sparkFly 0.6s ease-out forwards;
+  top: 50%;
+  left: 50%;
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+}
+
+.spark-particle:nth-child(n+21):nth-child(-n+35) {
+  animation: sparkFly 0.6s ease-out forwards;
+}
+
+@keyframes sparkFly {
+  0% {
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--sx, 0px)), calc(-50% + var(--sy, 0px))) scale(0.3) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.spark-particle:nth-child(21) { --sx: -100px; --sy: -60px; animation-delay: 0s; }
+.spark-particle:nth-child(22) { --sx: 110px; --sy: -70px; animation-delay: 0.02s; }
+.spark-particle:nth-child(23) { --sx: -80px; --sy: 80px; animation-delay: 0.04s; }
+.spark-particle:nth-child(24) { --sx: 90px; --sy: 75px; animation-delay: 0.06s; }
+.spark-particle:nth-child(25) { --sx: -120px; --sy: -30px; animation-delay: 0.08s; }
+.spark-particle:nth-child(26) { --sx: 125px; --sy: -25px; animation-delay: 0.1s; }
+.spark-particle:nth-child(27) { --sx: -60px; --sy: 100px; animation-delay: 0.12s; }
+.spark-particle:nth-child(28) { --sx: 65px; --sy: 95px; animation-delay: 0.14s; }
+.spark-particle:nth-child(29) { --sx: 0px; --sy: -120px; animation-delay: 0.16s; }
+.spark-particle:nth-child(30) { --sx: 0px; --sy: 120px; animation-delay: 0.18s; }
+.spark-particle:nth-child(31) { --sx: -130px; --sy: 0px; animation-delay: 0.2s; }
+.spark-particle:nth-child(32) { --sx: 130px; --sy: 0px; animation-delay: 0.22s; }
+.spark-particle:nth-child(33) { --sx: -90px; --sy: -90px; animation-delay: 0.24s; }
+.spark-particle:nth-child(34) { --sx: 90px; --sy: -90px; animation-delay: 0.26s; }
+.spark-particle:nth-child(35) { --sx: -90px; --sy: 90px; animation-delay: 0.28s; }
+
+.hidden {
+  display: none !important;
+}
+
+.claim-celebration {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.98) 0%, 
+    rgba(252, 252, 254, 0.96) 50%,
+    rgba(255, 255, 255, 0.98) 100%);
+  padding: 50px 70px;
+  border-radius: 30px;
+  text-align: center;
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.3),
+    0 0 60px rgba(255, 215, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  animation: celebrationPop 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  position: relative;
+  overflow: visible;
+  border: 2px solid rgba(220, 220, 230, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.claim-celebration::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, 
+    rgba(255, 215, 0, 0.3), 
+    rgba(200, 200, 220, 0.2), 
+    rgba(180, 180, 200, 0.2), 
+    rgba(255, 215, 0, 0.3));
+  border-radius: 40px;
+  z-index: -1;
+  animation: borderRotate 3s linear infinite;
+  background-size: 300% 300%;
+}
+
+@keyframes borderRotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes celebrationPop {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15) rotate(180deg);
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    opacity: 1;
+  }
+}
+
+.celebration-icon {
+  font-size: 100px;
+  margin-bottom: 20px;
+  animation: celebrationBounce 1s ease-in-out infinite, iconGlow 2s ease-in-out infinite;
+  filter: drop-shadow(0 15px 30px rgba(255, 215, 0, 0.6));
+  display: inline-block;
+}
+
+@keyframes celebrationBounce {
+  0%, 100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-15px) scale(1.1) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(-15px) scale(1.1) rotate(5deg);
+  }
+}
+
+@keyframes iconGlow {
+  0%, 100% {
+    filter: drop-shadow(0 15px 30px rgba(255, 215, 0, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 20px 40px rgba(255, 215, 0, 0.9));
+  }
+}
+
+.celebration-title {
+  font-size: 32px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #ffd700 0%, #ff6b6b 25%, #4ecdc4 50%, #a29bfe 75%, #ffd700 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 15px;
+  animation: shimmer 3s linear infinite, titlePulse 2s ease-in-out infinite;
+  background-size: 300% 300%;
+  text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+  letter-spacing: 1.5px;
+  line-height: 1.2;
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes titlePulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.celebration-subtitle {
+  font-size: 24px;
+  color: #2d3436;
+  font-weight: 700;
+  margin-top: 10px;
+  animation: subtitleSlide 0.8s ease-out;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #2d3436, #636e72);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes subtitleSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.confetti-pieces {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.confetti {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #ffd700;
+  top: -10%;
+  animation: confettiFall 3s ease-in forwards;
+  border-radius: 2px;
+}
+
+.confetti:nth-child(odd) {
+  background: #ff6b6b;
+}
+
+.confetti:nth-child(3n) {
+  background: #4ecdc4;
+}
+
+.confetti:nth-child(4n) {
+  background: #95e1d3;
+}
+
+.confetti:nth-child(5n) {
+  background: #f38181;
+}
+
+.confetti:nth-child(6n) {
+  background: #ffed4e;
+}
+
+.confetti:nth-child(7n) {
+  background: #a29bfe;
+}
+
+/* Position confetti across the screen */
+.confetti:nth-child(10n+1) { left: 5%; animation-delay: 0s; }
+.confetti:nth-child(10n+2) { left: 15%; animation-delay: 0.1s; }
+.confetti:nth-child(10n+3) { left: 25%; animation-delay: 0.2s; }
+.confetti:nth-child(10n+4) { left: 35%; animation-delay: 0.15s; }
+.confetti:nth-child(10n+5) { left: 45%; animation-delay: 0.05s; }
+.confetti:nth-child(10n+6) { left: 55%; animation-delay: 0.25s; }
+.confetti:nth-child(10n+7) { left: 65%; animation-delay: 0.1s; }
+.confetti:nth-child(10n+8) { left: 75%; animation-delay: 0.3s; }
+.confetti:nth-child(10n+9) { left: 85%; animation-delay: 0.2s; }
+.confetti:nth-child(10n+10) { left: 95%; animation-delay: 0.35s; }
+
+@keyframes confettiFall {
+  0% {
+    top: -10%;
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    top: 110%;
+    opacity: 0.3;
+    transform: translateX(calc(-50px + (var(--random) * 100px))) rotate(1080deg);
   }
 }
 </style>

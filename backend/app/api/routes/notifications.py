@@ -7,12 +7,16 @@ from google.cloud import firestore
 
 from ..deps.auth import require_user
 from ...core.firebase import db
+from ...core.notification_sender import (
+    send_daily_checkin_reminder,
+    send_study_reminder,
+    send_social_update,
+)
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 class NotificationSettings(BaseModel):
-    notifications: bool = True
     study_reminders: bool = True
     daily_checkin: bool = True
     achievement_notifications: bool = False
@@ -193,3 +197,36 @@ def get_unread_notification_count(user: dict = Depends(require_user)):
     unread_query = _notifications_collection(uid).where("is_read", "==", False)
     total = sum(1 for _ in unread_query.stream())
     return {"count": total}
+
+
+@router.post("/send-checkin-reminder", response_model=Dict[str, Any])
+def send_manual_checkin_reminder(user: dict = Depends(require_user)):
+    """Manually trigger a daily check-in reminder (for testing)"""
+    uid = user["uid"]
+    success = send_daily_checkin_reminder(uid)
+    return {
+        "ok": success,
+        "message": "Check-in reminder sent" if success else "Failed to send reminder"
+    }
+
+
+@router.post("/send-study-reminder", response_model=Dict[str, Any])
+def send_manual_study_reminder(user: dict = Depends(require_user)):
+    """Manually trigger a study session reminder (for testing)"""
+    uid = user["uid"]
+    success = send_study_reminder(uid)
+    return {
+        "ok": success,
+        "message": "Study reminder sent" if success else "Failed to send reminder"
+    }
+
+
+@router.post("/send-social-update", response_model=Dict[str, Any])
+def send_manual_social_update(user: dict = Depends(require_user)):
+    """Manually trigger a social update notification (for testing)"""
+    uid = user["uid"]
+    success = send_social_update(uid, friend_name="TestFriend", action="challenged you to a wellness streak")
+    return {
+        "ok": success,
+        "message": "Social update sent" if success else "Failed to send social update"
+    }

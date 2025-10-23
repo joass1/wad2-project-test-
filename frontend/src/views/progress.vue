@@ -111,7 +111,7 @@
                 <v-card-text class="text-center">
                   <v-icon icon="mdi-format-list-checks" size="26" class="mb-2 text-primary" />
                   <div class="text-subtitle-2">Total Tasks</div>
-                  <div class="text-h6 font-weight-bold mt-1">{{ totalTasks }}</div>
+                  <div class="text-h6 font-weight-bold mt-1">{{ totalTasks.value }}</div>
                 </v-card-text>
               </v-card>
             </v-col>
@@ -240,12 +240,15 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from "vue";
 import ApexCharts from "vue3-apexcharts";
-
+import { db } from "@/lib/firebase"; // or wherever your Firebase is initialized
+import { collection, query, where, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
+import { auth } from "@/lib/firebase"; // if not already imported
 import { api } from "@/lib/api.js";
 
 onMounted(() => {
   getTaskStats();
   getWellnessOverview();
+  loadWellnessData();
 })
 
 const taskStat = reactive({
@@ -270,6 +273,7 @@ async function getTaskStats() {
       total: tasksStats.total,
     });
   } catch (error) {
+    console.error("Failed to fetch task stats:", error);
   }
 }
 
@@ -281,6 +285,7 @@ async function getWellnessOverview() {
       totalCheckIns: wellness.totalCheckIns,
     });
   } catch (error) {
+    console.error("Failed to fetch wellness stats:", error);
   }
 }
 
@@ -328,10 +333,11 @@ const productivityOptions = ref({
 });
 
 // task progress
+const totalTasks = computed(() => taskStat.total);
+const completedTasks = computed(() => taskStat.completed);
+const completionRate = computed(() =>
+  totalTasks.value > 0 ? ((completedTasks.value / totalTasks.value) * 100).toFixed(1) : 0);
 
-const totalTasks = taskStat.total; // Total number of tasks
-const completedTasks = taskStat.completed; // Completed tasks
-const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 // Task Completion Trends Bar Chart (Created vs Completed)
 const taskCompletionSeries = ref([
   { name: "Created Tasks", data: [2, 3, 1, 2, 4, 3, 2] }, // Example data for tasks created
@@ -355,12 +361,13 @@ const taskCompletionOptions = ref({
 });
 
 // Dummy Data for Wellness Trends (Mood, Energy, Sleep, Stress)
-const wellnessSeries = ref([
-  { name: "Mood", data: [7, 6, 8, 7, 9, 6, 8] },
-  { name: "Energy", data: [6, 5, 7, 6, 8, 7, 6] },
-  { name: "Sleep", data: [8, 7, 8, 7, 8, 7, 7] },
-  { name: "Stress", data: [4, 5, 3, 4, 3, 2, 4] },
-]);
+// const wellnessSeries = ref([
+//   { name: "Mood", data: [7, 6, 8, 7, 9, 6, 8] },
+//   { name: "Energy", data: [6, 5, 7, 6, 8, 7, 6] },
+//   { name: "Sleep", data: [8, 7, 8, 7, 8, 7, 7] },
+//   { name: "Stress", data: [4, 5, 3, 4, 3, 2, 4] },
+// ]);
+const wellnessSeries = ref([]);
 
 const wellnessOptions = ref({
   chart: {
@@ -368,7 +375,7 @@ const wellnessOptions = ref({
     toolbar: { show: false },
   },
   xaxis: {
-    categories: ["Oct 02", "Oct 03", "Oct 04", "Oct 05", "Oct 06", "Oct 07", "Oct 08"],
+    categories: [], // 👈 start empty, we’ll fill it later
   },
   yaxis: {
     min: 0,
@@ -384,14 +391,96 @@ const wellnessOptions = ref({
   grid: {
     borderColor: "#eee",
   },
-  colors: ["#FF7043", "#42A5F5", "#8DAF9B", "#FFD54F"], // Custom colors for each trend
+  colors: ["#FF7043", "#42A5F5", "#8DAF9B", "#FFD54F"],
 });
 
-// Dummy Data for Wellness Stats (Mood, Energy, Sleep, Stress)
-const mood = ref(7);
-const energy = ref(6);
-const sleep = ref(7);
-const stress = ref(4);
+//Data for Wellness Stats (Mood, Energy, Sleep, Stress)
+
+const mood = ref(0);
+const energy = ref(0);
+const sleep = ref(0);
+const stress = ref(0);
+
+async function loadWellnessData() {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 6); // last 7 days
+
+    // Query Firestore for wellness check-ins from the last 7 days
+    const q = query(
+      collection(db, "wellnessCheckIns"),
+      where("userId", "==", user.uid),
+      where("date", ">=", sevenDaysAgo),
+      orderBy("date", "asc"),
+      limit(7)
+    );
+
+    const snapshot = await getDocs(q);
+    const data = snapshot.docs.map(doc => doc.data());
+
+    // Build a map keyed by date string for quick lookup
+    const dataMap = {};
+    data.forEach(d => {
+      const dateStr = d.date.toDate
+        ? d.date.toDate().toLocaleDateString("en-US", { month: "short", day: "2-digit" })
+        : new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+      dataMap[dateStr] = d;
+    });
+
+    // Prepare arrays for chart data and dates
+    const formattedDates = [];
+    const moodData = [];
+    const energyData = [];
+    const sleepData = [];
+    const stressData = [];
+
+    // Loop over last 7 days and fill in data or zero if missing
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(sevenDaysAgo);
+      date.setDate(sevenDaysAgo.getDate() + i);
+      const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+      formattedDates.push(dateStr);
+
+      const dayData = dataMap[dateStr] || {};  // If no data, return an empty object
+
+      // If the data is missing, treat it as 0; if data exists, use the actual value
+      moodData.push(dayData.mood !== undefined ? dayData.mood : 0);
+      energyData.push(dayData.energy !== undefined ? dayData.energy : 0);
+      sleepData.push(dayData.sleep !== undefined ? dayData.sleep : 0);
+      stressData.push(dayData.stress !== undefined ? dayData.stress : 0);
+    }
+
+    // Update chart data & x-axis
+    wellnessSeries.value = [
+      { name: "Mood", data: moodData },
+      { name: "Energy", data: energyData },
+      { name: "Sleep", data: sleepData },
+      { name: "Stress", data: stressData },
+    ];
+    wellnessOptions.value.xaxis.categories = formattedDates;
+
+    // Compute 7-day averages safely (excluding zeroes that represent missing data)
+    const avg = arr => {
+      // Filter out zeroes only if they are missing data (not explicitly entered 0)
+      const validData = arr.filter(value => value !== 0 || arr.indexOf(value) === arr.lastIndexOf(value));
+      return validData.length > 0 ? (validData.reduce((a, b) => a + b, 0) / validData.length).toFixed(1) : 0;
+    };
+
+    // Calculate the average for each field (mood, energy, sleep, stress)
+    mood.value = avg(moodData);
+    energy.value = avg(energyData);
+    sleep.value = avg(sleepData);
+    stress.value = avg(stressData);
+
+  } catch (error) {
+    console.error("Error loading wellness data:", error);
+  }
+}
+
 
 // Insights
 const moodInsight = computed(() => {
