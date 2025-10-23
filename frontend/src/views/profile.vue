@@ -98,8 +98,19 @@
                 </div>
               </div>
               <button class="edit-profile-btn" @click="openEditModal">
-                <span class="btn-icon">✏️</span>
-                Edit Profile
+                <div class="btn-icon-wrapper">
+                  <svg 
+                    class="btn-icon" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    stroke-width="2"
+                  >
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </div>
+                <span class="btn-text">Edit Profile</span>
               </button>
             </div>
           </div>
@@ -114,8 +125,22 @@
                 :disabled="isLoadingWellnessData"
                 title="Refresh wellness data"
               >
-                <span class="refresh-icon" :class="{ spinning: isLoadingWellnessData }">🔄</span>
-                Refresh
+                <div class="refresh-icon-wrapper">
+                  <svg 
+                    class="refresh-icon" 
+                    :class="{ spinning: isLoadingWellnessData }"
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    stroke-width="2"
+                  >
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                    <path d="M3 21v-5h5"/>
+                  </svg>
+                </div>
+                <span class="refresh-text">{{ isLoadingWellnessData ? 'Refreshing...' : 'Refresh' }}</span>
               </button>
             </div>
             <div class="stats-grid">
@@ -1243,28 +1268,64 @@ async function saveSettings() {
   right: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 12px 20px;
-  background: linear-gradient(135deg, var(--surface), var(--surface-light));
-  border: 2px solid var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border: none;
   border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-  color: var(--primary);
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(106, 122, 90, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.edit-profile-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.edit-profile-btn:hover::before {
+  left: 100%;
 }
 
 .edit-profile-btn:hover {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  color: white;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(106, 122, 90, 0.3);
+  box-shadow: 0 8px 25px rgba(106, 122, 90, 0.4);
+  background: linear-gradient(135deg, var(--secondary), var(--primary));
+}
+
+.edit-profile-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(106, 122, 90, 0.3);
+}
+
+.btn-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
 }
 
 .btn-icon {
-  font-size: 12px;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease;
+}
+
+.btn-text {
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .stats-section {
@@ -1281,38 +1342,75 @@ async function saveSettings() {
 .refresh-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: linear-gradient(135deg, var(--surface), var(--surface-light));
-  border: 2px solid var(--primary);
-  border-radius: 8px;
+  gap: 10px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border: none;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-  color: var(--primary);
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(106, 122, 90, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.refresh-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.refresh-btn:hover:not(:disabled)::before {
+  left: 100%;
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  color: white;
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(106, 122, 90, 0.3);
+  box-shadow: 0 8px 25px rgba(106, 122, 90, 0.4);
+  background: linear-gradient(135deg, var(--secondary), var(--primary));
+}
+
+.refresh-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(106, 122, 90, 0.3);
 }
 
 .refresh-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 4px 12px rgba(106, 122, 90, 0.15);
+}
+
+.refresh-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
 }
 
 .refresh-icon {
-  font-size: 16px;
+  width: 18px;
+  height: 18px;
   transition: transform 0.3s ease;
 }
 
 .refresh-icon.spinning {
   animation: spin 1s linear infinite;
+}
+
+.refresh-text {
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 @keyframes spin {
