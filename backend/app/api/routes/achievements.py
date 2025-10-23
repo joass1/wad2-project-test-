@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from ..deps.auth import require_user
 from ...core.firebase import db
+from ...core.notification_sender import send_achievement_notification
 
 router = APIRouter(prefix="/achievements", tags=["achievements"])
 
@@ -322,6 +323,15 @@ async def claim_achievement(achievement_id: str, user: dict = Depends(require_us
     })
     
     config = ACHIEVEMENTS_CONFIG[achievement_id]
+    
+    # Send achievement notification (in-app + email)
+    send_achievement_notification(
+        uid=uid,
+        achievement_title=config["title"],
+        achievement_icon=config["icon"],
+        achievement_description=config["description"],
+        achievement_id=achievement_id,
+    )
     
     return {
         "message": f"Successfully claimed '{config['title']}'!",

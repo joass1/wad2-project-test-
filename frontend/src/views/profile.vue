@@ -318,19 +318,6 @@
             <div class="settings-list">
               <div class="setting-item">
                 <div class="setting-info">
-                  <div class="setting-title">Notifications</div>
-                  <div class="setting-desc">
-                    Manage your notification preferences.
-                  </div>
-                </div>
-                <div
-                  class="toggle-switch"
-                  :class="{ active: notificationSettings.notifications }"
-                  @click="toggleNotification('notifications')"
-                ></div>
-              </div>
-              <div class="setting-item">
-                <div class="setting-info">
                   <div class="setting-title">Study Reminders</div>
                   <div class="setting-desc">
                     Get reminded to start your study sessions.
@@ -625,7 +612,6 @@ const achievementsData = ref({
 });
 
 const defaultNotificationSettings = {
-  notifications: true,
   studyReminders: true,
   dailyCheckin: true,
   achievementNotifications: false,
@@ -1133,8 +1119,6 @@ async function loadNotificationSettings() {
   try {
     const settings = await api.get("/api/notifications/settings");
     const mappedSettings = {
-      notifications:
-        settings.notifications ?? defaultNotificationSettings.notifications,
       studyReminders:
         settings.study_reminders ?? defaultNotificationSettings.studyReminders,
       dailyCheckin:
@@ -1181,7 +1165,6 @@ async function loadUserPreferences() {
 async function saveSettings() {
   try {
     const notificationPayload = {
-      notifications: notificationSettings.notifications,
       study_reminders: notificationSettings.studyReminders,
       daily_checkin: notificationSettings.dailyCheckin,
       achievement_notifications: notificationSettings.achievementNotifications,
