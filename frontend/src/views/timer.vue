@@ -42,8 +42,25 @@ function start(){
       clearInterval(t)
       running.value = false
       timeLeft.value = 0
+      
+      // If this was a focus session, dispatch event to update study hours
+      if (mode.value === 'Focus') {
+        dispatchStudySessionCompleted()
+      }
     } 
   }, 1000) 
+}
+
+function dispatchStudySessionCompleted() {
+  // Dispatch event to notify other components of completed study session
+  console.log('✅ Focus session completed! Dispatching event...');
+  window.dispatchEvent(new CustomEvent('study-session-completed', {
+    detail: {
+      duration: minutes.value,
+      mode: mode.value,
+      timestamp: new Date()
+    }
+  }));
 }
 
 function stop(){ 

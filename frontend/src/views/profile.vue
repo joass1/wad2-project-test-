@@ -118,17 +118,17 @@
           <!-- Statistics Cards -->
           <div class="stats-section">
             <div class="stats-header">
-              <h3 class="section-title">Wellness Statistics</h3>
+              <h3 class="section-title">Statistics</h3>
               <button 
                 class="refresh-btn" 
                 @click="refreshWellnessData"
-                :disabled="isLoadingWellnessData"
-                title="Refresh wellness data"
+                :disabled="isLoadingWellnessData || isLoadingStudyData"
+                title="Refresh wellness and study data"
               >
                 <div class="refresh-icon-wrapper">
                   <svg 
                     class="refresh-icon" 
-                    :class="{ spinning: isLoadingWellnessData }"
+                    :class="{ spinning: isLoadingWellnessData || isLoadingStudyData }"
                     viewBox="0 0 24 24" 
                     fill="none" 
                     stroke="currentColor" 
@@ -140,13 +140,16 @@
                     <path d="M3 21v-5h5"/>
                   </svg>
                 </div>
-                <span class="refresh-text">{{ isLoadingWellnessData ? 'Refreshing...' : 'Refresh' }}</span>
+                <span class="refresh-text">{{ (isLoadingWellnessData || isLoadingStudyData) ? 'Refreshing...' : 'Refresh' }}</span>
               </button>
             </div>
             <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-icon blue">🕐</div>
-              <div class="stat-value">{{ stats.studyHours }}</div>
+              <div class="stat-value">
+                <span v-if="isLoadingStudyData">...</span>
+                <span v-else>{{ stats.studyHours }}</span>
+              </div>
               <div class="stat-label">Study Hours</div>
             </div>
             <div class="stat-card">
@@ -589,6 +592,7 @@ const stats = reactive({
 
 // Loading states for dynamic data
 const isLoadingWellnessData = ref(false);
+const isLoadingStudyData = ref(false);
 
 const defaultNotificationSettings = {
   notifications: true,
@@ -649,6 +653,28 @@ async function loadWellnessData() {
 // Function to refresh wellness data (can be called from other components)
 function refreshWellnessData() {
   loadWellnessData();
+  loadStudyData(); // Also refresh study data
+}
+
+// Function to load study statistics
+async function loadStudyData() {
+  if (!authUser.value) return;
+  
+  isLoadingStudyData.value = true;
+  try {
+    const studyStats = await api.get("/api/study-sessions/stats");
+    stats.studyHours = studyStats.total_hours || 0;
+  } catch (error) {
+    console.error("Error loading study data:", error);
+    stats.studyHours = 0;
+  } finally {
+    isLoadingStudyData.value = false;
+  }
+}
+
+// Function to refresh study data (can be called from other components)
+function refreshStudyData() {
+  loadStudyData();
 }
 
 // Global function to trigger wellness data refresh (for other components)
@@ -824,6 +850,7 @@ watch(
     if (firebaseUser) {
       hydrateSettings();
       loadWellnessData(); // Load wellness data when user is authenticated
+      loadStudyData(); // Load study data when user is authenticated
     } else {
       resetNotificationSettings();
       resetPreferences();
@@ -836,15 +863,19 @@ watch(
 onMounted(() => {
   if (authUser.value) {
     loadWellnessData();
+    loadStudyData();
   }
   
   // Listen for wellness check-in events from other pages
   window.addEventListener('wellness-checkin-submitted', refreshWellnessData);
+  // Listen for study session events from other pages
+  window.addEventListener('study-session-completed', refreshStudyData);
 });
 
 // Clean up event listener when component unmounts
 onUnmounted(() => {
   window.removeEventListener('wellness-checkin-submitted', refreshWellnessData);
+  window.removeEventListener('study-session-completed', refreshStudyData);
 });
 
 // Refresh wellness data when user navigates to this page
