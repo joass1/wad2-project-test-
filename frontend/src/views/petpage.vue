@@ -188,6 +188,31 @@ function removeDroppedItem(itemId) {
   }
 }
 
+/* ==== Manual Control ==== */
+const manualControlEnabled = ref(false)
+
+function toggleManualControl() {
+  manualControlEnabled.value = !manualControlEnabled.value
+}
+
+/* ==== Border Warning ==== */
+const showBorderWarning = ref(false)
+let borderWarningTimeout = null
+
+function handleBorderWarning() {
+  showBorderWarning.value = true
+
+  // Clear existing timeout
+  if (borderWarningTimeout) {
+    clearTimeout(borderWarningTimeout)
+  }
+
+  // Auto-hide after 2 seconds
+  borderWarningTimeout = setTimeout(() => {
+    showBorderWarning.value = false
+  }, 2000)
+}
+
 /* ==== Shop ==== */
 const showShop = ref(false)
 
@@ -402,7 +427,9 @@ onMounted(() => {
           :tile-size="collisionData.tileSize"
           :map-cols="collisionData.cols"
           :map-rows="collisionData.rows"
+          :manual-control="manualControlEnabled"
           @item-eaten="removeDroppedItem"
+          @border-warning="handleBorderWarning"
         />
 
         <!-- Dropped items on background -->
@@ -421,6 +448,12 @@ onMounted(() => {
               <button class="shop-button" @click="toggleShop">
                 <img src="/shopkeeper/shop_cart_sized.png" alt="Shop" class="shop-icon" />
               </button>
+
+              <!-- Border Warning Popup -->
+              <div v-if="showBorderWarning" class="border-warning">
+                <div class="warning-icon">⚠️</div>
+                <div class="warning-text">Why are you trying to drag your pet into the VOID</div>
+              </div>
     </div>
 
     <!-- Right Panel -->
@@ -505,13 +538,29 @@ onMounted(() => {
           <button class="nav-btn" @click="nextBackground" :disabled="bgIndex === availableBackgrounds.length - 1">›</button>
         </div>
       </div>
+
+      <!-- Manual Control -->
+      <div class="panel-section">
+        <h4 class="section-title">Controls</h4>
+        <button
+          class="control-toggle-btn"
+          :class="{ active: manualControlEnabled }"
+          @click="toggleManualControl"
+        >
+          <span class="control-icon">{{ manualControlEnabled ? '🎮' : '🤖' }}</span>
+          <span class="control-text">{{ manualControlEnabled ? 'Manual (WASD)' : 'Auto Roam' }}</span>
+        </button>
+        <div v-if="manualControlEnabled" class="control-hint">
+          Use W/A/S/D keys to move your pet
+        </div>
+      </div>
     </div>
 
     <!-- Shop Popup -->
     <div v-if="showShop" class="shop-overlay" @click="toggleShop">
       <div class="shop-popup" @click.stop>
         <div class="shop-header">
-          <h3>🛒 Pet Shop</h3>
+          <h3>Pet Shop</h3>
           <div class="header-gold">
             <template v-if="coinsLoading">
               <span class="gold-amount">Loading...</span>
@@ -617,6 +666,48 @@ onMounted(() => {
 .bg-name{background:rgba(0,0,0,0.7);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;}
 .map-name-display{text-align:center;font-weight:600;color:var(--text-primary);padding:8px;background:var(--surface-light);border-radius:8px;font-size:14px;}
 .action-btn{width:100%;padding:10px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;}
+
+/* Control Toggle Button */
+.control-toggle-btn{
+  width:100%;
+  padding:12px 16px;
+  background:var(--surface-light);
+  border:2px solid var(--surface-lighter);
+  border-radius:8px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  transition:all 0.3s ease;
+  font-size:14px;
+  font-weight:600;
+}
+.control-toggle-btn:hover{
+  background:var(--surface-lighter);
+  border-color:var(--primary);
+  transform:translateY(-1px);
+}
+.control-toggle-btn.active{
+  background:var(--primary);
+  border-color:var(--primary);
+  color:#fff;
+}
+.control-icon{
+  font-size:20px;
+}
+.control-text{
+  flex:1;
+  text-align:left;
+}
+.control-hint{
+  margin-top:8px;
+  padding:8px 12px;
+  background:rgba(0,123,255,0.1);
+  border-radius:6px;
+  font-size:12px;
+  color:var(--primary);
+  text-align:center;
+}
 
 /* Inventory Grid */
 .inventory-grid{
@@ -945,5 +1036,47 @@ onMounted(() => {
   background:var(--surface-lighter);
   color:var(--text-muted);
   cursor:not-allowed;
+}
+
+/* Border Warning Popup */
+.border-warning{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%, -50%);
+  background:rgba(255, 59, 48, 0.95);
+  color:#fff;
+  padding:16px 24px;
+  border-radius:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.3);
+  display:flex;
+  align-items:center;
+  gap:12px;
+  z-index:9999;
+  animation:warningSlide 0.3s ease-out;
+  font-weight:600;
+  font-size:14px;
+}
+.warning-icon{
+  font-size:24px;
+  animation:warningShake 0.5s ease-in-out infinite;
+}
+.warning-text{
+  white-space:nowrap;
+}
+@keyframes warningSlide{
+  from{
+    opacity:0;
+    transform:translate(-50%, -60%);
+  }
+  to{
+    opacity:1;
+    transform:translate(-50%, -50%);
+  }
+}
+@keyframes warningShake{
+  0%, 100%{transform:rotate(0deg);}
+  25%{transform:rotate(-10deg);}
+  75%{transform:rotate(10deg);}
 }
 </style>

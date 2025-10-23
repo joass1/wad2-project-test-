@@ -43,7 +43,7 @@ const decorationImages = {
 
 // Define which decorations take up multiple tiles (size in tiles)
 const multiTileDecorations = {
-  tree: { width: 6, height: 6 }  // Trees take up 6x6 tiles (192px x 192px)
+  tree: { width: 6, height: 6, collisionWidth: 2, collisionHeight: 3 }  // Trees render at 6x6 but collision is smaller (trunk area)
 }
 
 // Define which tiles/decorations are solid (non-walkable)
@@ -101,11 +101,18 @@ function generateCollisionMap() {
         const multiTile = multiTileDecorations[decoration]
 
         if (multiTile) {
-          // Multi-tile decoration - mark all tiles it occupies as solid
-          for (let dy = 0; dy < multiTile.height; dy++) {
-            for (let dx = 0; dx < multiTile.width; dx++) {
-              const targetRow = row + dy
-              const targetCol = col + dx
+          // Multi-tile decoration - use collision size (smaller than render size)
+          const collisionWidth = multiTile.collisionWidth || multiTile.width
+          const collisionHeight = multiTile.collisionHeight || multiTile.height
+
+          // Center the collision box within the render area
+          const offsetX = Math.floor((multiTile.width - collisionWidth) / 2)
+          const offsetY = multiTile.height - collisionHeight  // Align to bottom for tree trunk
+
+          for (let dy = 0; dy < collisionHeight; dy++) {
+            for (let dx = 0; dx < collisionWidth; dx++) {
+              const targetRow = row + offsetY + dy
+              const targetCol = col + offsetX + dx
               if (targetRow < rows && targetCol < cols) {
                 collisionMap[targetRow][targetCol] = true
               }

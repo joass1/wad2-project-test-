@@ -15,10 +15,11 @@ const props = defineProps({
   collisionMap: { type: Array, default: () => [] },  // 2D boolean array for tile collision
   tileSize: { type: Number, default: 32 },  // Size of each tile (32px, no scaling)
   mapCols: { type: Number, default: 40 },
-  mapRows: { type: Number, default: 25 }
+  mapRows: { type: Number, default: 25 },
+  manualControl: { type: Boolean, default: false }  // Enable WASD keyboard controls
 })
 
-const emit = defineEmits(['item-eaten'])
+const emit = defineEmits(['item-eaten', 'border-warning'])
 
 /* Refs / state */
 const actor = ref(null)
@@ -47,6 +48,16 @@ let dragOffset = { x: 0, y: 0 }
 let mouseDownTime = 0
 let mouseDownPos = { x: 0, y: 0 }
 let lastValidPos = { x: 0, y: 0 }  // Store last valid position for collision snap-back
+let lastBorderWarning = 0  // Timestamp of last border warning to prevent spam
+
+// Keyboard controls
+const keysPressed = {
+  w: false,
+  a: false,
+  s: false,
+  d: false
+}
+let lastKeyPressTime = 0  // Track when user last pressed a key
 
 /* Helpers */
 function setAnim(key, once = false, queueNext = null) {
@@ -124,6 +135,20 @@ function isPositionValid(x, y) {
     }
   }
 
+  return true
+}
+
+/* Simple pathfinding - check if path to destination is clear */
+function hasLineOfSight(x1, y1, x2, y2) {
+  const steps = 20
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    const x = x1 + (x2 - x1) * t
+    const y = y1 + (y2 - y1) * t
+    if (!isPositionValid(x, y)) {
+      return false
+    }
+  }
   return true
 }
 
@@ -270,6 +295,27 @@ function wakeUpPet() {
   }
 }
 
+/* Keyboard handlers */
+function handleKeyDown(event) {
+  if (!props.manualControl) return
+
+  const key = event.key.toLowerCase()
+  if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
+    event.preventDefault()
+    keysPressed[key] = true
+    lastKeyPressTime = performance.now()
+  }
+}
+
+function handleKeyUp(event) {
+  if (!props.manualControl) return
+
+  const key = event.key.toLowerCase()
+  if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
+    keysPressed[key] = false
+  }
+}
+
 /* Mouse handlers */
 function handleMouseDown(event) {
   event.preventDefault()
@@ -321,9 +367,21 @@ function handleMouseMove(event) {
     let newX = event.clientX - parentRect.left - dragOffset.x
     let newY = event.clientY - parentRect.top - dragOffset.y
 
+    // Check if trying to go outside boundaries
+    const hitBorder = newX < 0 || newX > bounds.w - petSize || newY < 0 || newY > bounds.h - petSize
+
     // Clamp to boundaries
     newX = Math.max(0, Math.min(newX, bounds.w - petSize))
     newY = Math.max(0, Math.min(newY, bounds.h - petSize))
+
+    // Emit warning if hitting border (throttled to once per second)
+    if (hitBorder) {
+      const now = Date.now()
+      if (now - lastBorderWarning > 1000) {
+        emit('border-warning')
+        lastBorderWarning = now
+      }
+    }
 
     // Check if new position is valid (not on solid tiles)
     if (isPositionValid(newX, newY)) {
@@ -332,8 +390,21 @@ function handleMouseMove(event) {
       pos.value.y = newY
       lastValidPos.x = newX
       lastValidPos.y = newY
+    } else {
+      // Try sliding along X axis only
+      if (isPositionValid(newX, lastValidPos.y)) {
+        pos.value.x = newX
+        pos.value.y = lastValidPos.y
+        lastValidPos.x = newX
+      }
+      // Try sliding along Y axis only
+      else if (isPositionValid(lastValidPos.x, newY)) {
+        pos.value.x = lastValidPos.x
+        pos.value.y = newY
+        lastValidPos.y = newY
+      }
+      // If neither works, stay at lastValidPos (blocked completely)
     }
-    // If invalid, pet stays at lastValidPos (no update)
   }
 }
 
@@ -385,76 +456,141 @@ function loop(t) {
     const now = performance.now()
     const petSize = props.slice * props.scale
 
-    // Check for nearby items - prioritize walking to food!
-    const nearestItem = findNearestItem()
-    if (nearestItem) {
-      // Set destination to the nearest item
-      dest.x = nearestItem.x - petSize / 2
-      dest.y = nearestItem.y - petSize / 2
-      idleUntil = 0  // Override any idle time to move immediately
-    }
+    // Check if user is controlling with keyboard
+    const isUsingKeyboard = props.manualControl && (keysPressed.w || keysPressed.a || keysPressed.s || keysPressed.d)
+    const hasRecentKeyPress = props.manualControl && (now - lastKeyPressTime < 100)
 
-    if (now >= idleUntil) {
-      const dx = dest.x - pos.value.x
-      const dy = dest.y - pos.value.y
-      const dist = Math.sqrt(dx * dx + dy * dy)
+    if (isUsingKeyboard || hasRecentKeyPress) {
+      // Manual keyboard control
+      let vx = 0
+      let vy = 0
+      const keyboardSpeed = props.speed * 1.5 // Faster for keyboard control
 
-      if (dist < 5) {
-        // Reached destination
-        if (!nearestItem) {
-          // No item nearby, choose random destination
-          idleUntil = now + (3000 + Math.random() * 7000)
-          randomIdleAnim()
-          chooseDest()
-        }
-      } else {
-        // Move in both X and Y directions
-        const vx = (dx / dist) * props.speed
-        const vy = (dy / dist) * props.speed
-        let newX = pos.value.x + vx * dt
-        let newY = pos.value.y + vy * dt
+      if (keysPressed.w) vy -= keyboardSpeed
+      if (keysPressed.s) vy += keyboardSpeed
+      if (keysPressed.a) vx -= keyboardSpeed
+      if (keysPressed.d) vx += keyboardSpeed
 
-        // Clamp to boundaries
-        newX = Math.min(Math.max(0, newX), bounds.w - petSize)
-        newY = Math.min(Math.max(0, newY), bounds.h - petSize)
+      // Normalize diagonal movement
+      if (vx !== 0 && vy !== 0) {
+        const magnitude = Math.sqrt(vx * vx + vy * vy)
+        vx = (vx / magnitude) * keyboardSpeed
+        vy = (vy / magnitude) * keyboardSpeed
+      }
 
-        // Check if new position is valid (not on solid tiles)
-        if (isPositionValid(newX, newY)) {
-          pos.value.x = newX
-          pos.value.y = newY
-          // Update last valid position during automatic movement
-          lastValidPos.x = newX
-          lastValidPos.y = newY
+      // Apply movement
+      let newX = pos.value.x + vx * dt
+      let newY = pos.value.y + vy * dt
 
-          // Determine which direction is dominant for animation
-          const absDx = Math.abs(dx)
-          const absDy = Math.abs(dy)
+      // Clamp to boundaries
+      newX = Math.min(Math.max(0, newX), bounds.w - petSize)
+      newY = Math.min(Math.max(0, newY), bounds.h - petSize)
 
-          // Choose animation based on dominant direction
+      // Check collision and update position
+      if (isPositionValid(newX, newY)) {
+        pos.value.x = newX
+        pos.value.y = newY
+        lastValidPos.x = newX
+        lastValidPos.y = newY
+
+        // Set appropriate animation based on direction
+        if (vx !== 0 || vy !== 0) {
+          const absDx = Math.abs(vx)
+          const absDy = Math.abs(vy)
+
           if (absDx > absDy) {
-            // Moving horizontally more than vertically
-            if (vx > 0) {
-              if (animKey !== 'move_right') setAnim('move_right')
-            } else {
-              if (animKey !== 'move_left') setAnim('move_left')
-            }
+            if (vx > 0) setAnim('move_right')
+            else setAnim('move_left')
           } else {
-            // Moving vertically more than horizontally
-            if (vy > 0) {
-              if (animKey !== 'move_down') setAnim('move_down')
-            } else {
-              if (animKey !== 'move_up') setAnim('move_up')
-            }
+            if (vy > 0) setAnim('move_down')
+            else setAnim('move_up')
           }
         } else {
-          // Can't move to destination, choose new one
-          chooseDest()
+          setAnim('idle')
         }
+      }
+    } else if (!props.manualControl) {
+      // Autonomous AI behavior (only when manual control is disabled)
+      // Check for nearby items - prioritize walking to food!
+      const nearestItem = findNearestItem()
+      if (nearestItem) {
+        const targetX = nearestItem.x - petSize / 2
+        const targetY = nearestItem.y - petSize / 2
 
-        // more frequent loitering: around 12% chance per second to pause 2–5s (but not if chasing food!)
-        if (!nearestItem && Math.random() < 0.12 * dt) {
-          idleUntil = now + (2000 + Math.random() * 3000)
-          randomIdleAnim()
+        // Check if path to food is clear
+        if (hasLineOfSight(pos.value.x, pos.value.y, targetX, targetY)) {
+          dest.x = targetX
+          dest.y = targetY
+          idleUntil = 0  // Override any idle time to move immediately
+        } else {
+          // Path is blocked, choose new random destination instead
+          chooseDest()
+          idleUntil = now + (1000 + Math.random() * 2000)
+        }
+      }
+
+      if (now >= idleUntil) {
+        const dx = dest.x - pos.value.x
+        const dy = dest.y - pos.value.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+
+        if (dist < 5) {
+          // Reached destination
+          if (!nearestItem) {
+            // No item nearby, choose random destination
+            idleUntil = now + (3000 + Math.random() * 7000)
+            randomIdleAnim()
+            chooseDest()
+          }
+        } else {
+          // Move in both X and Y directions
+          const vx = (dx / dist) * props.speed
+          const vy = (dy / dist) * props.speed
+          let newX = pos.value.x + vx * dt
+          let newY = pos.value.y + vy * dt
+
+          // Clamp to boundaries
+          newX = Math.min(Math.max(0, newX), bounds.w - petSize)
+          newY = Math.min(Math.max(0, newY), bounds.h - petSize)
+
+          // Check if new position is valid (not on solid tiles)
+          if (isPositionValid(newX, newY)) {
+            pos.value.x = newX
+            pos.value.y = newY
+            // Update last valid position during automatic movement
+            lastValidPos.x = newX
+            lastValidPos.y = newY
+
+            // Determine which direction is dominant for animation
+            const absDx = Math.abs(dx)
+            const absDy = Math.abs(dy)
+
+            // Choose animation based on dominant direction
+            if (absDx > absDy) {
+              // Moving horizontally more than vertically
+              if (vx > 0) {
+                if (animKey !== 'move_right') setAnim('move_right')
+              } else {
+                if (animKey !== 'move_left') setAnim('move_left')
+              }
+            } else {
+              // Moving vertically more than horizontally
+              if (vy > 0) {
+                if (animKey !== 'move_down') setAnim('move_down')
+              } else {
+                if (animKey !== 'move_up') setAnim('move_up')
+              }
+            }
+          } else {
+            // Can't move to destination, choose new one
+            chooseDest()
+          }
+
+          // more frequent loitering: around 12% chance per second to pause 2–5s (but not if chasing food!)
+          if (!nearestItem && Math.random() < 0.12 * dt) {
+            idleUntil = now + (2000 + Math.random() * 3000)
+            randomIdleAnim()
+          }
         }
       }
     }
@@ -580,6 +716,10 @@ onMounted(async () => {
   rafId = requestAnimationFrame(loop)
   c.addEventListener('mousedown', handleMouseDown)
 
+  // Add keyboard event listeners
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
+
   // Store resizeObserver for cleanup
   actor.value._resizeObserver = resizeObserver
 })
@@ -592,6 +732,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('mouseup', handleMouseUp)
   window.clearTimeout(randomEvt)
   window.clearTimeout(sleepTimeout)
+
+  // Remove keyboard event listeners
+  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('keyup', handleKeyUp)
 
   // Clean up ResizeObserver
   if (actor.value?._resizeObserver) {
