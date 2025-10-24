@@ -100,11 +100,12 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { watch } from 'vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import { useCoins } from '@/composables/useCoins.js'
 import { useUserProfile } from '@/composables/useUserProfile.js'
+import { useAuth } from '@/composables/useAuth.js'
 
 defineProps({
   modelValue: Boolean
@@ -118,12 +119,16 @@ const { coins, coinsLoading, coinsError, fetchCoins } = useCoins()
 // Use shared profile state
 const { displayName, displayAvatar, level } = useUserProfile()
 
-onMounted(() => {
-  // Only fetch if coins haven't been loaded yet
-  if (coins.value === null && !coinsLoading.value) {
+// Use auth state to wait for authentication
+const { loading: authLoading, isAuthed } = useAuth()
+
+// Watch for authentication to be ready before fetching coins
+watch([authLoading, isAuthed], ([loading, authed]) => {
+  // Only fetch coins when auth is ready and user is authenticated
+  if (!loading && authed && coins.value === null && !coinsLoading.value) {
     fetchCoins()
   }
-})
+}, { immediate: true })
 </script>
 
 <style scoped>

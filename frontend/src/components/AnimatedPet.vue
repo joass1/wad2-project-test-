@@ -25,6 +25,8 @@ const emit = defineEmits(['item-eaten', 'border-warning'])
 const actor = ref(null)
 const canvasRef = ref(null)
 let ctx, img, rafId
+const showHeart = ref(false)
+let heartTimer = null
 let frame = 0
 let animKey = 'idle'
 let anim
@@ -205,11 +207,13 @@ function checkItemCollision() {
           wakeUpPet()
         }
 
-        // Become happy
-        idleUntil = performance.now() + 1000
+        // Stop movement and play eat animation
+        idleUntil = performance.now() + (2000 + Math.random() * 2000)  // Stop for 2-4 seconds
 
-        // Play happy animation if available
-        if (props.animations.click) {
+        // Play eat animation if available, otherwise use click
+        if (props.animations.eat) {
+          setAnim('eat', true)
+        } else if (props.animations.click) {
           setAnim('click', true)
         }
       }
@@ -423,14 +427,40 @@ function handleMouseUp(event) {
     if (sleeping) {
       wakeUpPet()
     } else {
+      // Stop all movement for animation duration + hold time
+      idleUntil = performance.now() + (500 + 1000 + Math.random() * 2000)  // Animation + 1s hold + random wait
+
+      // Clear any existing heart timer
+      if (heartTimer) {
+        clearTimeout(heartTimer)
+      }
+
+      // Show heart and play click animation (not as one-shot, so it stays on last frame)
+      showHeart.value = true
+
       // Play click animation if available, otherwise use clean
       if (props.animations.click) {
-        setAnim('click', true)
+        setAnim('click', false)  // Play animation without auto-transition to idle
       } else if (props.animations.clean) {
-        setAnim('clean', true)
+        setAnim('clean', false)
       } else {
         setAnim('idle')
       }
+
+      console.log('Pet received love!')
+
+      // Hide heart after 1.5 seconds (animation duration)
+      heartTimer = setTimeout(() => {
+        showHeart.value = false
+        heartTimer = null
+      }, 1500)
+
+      // After animation finishes (0.5s for 4 frames at 8fps) + 1 second hold, transition to idle
+      setTimeout(() => {
+        if (animKey === 'click') {
+          setAnim('idle')
+        }
+      }, 500 + 1000)  // Animation duration + 1 second hold
     }
   } else if (isDragging.value) {
     isDragging.value = false
@@ -617,10 +647,10 @@ function loop(t) {
           setAnim(nxt, true)
         } else {
           playingOnce = false
-          // Stay on last frame if it's sit animation (last frame is idle)
+          // Stay on last frame if it's sit or click animation
           // Otherwise trigger random idle animation
-          if (animKey === 'sit') {
-            // Sit animation ended on idle frame, just stay there
+          if (animKey === 'sit' || animKey === 'click') {
+            // Sit/click animation ended, stay on last frame
             frame = seqLen - 1
           } else if (!sleeping) {
             randomIdleAnim()
@@ -736,6 +766,9 @@ onBeforeUnmount(() => {
   document.removeEventListener('mouseup', handleMouseUp)
   window.clearTimeout(randomEvt)
   window.clearTimeout(sleepTimeout)
+  if (heartTimer) {
+    clearTimeout(heartTimer)
+  }
 
   // Remove keyboard event listeners
   window.removeEventListener('keydown', handleKeyDown)
@@ -752,6 +785,7 @@ onBeforeUnmount(() => {
   <!-- parent stage must be position:relative -->
   <div ref="actor" class="pet-actor">
     <canvas ref="canvasRef" class="pet-canvas" />
+    <img v-if="showHeart" src="/heart.png" class="heart-icon" />
   </div>
 </template>
 
@@ -772,5 +806,34 @@ onBeforeUnmount(() => {
 }
 .pet-canvas:active {
   cursor: grabbing;
+}
+
+.heart-icon {
+  position: absolute;
+  top: 0%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50%;
+  height: auto;
+  pointer-events: none;
+  animation: heart-float 1.5s ease-out;
+  z-index: 10;
+}
+
+@keyframes heart-float {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
 }
 </style>

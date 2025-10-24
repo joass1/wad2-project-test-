@@ -27,10 +27,11 @@ export const PET_CATALOG = {
         idle: { row: 4, fps: 1, loop: true, frames: 1, colStart: 3 },  // Last frame of row 4 (idle standing)
         sit: { row: 4, fps: 4, loop: false, frames: 4, colStart: 0 },   // Sitting animation (transitions to idle on frame 3)
         clean: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 },
+        eat: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 },  // Eating animation (cats)
         sleep: { row: 6, fps: 3, loop: false, frames: 4, colStart: 0 }, // Falling asleep animation
         sleep_loop: { row: 7, fps: 1, loop: true, frames: 1, colStart: 0 }, // Sleeping curled up (looping)
         wake: { row: 7, fps: 6, loop: false, frames: 3, colStart: 1 },  // Waking up animation (skip first frame)
-        click: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 }  // Use clean animation for click
+        click: { row: 6, fps: 8, loop: false, frames: 4, colStart: 0 }  // Click response animation
       }
     }
   },
@@ -50,10 +51,11 @@ export const PET_CATALOG = {
         idle: { row: 4, fps: 1, loop: true, frames: 1, colStart: 3 },
         sit: { row: 4, fps: 4, loop: false, frames: 4, colStart: 0 },
         clean: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 },
+        eat: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 },  // Eating animation (cats)
         sleep: { row: 6, fps: 3, loop: false, frames: 4, colStart: 0 },
         sleep_loop: { row: 7, fps: 1, loop: true, frames: 1, colStart: 0 },
         wake: { row: 7, fps: 6, loop: false, frames: 3, colStart: 1 },
-        click: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 }
+        click: { row: 6, fps: 8, loop: false, frames: 4, colStart: 0 }
       }
     }
   },
@@ -73,10 +75,11 @@ export const PET_CATALOG = {
         idle: { row: 4, fps: 1, loop: true, frames: 1, colStart: 3 },
         sit: { row: 4, fps: 4, loop: false, frames: 4, colStart: 0 },
         clean: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 },
+        eat: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 },  // Eating animation (cats)
         sleep: { row: 6, fps: 3, loop: false, frames: 4, colStart: 0 },
         sleep_loop: { row: 7, fps: 1, loop: true, frames: 1, colStart: 0 },
         wake: { row: 7, fps: 6, loop: false, frames: 3, colStart: 1 },
-        click: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 }
+        click: { row: 6, fps: 8, loop: false, frames: 4, colStart: 0 }
       }
     }
   },
@@ -96,10 +99,11 @@ export const PET_CATALOG = {
         idle: { row: 4, fps: 1, loop: true, frames: 1, colStart: 3 },
         sit: { row: 4, fps: 4, loop: false, frames: 4, colStart: 0 },
         clean: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 },
+        eat: { row: 8, fps: 8, loop: false, frames: 3, colStart: 0 },  // Eating animation (dogs)
         sleep: { row: 6, fps: 3, loop: false, frames: 4, colStart: 0 },
         sleep_loop: { row: 7, fps: 1, loop: true, frames: 1, colStart: 0 },
         wake: { row: 7, fps: 6, loop: false, frames: 3, colStart: 1 },
-        click: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 }
+        click: { row: 6, fps: 8, loop: false, frames: 4, colStart: 0 }
       }
     }
   },
@@ -119,10 +123,11 @@ export const PET_CATALOG = {
         idle: { row: 4, fps: 1, loop: true, frames: 1, colStart: 3 },
         sit: { row: 4, fps: 4, loop: false, frames: 4, colStart: 0 },
         clean: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 },
+        eat: { row: 8, fps: 8, loop: false, frames: 3, colStart: 0 },  // Eating animation (dogs)
         sleep: { row: 6, fps: 3, loop: false, frames: 4, colStart: 0 },
         sleep_loop: { row: 7, fps: 1, loop: true, frames: 1, colStart: 0 },
         wake: { row: 7, fps: 6, loop: false, frames: 3, colStart: 1 },
-        click: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 }
+        click: { row: 6, fps: 8, loop: false, frames: 4, colStart: 0 }
       }
     }
   },
@@ -142,10 +147,11 @@ export const PET_CATALOG = {
         idle: { row: 4, fps: 1, loop: true, frames: 1, colStart: 3 },
         sit: { row: 4, fps: 4, loop: false, frames: 4, colStart: 0 },
         clean: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 },
+        eat: { row: 8, fps: 8, loop: false, frames: 3, colStart: 0 },  // Eating animation (dogs)
         sleep: { row: 6, fps: 3, loop: false, frames: 4, colStart: 0 },
         sleep_loop: { row: 7, fps: 1, loop: true, frames: 1, colStart: 0 },
         wake: { row: 7, fps: 6, loop: false, frames: 3, colStart: 1 },
-        click: { row: 5, fps: 8, loop: false, frames: 4, colStart: 0 }
+        click: { row: 6, fps: 8, loop: false, frames: 4, colStart: 0 }
       }
     }
   }

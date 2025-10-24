@@ -11,6 +11,7 @@
     @mousedown="handleMouseDown"
   >
     <canvas ref="canvasRef" class="pet-canvas" />
+    <img v-if="showHeart" src="/heart.png" class="heart-icon" />
   </div>
 </template>
 
@@ -38,6 +39,8 @@ const showPet = ref(true)
 const actor = ref(null)
 const canvasRef = ref(null)
 let ctx, img, rafId
+const showHeart = ref(false)
+let heartTimer = null
 
 // Animation state
 let frame = 0
@@ -94,7 +97,7 @@ function setAnim(key, once = false, queueNext = null) {
   playingOnce = once && !anim.loop
   nextOnceKey = queueNext
 
-  console.log(`🎬 Animation changed to: ${key}${once ? ' (one-shot)' : ''}`, anim)
+  console.log(` Animation changed to: ${key}${once ? ' (one-shot)' : ''}`, anim)
 }
 
 function getSeqLength(a) {
@@ -138,6 +141,7 @@ function drawFrame() {
 
   // Draw the sprite
   ctx.drawImage(img, sx, sy, s, s, 0, 0, s, s)
+
   ctx.restore()
 }
 
@@ -314,28 +318,40 @@ function wakeUp() {
   console.log('Pet is waking up!')
 }
 
-function getScarred() {
+function showLove() {
+  // Wake up if sleeping
   if (isSleeping) {
     wakeUp()
   }
 
-  isScared = true
-  setAnim('scared')
+  // Stop all movement
+  walkTarget = null
+  isScared = false
+  walkCooldown = 4 + Math.random() * 2  // Wait 4-6 seconds before moving again
 
-  // Run away in random direction
-  const maxX = window.innerWidth - spriteConfig.value.slice * spriteConfig.value.scale
-  walkTarget = {
-    x: Math.random() < 0.5 ? 0 : maxX,
-    y: pos.value.y
+  // Clear any existing heart timer
+  if (heartTimer) {
+    clearTimeout(heartTimer)
   }
 
-  console.log('Pet got scared!')
+  // Show heart and play click animation (not as one-shot, so it stays on last frame)
+  showHeart.value = true
+  setAnim('click', false)  // Play animation without auto-transition to idle
 
-  // Recover after 1 second
+  console.log('Pet received love!')
+
+  // Hide heart after 1.5 seconds (animation duration)
+  heartTimer = setTimeout(() => {
+    showHeart.value = false
+    heartTimer = null
+  }, 1500)
+
+  // After animation finishes (0.5s for 4 frames at 8fps) + 2 second hold, transition to idle
   setTimeout(() => {
-    isScared = false
-    setAnim('idle')
-  }, 1000)
+    if (animKey === 'click') {
+      setAnim('idle')
+    }
+  }, 500 + 1000)  // Animation duration + 1 second hold
 }
 
 /* Main loop */
@@ -439,8 +455,8 @@ const handleMouseUp = (event) => {
 
   // If it was a quick click (less than 200ms and less than 5px movement)
   if (holdDuration < 200 && distance < 5) {
-    // Quick click - scare the pet!
-    getScarred()
+    // Quick click - show love!
+    showLove()
   } else if (isDragging.value) {
     // It was a drag - handle drop
     isDragging.value = false
@@ -538,6 +554,9 @@ onBeforeUnmount(() => {
   if (sleepTimer) {
     window.clearTimeout(sleepTimer)
   }
+  if (heartTimer) {
+    clearTimeout(heartTimer)
+  }
 })
 </script>
 
@@ -558,5 +577,34 @@ onBeforeUnmount(() => {
   display: block;
   border-radius: 6px;
   pointer-events: none;
+}
+
+.heart-icon {
+  position: absolute;
+  top: 0%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50%;
+  height: auto;
+  pointer-events: none;
+  animation: heart-float 1.5s ease-out;
+  z-index: 10;
+}
+
+@keyframes heart-float {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
 }
 </style>
