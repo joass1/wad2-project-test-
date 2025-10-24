@@ -250,7 +250,16 @@ onMounted(() => {
   getWellnessOverview();
   loadWellnessData();
   loadStudyData();
+  getTaskGraph();
 })
+
+function formatToUserTimezone(isoDate, options = {}) {
+  const date = new Date(isoDate);
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: undefined, // user's local timezone by default
+    ...options
+  }).format(date);
+}
 
 const taskStat = reactive({
   completed: 0,
@@ -269,6 +278,22 @@ const studyStats = reactive({
   studyHours: 0,
   studyStreak: 0,
 });
+
+async function getTaskGraph() {
+  const user = auth.currentUser;
+  if (!user) return;
+  try {
+
+    const response = await api.get("/api/tasks/weekly-activity");
+    taskCompletionOptions.value.xaxis.categories = response.map(item =>
+    formatToUserTimezone(item.date, { month: 'short', day: 'numeric' }));
+
+    taskCompletionSeries.value[0].data = response.map(item => item.created);
+    taskCompletionSeries.value[1].data = response.map(item => item.completed)
+  } catch (error) {
+    console.error("Error loading data for task graph:", error);
+  }
+}
 
 async function loadStudyData() {
   const user = auth.currentUser;
@@ -318,7 +343,7 @@ async function getWellnessOverview() {
     // Last Check-in Date
     if (checkIns.length > 0) {
       const lastCheckIn = checkIns[0].date.toDate(); // Get the latest check-in date
-      wellnessOverview.lastCheckInDate = lastCheckIn.toLocaleDateString("en-SG", {
+      wellnessOverview.lastCheckInDate = lastCheckIn.toLocaleDateString(undefined, {
         weekday: "long",
         year: "numeric",
         month: "long",
@@ -416,43 +441,15 @@ const taskCompletionOptions = ref({
     toolbar: { show: false },
   },
   xaxis: {
-    categories: [], // Categories will be set dynamically (last 7 days)
+    categories: [], // Will be set dynamically
   },
   yaxis: {
     min: 0,
   },
-  colors: ["#4CAF50", "#FF7043"], // Green for created, red for completed
+  colors: ["#4CAF50", "#FF7043"],
   grid: { borderColor: "#eee" },
   dataLabels: { enabled: false },
 });
-
-// Fetch task counts from API and update chart data
-// const fetchTaskCounts = async () => {
-//   try {
-//     const response = await api.get('/api/tasks/task-counts'); // API endpoint to fetch task counts
-//     const taskCounts = await response.json();
-
-//     const createdTasks = [];
-//     const completedTasks = [];
-//     const categories = [];
-
-//     // Loop through each day and populate data for the chart
-//     for (const [date, counts] of Object.entries(taskCounts)) {
-//       categories.push(date); // Add date as category
-//       createdTasks.push(counts.created); // Add created task count
-//       completedTasks.push(counts.completed); // Add completed task count
-//     }
-
-//     // Update chart series and categories
-//     taskCompletionSeries.value = [
-//       { name: "Created Tasks", data: createdTasks },
-//       { name: "Completed Tasks", data: completedTasks },
-//     ];
-//     taskCompletionOptions.value.xaxis.categories = categories; // Set categories (dates)
-//   } catch (error) {
-//     console.error("Error fetching task counts:", error);
-//   }
-// };
 
 const wellnessSeries = ref([]);
 

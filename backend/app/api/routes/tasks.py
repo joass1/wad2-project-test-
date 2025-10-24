@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from typing import Any, Dict, Iterable, List, Literal, Optional, cast
-
+from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -375,3 +375,55 @@ def delete_task(task_id: str, user: dict = Depends(require_user)):
         raise HTTPException(status_code=404, detail="Task not found.")
     doc_ref.delete()
     return {"success": True}
+
+class TaskDailyStatsResponse(BaseModel):
+    date: str
+    created: int
+    completed: int
+
+@router.get(
+    "/weekly-activity",
+    response_model=List[TaskDailyStatsResponse],
+    summary="Get task creation and completion counts for each day in the past week",
+    response_description="Returns a list of objects with ISO date, created count, and completed count per day for the last 7 days.",
+)
+def get_weekly_activity(user: dict = Depends(require_user)):
+    uid = user["uid"]
+    today = _utc_now().date()
+    start_date = today - timedelta(days=6)
+
+    # Prepare dicts for counts
+    created_counts = defaultdict(int)
+    completed_counts = defaultdict(int)
+
+    snapshots = _tasks_collection(uid).stream()
+    for doc in snapshots:
+        data = _serialize_task_doc(doc)
+
+        # count created tasks
+        created_at = data.get("createdAt")
+        if created_at:
+            created_at_date = datetime.fromisoformat(created_at.replace("Z", "+00:00")).date()
+            if start_date <= created_at_date <= today:
+                created_counts[created_at_date] += 1
+
+        # count completed tasks (status done AND updatedAt after done)
+        if data.get("status") == "done":
+            updated_at = data.get("updatedAt")
+            if updated_at:
+                updated_at_date = datetime.fromisoformat(updated_at.replace("Z", "+00:00")).date()
+                if start_date <= updated_at_date <= today:
+                    completed_counts[updated_at_date] += 1
+
+    # Build response: list of past 7 days
+    results = []
+    for delta in range(7):
+        d = start_date + timedelta(days=delta)
+        results.append(
+            TaskDailyStatsResponse(
+                date=d.isoformat(),
+                created=created_counts.get(d, 0),
+                completed=completed_counts.get(d, 0),
+            )
+        )
+    return results
