@@ -8,17 +8,23 @@
     <!-- Stats Section -->
     <v-row dense class="mb-4">
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl" elevation="0" variant="outlined">
+        <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
           <v-card-text class="text-center">
-            <v-icon icon="mdi-clock-time-four-outline" size="26" class="mb-2 text-primary" />
+            <v-icon
+              icon="mdi-clock-time-four-outline"
+              size="26"
+              class="mb-2 text-primary"
+            />
             <div class="text-subtitle-2">Study Hours</div>
-            <div class="text-h6 font-weight-bold mt-1">{{ studyStats.studyHours }} Hours</div>
+            <div class="text-h6 font-weight-bold mt-1">
+              {{ studyStats.studyHours }} Hours
+            </div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl" elevation="0" variant="outlined">
+        <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
           <v-card-text class="text-center">
             <v-icon icon="mdi-target" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Tasks Completed</div>
@@ -28,35 +34,44 @@
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl" elevation="0" variant="outlined">
+        <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
           <v-card-text class="text-center">
             <v-icon icon="mdi-fire" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Study Streak</div>
-            <div class="text-h6 font-weight-bold mt-1">{{ studyStats.studyStreak }} days</div>
+            <div class="text-h6 font-weight-bold mt-1">
+              {{ studyStats.studyStreak }} days
+            </div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl" elevation="0" variant="outlined">
+        <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
           <v-card-text class="text-center">
             <v-icon icon="mdi-heart-outline" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Wellness Check-ins</div>
-            <div class="text-h6 font-weight-bold mt-1">{{ wellnessOverview.totalCheckIns }} check-ins</div>
+            <div class="text-h6 font-weight-bold mt-1">
+              {{ wellnessOverview.totalCheckIns }} check-ins
+            </div>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
+
     <!-- Tabs -->
     <div class="tab-navigation">
       <!-- const tabs = ["Study Analytics", "Task Progress", "Wellness Trends", "Insights"]; -->
-      <div class="tab-item" :class="{ active: tab === 0 }" @click="tab = 0">Study Analytics</div>
-      <div class="tab-item" :class="{ active: tab === 1 }" @click="tab = 1">Task Progress</div>
-      <div class="tab-item" :class="{ active: tab === 2 }" @click="tab = 2">Wellness Trends</div>
+      <div class="tab-item" :class="{ active: tab === 0 }" @click="tab = 0">
+        Study Analytics
+      </div>
+      <div class="tab-item" :class="{ active: tab === 1 }" @click="tab = 1">
+        Task Progress
+      </div>
+      <div class="tab-item" :class="{ active: tab === 2 }" @click="tab = 2">
+        Wellness Trends
+      </div>
       <div class="tab-item" :class="{ active: tab === 3 }" @click="tab = 3">Insights</div>
-
     </div>
-
 
     <v-window v-model="tab" :transition="false" :touch="false">
       <v-window-item :value="0">
@@ -66,7 +81,12 @@
             <v-card class="pa-4">
               <v-card-title>Daily Study Time (Last 7 Days)</v-card-title>
               <v-card-subtitle>Hours spent studying each day</v-card-subtitle>
-              <apexchart type="bar" height="250" :options="dailyStudyOptions" :series="dailyStudySeries" />
+              <apexchart
+                type="bar"
+                height="250"
+                :options="dailyStudyOptions"
+                :series="dailyStudySeries"
+              />
             </v-card>
           </v-col>
 
@@ -75,7 +95,12 @@
             <v-card class="pa-4">
               <v-card-title>Study Time by Subject</v-card-title>
               <v-card-subtitle>Distribution of study hours</v-card-subtitle>
-              <apexchart type="donut" height="250" :options="subjectOptions" :series="subjectSeries" />
+              <apexchart
+                type="donut"
+                height="250"
+                :options="subjectOptions"
+                :series="subjectSeries"
+              />
             </v-card>
           </v-col>
         </v-row>
@@ -86,7 +111,12 @@
             <v-card class="pa-4">
               <v-card-title>Productivity Trend</v-card-title>
               <v-card-subtitle>Your self-rated productivity over time</v-card-subtitle>
-              <apexchart type="line" height="250" :options="productivityOptions" :series="productivitySeries" />
+              <apexchart
+                type="line"
+                height="250"
+                :options="productivityOptions"
+                :series="productivitySeries"
+              />
             </v-card>
           </v-col>
         </v-row>
@@ -98,8 +128,15 @@
           <v-col cols="12">
             <v-card class="pa-4">
               <v-card-title>Task Completion Trends</v-card-title>
-              <v-card-subtitle>Tasks created vs completed over the last 7 days</v-card-subtitle>
-              <apexchart type="bar" height="250" :options="taskCompletionOptions" :series="taskCompletionSeries" />
+              <v-card-subtitle
+                >Tasks created vs completed over the last 7 days</v-card-subtitle
+              >
+              <apexchart
+                type="bar"
+                height="250"
+                :options="taskCompletionOptions"
+                :series="taskCompletionSeries"
+              />
             </v-card>
           </v-col>
         </v-row>
@@ -109,7 +146,11 @@
             <v-col>
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center">
-                  <v-icon icon="mdi-format-list-checks" size="26" class="mb-2 text-primary" />
+                  <v-icon
+                    icon="mdi-format-list-checks"
+                    size="26"
+                    class="mb-2 text-primary"
+                  />
                   <div class="text-subtitle-2">Total Tasks</div>
                   <div class="text-h6 font-weight-bold mt-1">{{ totalTasks }}</div>
                 </v-card-text>
@@ -119,7 +160,11 @@
             <v-col cols="12" sm="4">
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center">
-                  <v-icon icon="mdi-check-circle-outline" size="26" class="mb-2 text-primary" />
+                  <v-icon
+                    icon="mdi-check-circle-outline"
+                    size="26"
+                    class="mb-2 text-primary"
+                  />
                   <div class="text-subtitle-2">Completed</div>
                   <div class="text-h6 font-weight-bold mt-1">{{ completedTasks }}</div>
                 </v-card-text>
@@ -139,15 +184,21 @@
         </div>
       </v-window-item>
 
-
       <v-window-item :value="2">
         <v-row>
           <!-- Wellness Trends Chart -->
           <v-col cols="12">
             <v-card class="pa-4">
               <v-card-title>Wellness Trends (Last 7 Days)</v-card-title>
-              <v-card-subtitle>Track your mood, energy, sleep, and stress levels</v-card-subtitle>
-              <apexchart type="line" height="250" :options="wellnessOptions" :series="wellnessSeries" />
+              <v-card-subtitle
+                >Track your mood, energy, sleep, and stress levels</v-card-subtitle
+              >
+              <apexchart
+                type="line"
+                height="250"
+                :options="wellnessOptions"
+                :series="wellnessSeries"
+              />
             </v-card>
           </v-col>
         </v-row>
@@ -196,7 +247,6 @@
         </v-row>
       </v-window-item>
 
-
       <v-window-item :value="3">
         <div class="insights-container">
           <div class="card mood">
@@ -233,17 +283,25 @@
         </div>
       </v-window-item>
     </v-window>
-
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from "vue";
+import { ref, computed, onMounted, reactive, watch } from "vue";
 import ApexCharts from "vue3-apexcharts";
 import { db } from "@/lib/firebase"; // or wherever your Firebase is initialized
-import { collection, query, where, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  Timestamp,
+} from "firebase/firestore";
 import { auth } from "@/lib/firebase"; // if not already imported
 import { api } from "@/lib/api.js";
+import { useTheme } from "vuetify";
 
 onMounted(() => {
   getTaskStats();
@@ -251,13 +309,16 @@ onMounted(() => {
   loadWellnessData();
   loadStudyData();
   getTaskGraph();
-})
+});
+
+const theme = useTheme();
+const isDark = computed(() => theme.global.current.value.dark);
 
 function formatToUserTimezone(isoDate, options = {}) {
   const date = new Date(isoDate);
   return new Intl.DateTimeFormat(undefined, {
     timeZone: undefined, // user's local timezone by default
-    ...options
+    ...options,
   }).format(date);
 }
 
@@ -279,17 +340,46 @@ const studyStats = reactive({
   studyStreak: 0,
 });
 
+function getApexThemeOptions(isDark) {
+  return {
+    theme: {
+      mode: isDark ? "dark" : "light",
+    },
+    chart: {
+      foreColor: isDark ? "#e0e0e0" : "#333",
+      background: "transparent",
+    },
+    grid: {
+      borderColor: isDark ? "#444" : "#eee",
+    },
+    xaxis: {
+      labels: { style: { colors: isDark ? "#ccc" : "#555" } },
+      axisBorder: { color: isDark ? "#666" : "#ccc" },
+      axisTicks: { color: isDark ? "#666" : "#ccc" },
+    },
+    yaxis: {
+      labels: { style: { colors: isDark ? "#ccc" : "#555" } },
+    },
+    tooltip: {
+      theme: isDark ? "dark" : "light",
+    },
+    legend: {
+      labels: { colors: isDark ? "#ddd" : "#444" },
+    },
+  };
+}
+
 async function getTaskGraph() {
   const user = auth.currentUser;
   if (!user) return;
   try {
-
     const response = await api.get("/api/tasks/weekly-activity");
-    taskCompletionOptions.value.xaxis.categories = response.map(item =>
-    formatToUserTimezone(item.date, { month: 'short', day: 'numeric' }));
+    taskCompletionOptions.value.xaxis.categories = response.map((item) =>
+      formatToUserTimezone(item.date, { month: "short", day: "numeric" })
+    );
 
-    taskCompletionSeries.value[0].data = response.map(item => item.created);
-    taskCompletionSeries.value[1].data = response.map(item => item.completed)
+    taskCompletionSeries.value[0].data = response.map((item) => item.created);
+    taskCompletionSeries.value[1].data = response.map((item) => item.completed);
   } catch (error) {
     console.error("Error loading data for task graph:", error);
   }
@@ -299,7 +389,6 @@ async function loadStudyData() {
   const user = auth.currentUser;
   if (!user) return;
   try {
-
     const response = await api.get("/api/study-sessions/stats");
     studyStats.studyHours = response.total_hours || 0;
     studyStats.studyStreak = response.sessions_this_month || 0;
@@ -335,7 +424,7 @@ async function getWellnessOverview() {
     );
 
     const snapshot = await getDocs(q);
-    const checkIns = snapshot.docs.map(doc => doc.data());
+    const checkIns = snapshot.docs.map((doc) => doc.data());
 
     // Total Check-ins
     wellnessOverview.totalCheckIns = checkIns.length;
@@ -353,7 +442,6 @@ async function getWellnessOverview() {
 
     // Calculate Streak (Consecutive Check-ins)
     wellnessOverview.streak = calculateStreak(checkIns);
-
   } catch (error) {
     console.error("Failed to fetch wellness stats:", error);
   }
@@ -381,9 +469,7 @@ function calculateStreak(checkIns) {
   return streak;
 }
 
-const tab = ref(0)
-
-
+const tab = ref(0);
 
 // ---- Dummy Data ----
 // Bar chart (Daily Study Time)
@@ -391,15 +477,13 @@ const dailyStudySeries = ref([
   { name: "Study Time (mins)", data: [2, 4, 1, 0, 3, 2, 4] },
 ]);
 const dailyStudyOptions = ref({
+  ...getApexThemeOptions(isDark.value),
   chart: { toolbar: { show: false } },
   xaxis: {
     categories: ["Oct 02", "Oct 03", "Oct 04", "Oct 05", "Oct 06", "Oct 07", "Oct 08"],
   },
   colors: ["#6A7A5A"],
-  grid: { borderColor: "#eee" },
-  dataLabels: {
-    enabled: false, // Disable the data labels on top of bars
-  },
+  dataLabels: { enabled: false },
 });
 
 // Donut chart (Study Time by Subject)
@@ -413,6 +497,7 @@ const subjectOptions = ref({
 // Line chart (Productivity Trend)
 const productivitySeries = ref([{ name: "Productivity", data: [0, 2, 4, 3, 5, 6, 4] }]);
 const productivityOptions = ref({
+  ...getApexThemeOptions(isDark.value),
   chart: { toolbar: { show: false } },
   xaxis: {
     categories: ["Oct 02", "Oct 03", "Oct 04", "Oct 05", "Oct 06", "Oct 07", "Oct 08"],
@@ -421,14 +506,14 @@ const productivityOptions = ref({
   colors: ["#8DAF9B"],
   stroke: { curve: "smooth" },
   markers: { size: 4 },
-  grid: { borderColor: "#eee" },
 });
 
 // task progress
 const totalTasks = computed(() => taskStat.total);
 const completedTasks = computed(() => taskStat.completed);
 const completionRate = computed(() =>
-  totalTasks.value > 0 ? ((completedTasks.value / totalTasks.value) * 100).toFixed(1) : 0);
+  totalTasks.value > 0 ? ((completedTasks.value / totalTasks.value) * 100).toFixed(1) : 0
+);
 
 const taskCompletionSeries = ref([
   { name: "Created Tasks", data: [] }, // Data for tasks created
@@ -436,48 +521,25 @@ const taskCompletionSeries = ref([
 ]);
 
 const taskCompletionOptions = ref({
-  chart: {
-    type: "bar",
-    toolbar: { show: false },
-  },
-  xaxis: {
-    categories: [], // Will be set dynamically
-  },
-  yaxis: {
-    min: 0,
-  },
+  ...getApexThemeOptions(isDark.value),
+  chart: { type: "bar", toolbar: { show: false } },
+  xaxis: { categories: [] },
+  yaxis: { min: 0 },
   colors: ["#4CAF50", "#FF7043"],
-  grid: { borderColor: "#eee" },
   dataLabels: { enabled: false },
 });
 
 const wellnessSeries = ref([]);
 
 const wellnessOptions = ref({
-  chart: {
-    type: "line",
-    toolbar: { show: false },
-  },
-  xaxis: {
-    categories: [], // 👈 start empty, we’ll fill it later
-  },
-  yaxis: {
-    min: 0,
-    max: 10,
-  },
-  stroke: {
-    width: 2,
-    curve: "smooth",
-  },
-  markers: {
-    size: 4,
-  },
-  grid: {
-    borderColor: "#eee",
-  },
+  ...getApexThemeOptions(isDark.value),
+  chart: { type: "line", toolbar: { show: false } },
+  xaxis: { categories: [] },
+  yaxis: { min: 0, max: 10 },
+  stroke: { width: 2, curve: "smooth" },
+  markers: { size: 4 },
   colors: ["#FF7043", "#42A5F5", "#8DAF9B", "#FFD54F"],
 });
-
 //Data for Wellness Stats (Mood, Energy, Sleep, Stress)
 const mood = ref(0);
 const energy = ref(0);
@@ -503,14 +565,17 @@ async function loadWellnessData() {
     );
 
     const snapshot = await getDocs(q);
-    const data = snapshot.docs.map(doc => doc.data());
+    const data = snapshot.docs.map((doc) => doc.data());
 
     // Build a map keyed by date string for quick lookup
     const dataMap = {};
-    data.forEach(d => {
+    data.forEach((d) => {
       const dateStr = d.date.toDate
         ? d.date.toDate().toLocaleDateString("en-US", { month: "short", day: "2-digit" })
-        : new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+        : new Date(d.date).toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+          });
       dataMap[dateStr] = d;
     });
 
@@ -525,10 +590,13 @@ async function loadWellnessData() {
     for (let i = 0; i < 7; i++) {
       const date = new Date(sevenDaysAgo);
       date.setDate(sevenDaysAgo.getDate() + i);
-      const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+      const dateStr = date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+      });
       formattedDates.push(dateStr);
 
-      const dayData = dataMap[dateStr] || {};  // If no data, return an empty object
+      const dayData = dataMap[dateStr] || {}; // If no data, return an empty object
 
       // If the data is missing, treat it as 0; if data exists, use the actual value
       moodData.push(dayData.mood !== undefined ? dayData.mood : 0);
@@ -547,10 +615,14 @@ async function loadWellnessData() {
     wellnessOptions.value.xaxis.categories = formattedDates;
 
     // Compute 7-day averages safely (excluding zeroes that represent missing data)
-    const avg = arr => {
+    const avg = (arr) => {
       // Filter out zeroes only if they are missing data (not explicitly entered 0)
-      const validData = arr.filter(value => value !== 0 || arr.indexOf(value) === arr.lastIndexOf(value));
-      return validData.length > 0 ? (validData.reduce((a, b) => a + b, 0) / validData.length).toFixed(1) : 0;
+      const validData = arr.filter(
+        (value) => value !== 0 || arr.indexOf(value) === arr.lastIndexOf(value)
+      );
+      return validData.length > 0
+        ? (validData.reduce((a, b) => a + b, 0) / validData.length).toFixed(1)
+        : 0;
     };
 
     // Calculate the average for each field (mood, energy, sleep, stress)
@@ -558,12 +630,10 @@ async function loadWellnessData() {
     energy.value = avg(energyData);
     sleep.value = avg(sleepData);
     stress.value = avg(stressData);
-
   } catch (error) {
     console.error("Error loading wellness data:", error);
   }
 }
-
 
 // Insights
 const moodInsight = computed(() => {
@@ -600,8 +670,8 @@ const insights = computed(() => [
       mood.value >= 8
         ? "insight-positive"
         : mood.value >= 5
-          ? "insight-neutral"
-          : "insight-negative",
+        ? "insight-neutral"
+        : "insight-negative",
   },
   {
     title: "Energy",
@@ -611,8 +681,8 @@ const insights = computed(() => [
       energy.value >= 8
         ? "insight-positive"
         : energy.value >= 5
-          ? "insight-neutral"
-          : "insight-negative",
+        ? "insight-neutral"
+        : "insight-negative",
   },
   {
     title: "Sleep",
@@ -622,8 +692,8 @@ const insights = computed(() => [
       sleep.value >= 8
         ? "insight-positive"
         : sleep.value >= 5
-          ? "insight-neutral"
-          : "insight-negative",
+        ? "insight-neutral"
+        : "insight-negative",
   },
   {
     title: "Stress",
@@ -633,10 +703,29 @@ const insights = computed(() => [
       stress.value <= 3
         ? "insight-positive"
         : stress.value <= 6
-          ? "insight-neutral"
-          : "insight-negative",
+        ? "insight-neutral"
+        : "insight-negative",
   },
 ]);
+
+watch(isDark, (newVal) => {
+  const themeOptions = getApexThemeOptions(newVal);
+
+  if (dailyStudyOptions.value)
+    dailyStudyOptions.value = { ...dailyStudyOptions.value, ...themeOptions };
+
+  if (subjectOptions.value)
+    subjectOptions.value = { ...subjectOptions.value, ...themeOptions };
+
+  if (productivityOptions.value)
+    productivityOptions.value = { ...productivityOptions.value, ...themeOptions };
+
+  if (taskCompletionOptions.value)
+    taskCompletionOptions.value = { ...taskCompletionOptions.value, ...themeOptions };
+
+  if (wellnessOptions.value)
+    wellnessOptions.value = { ...wellnessOptions.value, ...themeOptions };
+});
 </script>
 
 <style scoped>
@@ -688,7 +777,7 @@ const insights = computed(() => [
 }
 
 .tab-item.active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -4px;
   left: 50%;
@@ -777,5 +866,28 @@ const insights = computed(() => [
 .card.stress {
   background-color: #fdecea;
   border-color: #e57373;
+}
+
+.animate-fade-up {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: fadeUp 0.6s forwards;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-delay: 0.15s;
+}
+
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .stat-card {
+    padding: 20px 12px;
+    border-radius: 12px;
+  }
 }
 </style>
