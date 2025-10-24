@@ -15,35 +15,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
+import { useGlobalPet } from '@/composables/useGlobalPet.js'
 
-// Removed backend dependencies - fully frontend pet system
+// Get global pet state
+const { selectedPet } = useGlobalPet()
 
-// Sprite sheet configuration - Black Cat with 4-directional movement
-// Row 0: Moving down, Row 1: Moving right, Row 2: Moving up, Row 3: Moving left
-// Row 4: Sitting animation (frames 0-2), Idle standing (frame 3)
-// Row 5: Cleaning/grooming
-// Row 6: Falling asleep animation (last frame is sleeping)
-// Row 7: Sleeping curled up (first frame - loop this), Waking up animation (frames 1-3)
-const spriteConfig = ref({
-  spriteUrl: '/PC _ Computer - Stardew Valley - Animals - Cat (Black).png',
-  slice: 32,           // Size of one sprite cell
-  scale: 3,            // Display scale
-  columns: 4,          // Auto-detected from image
-
-  // Animation configuration - ONLY horizontal movement for global pet
-  animations: {
-    idle:      { row: 4, frames: 1, fps: 1,  loop: true,  colStart: 3 },  // Last frame of row 4 (idle standing)
-    sit:       { row: 4, frames: 4, fps: 4,  loop: false, colStart: 0 },  // Sitting animation (transitions to idle on frame 3)
-    clean:     { row: 5, frames: 4, fps: 8,  loop: false, colStart: 0 },
-    walk:      { row: 1, frames: 4, fps: 6,  loop: true,  colStart: 0 },  // Moving right
-    walk_left: { row: 3, frames: 4, fps: 6,  loop: true,  colStart: 0 },  // Moving left
-    sleep:     { row: 6, frames: 4, fps: 3,  loop: false, colStart: 0 },  // Row 6: Falling asleep animation
-    sleep_loop:{ row: 7, frames: 1, fps: 1,  loop: true,  colStart: 0 },  // Row 7 frame 0: Sleeping curled up (looping)
-    wake:      { row: 7, frames: 3, fps: 6,  loop: false, colStart: 1 },  // Row 7 frames 1-3: Waking up animation
-    grabbed:   { row: 5, frames: 4, fps: 8,  loop: true,  colStart: 0 },  // Clean animation when grabbed
-    falling:   { row: 1, frames: 4, fps: 6,  loop: true,  colStart: 0 },  // Use walk animation when falling
-    scared:    { row: 5, frames: 4, fps: 10, loop: false, colStart: 0 }   // Clean animation when scared
+// Dynamic sprite configuration based on selected pet
+const spriteConfig = computed(() => {
+  const pet = selectedPet.value
+  return {
+    spriteUrl: pet.config.spriteUrl,
+    slice: pet.config.slice,
+    scale: pet.config.scale * 0.7, // Make global pet 30% smaller than pet page
+    columns: 4, // Auto-detected from image
+    animations: pet.config.animations
   }
 })
 
@@ -87,6 +73,7 @@ const SLEEP_CHANCE = 0.4 // 40% chance to sleep when idle
 
 // Scare behavior
 let isScared = false
+let scareTimer = 0
 
 /* Helper functions */
 let playingOnce = false
@@ -108,7 +95,7 @@ function setAnim(key, once = false, queueNext = null) {
   playingOnce = once && !anim.loop
   nextOnceKey = queueNext
 
-  console.log(`🎬 Animation changed to: ${key}${once ? ' (one-shot)' : ''}`)
+  console.log(`🎬 Animation changed to: ${key}${once ? ' (one-shot)' : ''}`, anim)
 }
 
 function getSeqLength(a) {
@@ -137,6 +124,11 @@ function drawFrame() {
   const safeCol = Math.max(0, Math.min(colIndex, sheetCols - 1))
   const sx = safeCol * s
   const sy = anim.row * s
+
+  // Debug: Log frame drawing for walking animations
+  if (animKey === 'move_right' || animKey === 'move_left') {
+    console.log(`Drawing frame: ${frame}, col: ${safeCol}, row: ${anim.row}`)
+  }
 
   ctx.save()
 
@@ -247,40 +239,47 @@ function updateWalking(dt) {
   }
 
   if (walkTarget === null && walkCooldown <= 0) {
-    // Pick a new target
+    // Pick a new target (only X coordinate for horizontal movement)
     const maxX = window.innerWidth - spriteConfig.value.slice * spriteConfig.value.scale
-    walkTarget = Math.random() * maxX
+    walkTarget = {
+      x: Math.random() * maxX,
+      y: pos.value.y // Keep current Y position
+    }
     walkCooldown = 0
 
-    if (Math.abs(walkTarget - pos.value.x) > 10) {
+    const distance = Math.abs(walkTarget.x - pos.value.x)
+
+    if (distance > 10) {
       // Use walk animation for longer distances, sit (which transitions to idle) for closer
-      if (animKey !== 'walk' && animKey !== 'walk_left') {
-        setAnim('walk')
+      if (animKey !== 'move_right' && animKey !== 'move_left') {
+        setAnim('move_right')
       }
     }
   }
 
   if (walkTarget !== null) {
-    const dx = walkTarget - pos.value.x
+    const dx = walkTarget.x - pos.value.x
+    const distance = Math.abs(dx)
 
-    if (Math.abs(dx) < 5) {
+    if (distance < 5) {
       // Reached target
       walkTarget = null
       walkCooldown = 2 + Math.random() * 5  // Wait 2-7 seconds
       // Play sit animation (which transitions to idle), or occasionally clean
       setAnim(Math.random() < 0.2 ? 'clean' : 'sit', true)
     } else {
-      // Move towards target - use directional animation
-      const moveAmount = Math.sign(dx) * Math.min(WALK_SPEED, Math.abs(dx))
-      pos.value.x += moveAmount
+      // Move towards target - only horizontal movement
+      const moveAmountX = Math.sign(dx) * Math.min(WALK_SPEED, Math.abs(dx))
+      pos.value.x += moveAmountX
+      // Y position stays the same
 
-      // Use directional animations (no flipping needed)
+      // Use only horizontal animations
       if (dx > 0) {
         // Moving right
-        if (animKey !== 'walk') setAnim('walk')
+        if (animKey !== 'move_right') setAnim('move_right')
       } else {
         // Moving left
-        if (animKey !== 'walk_left') setAnim('walk_left')
+        if (animKey !== 'move_left') setAnim('move_left')
       }
     }
   }
@@ -380,6 +379,11 @@ function loop(t) {
         }
       }
     }
+    
+    // Debug: Log animation state for walking animations
+    if (animKey === 'move_right' || animKey === 'move_left') {
+      console.log(`Walking animation: ${animKey}, frame: ${frame}, fps: ${anim.fps}, loop: ${anim.loop}`)
+    }
   }
 
   drawFrame()
@@ -456,11 +460,9 @@ const handleMouseUp = (event) => {
   document.removeEventListener('mouseup', handleMouseUp)
 }
 
-/* Lifecycle */
-onMounted(async () => {
+// Function to initialize pet
+async function initializePet() {
   try {
-    
-
     // Setup canvas
     const c = canvasRef.value
     if (!c) {
@@ -511,6 +513,19 @@ onMounted(async () => {
   } catch (error) {
     console.error('Error initializing GlobalDesktopPet:', error)
   }
+}
+
+// Watch for changes in sprite configuration
+watch(spriteConfig, async (newConfig, oldConfig) => {
+  if (newConfig.spriteUrl !== oldConfig?.spriteUrl) {
+    console.log('Pet sprite changed, reinitializing...')
+    await initializePet()
+  }
+}, { deep: true })
+
+/* Lifecycle */
+onMounted(async () => {
+  await initializePet()
 })
 
 onBeforeUnmount(() => {

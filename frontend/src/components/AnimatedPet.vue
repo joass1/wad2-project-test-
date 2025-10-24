@@ -256,7 +256,8 @@ function scheduleRandomEvent() {
   const ms = 60000
   randomEvt = window.setTimeout(() => {
     if (!sleeping && !playingOnce && !isDragging.value) {
-      // Only sleep if idle (not moving)
+      // Check if this is a dog and add running behavior
+      // All pets can sleep when idle
       const idleStates = ['idle', 'sit', 'clean']
       if (idleStates.includes(animKey) && props.animations.sleep && props.animations.sleep_loop) {
         // Play row 6 falling asleep animation, then transition to row 7 first frame (sleep_loop)
@@ -276,6 +277,7 @@ function scheduleRandomEvent() {
     scheduleRandomEvent()
   }, ms)
 }
+
 
 function wakeUpPet() {
   sleeping = false
@@ -498,6 +500,7 @@ function loop(t) {
           const absDx = Math.abs(vx)
           const absDy = Math.abs(vy)
 
+          // Check if this is a dog and if we should use running animations
           if (absDx > absDy) {
             if (vx > 0) setAnim('move_right')
             else setAnim('move_left')
@@ -566,6 +569,7 @@ function loop(t) {
             const absDy = Math.abs(dy)
 
             // Choose animation based on dominant direction
+            // Check if this is a dog and if we should use running animations
             if (absDx > absDy) {
               // Moving horizontally more than vertically
               if (vx > 0) {

@@ -5,6 +5,7 @@ import SpritePreview from '@/components/SpritePreview.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import TileBackground from '@/components/TileBackground.vue'
 import { useCoins } from '@/composables/useCoins.js'
+import { useGlobalPet } from '@/composables/useGlobalPet.js'
 import { api } from '@/lib/api.js'
 import { TILE_MAPS, MAP_LIST } from '@/data/tilemaps.js'
 import { PET_CATALOG, PET_KEYS } from '@/data/petCatalog.js'
@@ -25,14 +26,20 @@ const inventoryError = ref(null)
 const droppedItems = ref([])  // Items dropped on the background for pet to eat
 let nextDroppedItemId = 0
 
-/* ==== Pet picker (sidebar immediately controls the pet) ==== */
+/* ==== Pet picker (preview vs active pet) ==== */
 const petKeys = PET_KEYS
-const petIndex = ref(0)
-const selectedPetKey = computed(() => petKeys[petIndex.value]) // ← follows arrows instantly
+const petIndex = ref(0) // Preview pet index
+const { selectedPetKey: globalPetKey, setGlobalPet } = useGlobalPet()
+const selectedPetKey = computed(() => globalPetKey.value) // Active pet from global state
+const previewPetKey = computed(() => petKeys[petIndex.value]) // Preview pet
+
 function previousPet() { if (petIndex.value > 0) petIndex.value-- }
 function nextPet() { if (petIndex.value < petKeys.length - 1) petIndex.value++ }
-// Optional: keep a Select button if you like that UX; it's no longer required.
-function selectPet() { /* no-op now, left here for compatibility */ }
+function selectPet() { 
+  const newPetKey = petKeys[petIndex.value]
+  setGlobalPet(newPetKey)
+  console.log(`Selected pet: ${PETS[newPetKey].label}`)
+}
 
 /* ==== Tile-based Backgrounds ==== */
 const bgIndex = ref(0)
@@ -510,14 +517,14 @@ onMounted(() => {
           <div class="item-display" @click="nextPet">
             <!-- 🔑 key forces preview to redraw as you scroll -->
             <SpritePreview
-              :key="PETS[petKeys[petIndex]].config.spriteUrl + ':' + PETS[petKeys[petIndex]].config.slice"
-              :sprite-url="PETS[petKeys[petIndex]].config.spriteUrl"
-              :slice="PETS[petKeys[petIndex]].config.slice"
+              :key="PETS[previewPetKey].config.spriteUrl + ':' + PETS[previewPetKey].config.slice"
+              :sprite-url="PETS[previewPetKey].config.spriteUrl"
+              :slice="PETS[previewPetKey].config.slice"
               :scale="2.5"
               :row="0"
               :col="0"
             />
-            <div class="pet-name-small">{{ PETS[petKeys[petIndex]].label }}</div>
+            <div class="pet-name-small">{{ PETS[previewPetKey].label }}</div>
           </div>
 
           <button class="nav-btn" @click="nextPet" :disabled="petIndex === petKeys.length - 1">›</button>
@@ -645,9 +652,9 @@ onMounted(() => {
 
 <style scoped>
 .pet-page-container{display:flex;height:100vh;overflow:hidden;}
-.main-content{flex:1;display:flex;align-items:stretch;justify-content:stretch;padding:24px;position:relative;overflow:hidden;background-size:cover;background-position:center;}
+.main-content{flex:1;display:flex;align-items:stretch;justify-content:stretch;padding:24px;position:relative;overflow:hidden;background-size:cover;background-position:center;margin-right:280px;}
 .pet-stage{position:relative;width:100%;height:100%;overflow:hidden;}
-.right-panel{width:280px;background:var(--surface);border-left:1px solid var(--surface-lighter);padding:24px 16px;overflow-y:auto;max-height:100vh;}
+.right-panel{width:280px;background:var(--surface);border-left:1px solid var(--surface-lighter);padding:24px 16px;overflow-y:auto;height:100vh;position:fixed;right:0;top:0;}
 .panel-section{margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--surface-lighter);}
 .section-title{font-weight:600;margin-bottom:16px;}
 .status-item{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
