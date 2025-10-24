@@ -82,6 +82,7 @@
               <v-card-title>Daily Study Time (Last 7 Days)</v-card-title>
               <v-card-subtitle>Hours spent studying each day</v-card-subtitle>
               <apexchart
+                ref="dailyStudyChart"
                 type="bar"
                 height="250"
                 :options="dailyStudyOptions"
@@ -96,6 +97,7 @@
               <v-card-title>Study Time by Subject</v-card-title>
               <v-card-subtitle>Distribution of study hours</v-card-subtitle>
               <apexchart
+                ref="subjectChart"
                 type="donut"
                 height="250"
                 :options="subjectOptions"
@@ -112,6 +114,7 @@
               <v-card-title>Productivity Trend</v-card-title>
               <v-card-subtitle>Your self-rated productivity over time</v-card-subtitle>
               <apexchart
+                ref="productivityChart"
                 type="line"
                 height="250"
                 :options="productivityOptions"
@@ -132,6 +135,7 @@
                 >Tasks created vs completed over the last 7 days</v-card-subtitle
               >
               <apexchart
+                ref="taskChart"
                 type="bar"
                 height="250"
                 :options="taskCompletionOptions"
@@ -194,6 +198,7 @@
                 >Track your mood, energy, sleep, and stress levels</v-card-subtitle
               >
               <apexchart
+                ref="wellnessChart"
                 type="line"
                 height="250"
                 :options="wellnessOptions"
@@ -287,7 +292,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive, watch } from "vue";
+import { ref, computed, onMounted, reactive, watch, nextTick } from "vue";
 import ApexCharts from "vue3-apexcharts";
 import { db } from "@/lib/firebase"; // or wherever your Firebase is initialized
 import {
@@ -310,6 +315,12 @@ onMounted(() => {
   loadStudyData();
   getTaskGraph();
 });
+
+const dailyStudyChart = ref(null);
+const subjectChart = ref(null);
+const productivityChart = ref(null);
+const taskChart = ref(null);
+const wellnessChart = ref(null);
 
 const theme = useTheme();
 const isDark = computed(() => theme.global.current.value.dark);
@@ -707,24 +718,56 @@ const insights = computed(() => [
         : "insight-negative",
   },
 ]);
-
-watch(isDark, (newVal) => {
+watch(isDark, async (newVal) => {
   const themeOptions = getApexThemeOptions(newVal);
+  await nextTick();
 
-  if (dailyStudyOptions.value)
-    dailyStudyOptions.value = { ...dailyStudyOptions.value, ...themeOptions };
+  const charts = [
+    dailyStudyChart,
+    subjectChart,
+    productivityChart,
+    taskChart,
+    wellnessChart,
+  ];
 
-  if (subjectOptions.value)
-    subjectOptions.value = { ...subjectOptions.value, ...themeOptions };
+  charts.forEach((chartRef) => {
+    if (chartRef.value?.chart?.updateOptions) {
+      const currentConfig = chartRef.value.chart.w.config;
 
-  if (productivityOptions.value)
-    productivityOptions.value = { ...productivityOptions.value, ...themeOptions };
+      // Preserve categories even if themeOptions overrides them
+      const preservedCategories = currentConfig?.xaxis?.categories?.length
+        ? currentConfig.xaxis.categories
+        : chartRef.value?.options?.xaxis?.categories ||
+          wellnessOptions.value?.xaxis?.categories ||
+          [];
 
-  if (taskCompletionOptions.value)
-    taskCompletionOptions.value = { ...taskCompletionOptions.value, ...themeOptions };
-
-  if (wellnessOptions.value)
-    wellnessOptions.value = { ...wellnessOptions.value, ...themeOptions };
+      chartRef.value.chart.updateOptions(
+        {
+          ...currentConfig,
+          ...themeOptions,
+          xaxis: {
+            ...currentConfig.xaxis,
+            ...themeOptions.xaxis,
+            categories: preservedCategories, // ✅ keep labels safe
+          },
+          yaxis: {
+            ...currentConfig.yaxis,
+            ...themeOptions.yaxis,
+          },
+          legend: {
+            ...currentConfig.legend,
+            ...themeOptions.legend,
+          },
+          grid: {
+            ...currentConfig.grid,
+            ...themeOptions.grid,
+          },
+        },
+        false,
+        true
+      );
+    }
+  });
 });
 </script>
 
