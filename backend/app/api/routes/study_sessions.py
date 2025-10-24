@@ -222,3 +222,43 @@ def get_weekly_study_summary(user: dict = Depends(require_user)):
         daily_hours=dict(sorted(daily_hours.items())),
         subject_hours=dict(sorted(subject_hours.items()))
     )
+
+class StudyStreakResponse(BaseModel):
+    current_streak: int
+    
+@router.get("/streak", response_model=StudyStreakResponse)
+def get_study_streak(user: dict = Depends(require_user)):
+    """Get the user's current study streak (consecutive days including today)."""
+    uid = user["uid"]
+
+    sessions_ref = _study_sessions_collection(uid)
+    sessions = sessions_ref.stream()
+
+    # Collect unique study dates (in UTC)
+    study_dates = set()
+    for session in sessions:
+        data = session.to_dict()
+        if "date" in data:
+            study_dates.add(data["date"])
+        elif "created_at" in data and isinstance(data["created_at"], datetime):
+            study_dates.add(data["created_at"].strftime("%Y-%m-%d"))
+
+    if not study_dates:
+        return StudyStreakResponse(current_streak=0)
+
+    # Sort study dates (newest last)
+    sorted_dates = sorted(datetime.strptime(d, "%Y-%m-%d").date() for d in study_dates)
+
+    today = datetime.now(timezone.utc).date()
+    streak = 0
+
+    # Start from today and count backward while dates are consecutive
+    for i in range(len(sorted_dates) - 1, -1, -1):
+        date = sorted_dates[i]
+        diff = (today - date).days
+        if diff == streak:  # continuous streak
+            streak += 1
+        elif diff > streak:
+            break  # gap found → streak ended
+
+    return StudyStreakResponse(current_streak=streak)

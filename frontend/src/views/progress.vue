@@ -10,11 +10,7 @@
       <v-col cols="12" sm="6" md="3">
         <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
           <v-card-text class="text-center">
-            <v-icon
-              icon="mdi-clock-time-four-outline"
-              size="26"
-              class="mb-2 text-primary"
-            />
+            <v-icon icon="mdi-clock-time-four-outline" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Study Hours</div>
             <div class="text-h6 font-weight-bold mt-1">
               {{ studyStats.studyHours }} Hours
@@ -81,13 +77,8 @@
             <v-card class="pa-4">
               <v-card-title>Daily Study Time (Last 7 Days)</v-card-title>
               <v-card-subtitle>Hours spent studying each day</v-card-subtitle>
-              <apexchart
-                ref="dailyStudyChart"
-                type="bar"
-                height="250"
-                :options="dailyStudyOptions"
-                :series="dailyStudySeries"
-              />
+              <apexchart ref="dailyStudyChart" type="bar" height="250" :options="dailyStudyOptions"
+                :series="dailyStudySeries" />
             </v-card>
           </v-col>
 
@@ -96,13 +87,8 @@
             <v-card class="pa-4">
               <v-card-title>Study Time by Subject</v-card-title>
               <v-card-subtitle>Distribution of study hours</v-card-subtitle>
-              <apexchart
-                ref="subjectChart"
-                type="donut"
-                height="250"
-                :options="subjectOptions"
-                :series="subjectSeries"
-              />
+              <apexchart ref="subjectChart" type="donut" height="250" :options="subjectOptions"
+                :series="subjectSeries" />
             </v-card>
           </v-col>
         </v-row>
@@ -113,13 +99,8 @@
             <v-card class="pa-4">
               <v-card-title>Productivity Trend</v-card-title>
               <v-card-subtitle>Your self-rated productivity over time</v-card-subtitle>
-              <apexchart
-                ref="productivityChart"
-                type="line"
-                height="250"
-                :options="productivityOptions"
-                :series="productivitySeries"
-              />
+              <apexchart ref="productivityChart" type="line" height="250" :options="productivityOptions"
+                :series="productivitySeries" />
             </v-card>
           </v-col>
         </v-row>
@@ -131,16 +112,9 @@
           <v-col cols="12">
             <v-card class="pa-4">
               <v-card-title>Task Completion Trends</v-card-title>
-              <v-card-subtitle
-                >Tasks created vs completed over the last 7 days</v-card-subtitle
-              >
-              <apexchart
-                ref="taskChart"
-                type="bar"
-                height="250"
-                :options="taskCompletionOptions"
-                :series="taskCompletionSeries"
-              />
+              <v-card-subtitle>Tasks created vs completed over the last 7 days</v-card-subtitle>
+              <apexchart ref="taskChart" type="bar" height="250" :options="taskCompletionOptions"
+                :series="taskCompletionSeries" />
             </v-card>
           </v-col>
         </v-row>
@@ -150,11 +124,7 @@
             <v-col>
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center">
-                  <v-icon
-                    icon="mdi-format-list-checks"
-                    size="26"
-                    class="mb-2 text-primary"
-                  />
+                  <v-icon icon="mdi-format-list-checks" size="26" class="mb-2 text-primary" />
                   <div class="text-subtitle-2">Total Tasks</div>
                   <div class="text-h6 font-weight-bold mt-1">{{ totalTasks }}</div>
                 </v-card-text>
@@ -164,11 +134,7 @@
             <v-col cols="12" sm="4">
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center">
-                  <v-icon
-                    icon="mdi-check-circle-outline"
-                    size="26"
-                    class="mb-2 text-primary"
-                  />
+                  <v-icon icon="mdi-check-circle-outline" size="26" class="mb-2 text-primary" />
                   <div class="text-subtitle-2">Completed</div>
                   <div class="text-h6 font-weight-bold mt-1">{{ completedTasks }}</div>
                 </v-card-text>
@@ -194,16 +160,9 @@
           <v-col cols="12">
             <v-card class="pa-4">
               <v-card-title>Wellness Trends (Last 7 Days)</v-card-title>
-              <v-card-subtitle
-                >Track your mood, energy, sleep, and stress levels</v-card-subtitle
-              >
-              <apexchart
-                ref="wellnessChart"
-                type="line"
-                height="250"
-                :options="wellnessOptions"
-                :series="wellnessSeries"
-              />
+              <v-card-subtitle>Track your mood, energy, sleep, and stress levels</v-card-subtitle>
+              <apexchart ref="wellnessChart" type="line" height="250" :options="wellnessOptions"
+                :series="wellnessSeries" />
             </v-card>
           </v-col>
         </v-row>
@@ -315,6 +274,7 @@ onMounted(() => {
   loadStudyData();
   getTaskGraph();
   loadWeeklyStudyChart();
+  loadStudyStreak();
 });
 
 const dailyStudyChart = ref(null);
@@ -445,6 +405,18 @@ async function loadStudyData() {
   } catch (error) {
     console.error("Error loading study data:", error);
     studyStats.studyHours = 0;
+    studyStats.studyStreak = 0;
+  }
+}
+
+async function loadStudyStreak() {
+  const user = auth.currentUser;
+  if (!user) return;
+  try {
+    const response = await api.get("/api/study-sessions/streak");
+    studyStats.studyStreak = response.current_streak || 0;
+  } catch (error) {
+    console.error("Error loading study data:", error);
     studyStats.studyStreak = 0;
   }
 }
@@ -627,9 +599,9 @@ async function loadWellnessData() {
       const dateStr = d.date.toDate
         ? d.date.toDate().toLocaleDateString("en-US", { month: "short", day: "2-digit" })
         : new Date(d.date).toLocaleDateString("en-US", {
-            month: "short",
-            day: "2-digit",
-          });
+          month: "short",
+          day: "2-digit",
+        });
       dataMap[dateStr] = d;
     });
 
@@ -724,8 +696,8 @@ const insights = computed(() => [
       mood.value >= 8
         ? "insight-positive"
         : mood.value >= 5
-        ? "insight-neutral"
-        : "insight-negative",
+          ? "insight-neutral"
+          : "insight-negative",
   },
   {
     title: "Energy",
@@ -735,8 +707,8 @@ const insights = computed(() => [
       energy.value >= 8
         ? "insight-positive"
         : energy.value >= 5
-        ? "insight-neutral"
-        : "insight-negative",
+          ? "insight-neutral"
+          : "insight-negative",
   },
   {
     title: "Sleep",
@@ -746,8 +718,8 @@ const insights = computed(() => [
       sleep.value >= 8
         ? "insight-positive"
         : sleep.value >= 5
-        ? "insight-neutral"
-        : "insight-negative",
+          ? "insight-neutral"
+          : "insight-negative",
   },
   {
     title: "Stress",
@@ -757,8 +729,8 @@ const insights = computed(() => [
       stress.value <= 3
         ? "insight-positive"
         : stress.value <= 6
-        ? "insight-neutral"
-        : "insight-negative",
+          ? "insight-neutral"
+          : "insight-negative",
   },
 ]);
 
@@ -782,8 +754,8 @@ async function updateAllChartsTheme(isDarkMode) {
       const preservedCategories = currentConfig?.xaxis?.categories?.length
         ? currentConfig.xaxis.categories
         : chartRef.value?.options?.xaxis?.categories ||
-          wellnessOptions.value?.xaxis?.categories ||
-          [];
+        wellnessOptions.value?.xaxis?.categories ||
+        [];
 
       chartRef.value.chart.updateOptions(
         {
