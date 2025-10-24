@@ -73,7 +73,6 @@ const SLEEP_CHANCE = 0.4 // 40% chance to sleep when idle
 
 // Scare behavior
 let isScared = false
-let scareTimer = 0
 
 /* Helper functions */
 let playingOnce = false
@@ -321,12 +320,14 @@ function getScarred() {
   }
 
   isScared = true
-  scareTimer = 0
   setAnim('scared')
 
   // Run away in random direction
   const maxX = window.innerWidth - spriteConfig.value.slice * spriteConfig.value.scale
-  walkTarget = Math.random() < 0.5 ? 0 : maxX
+  walkTarget = {
+    x: Math.random() < 0.5 ? 0 : maxX,
+    y: pos.value.y
+  }
 
   console.log('Pet got scared!')
 
