@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -181,3 +182,43 @@ def delete_study_session(
     
     session_ref.delete()
     return {"message": "Study session deleted successfully"}
+
+class WeeklyStudySummaryResponse(BaseModel):
+    daily_hours: dict[str, float]  # {"2025-10-17": 2.5, ...}
+    subject_hours: dict[str, float]  # {"Math": 3.0, "Physics": 1.5}
+
+@router.get("/weekly-summary", response_model=WeeklyStudySummaryResponse)
+def get_weekly_study_summary(user: dict = Depends(require_user)):
+    """Get study hours per day and per subject for the last 7 days (optimized)"""
+    uid = user["uid"]
+    now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    seven_days_ago = now - timedelta(days=7)
+
+    sessions_ref = _study_sessions_collection(uid)
+    # Query only sessions in the last 7 days
+    sessions_query = sessions_ref.where("created_at", ">=", seven_days_ago)
+    sessions = sessions_query.stream()
+
+    daily_hours = defaultdict(float)
+    subject_hours = defaultdict(float)
+
+    for session in sessions:
+        data = session.to_dict()
+        created_at = data.get("created_at")
+        duration_hours = data.get("duration_minutes", 0) / 60
+        subject = data.get("subject") or "Unspecified"
+
+        if isinstance(created_at, datetime):
+            day_str = created_at.strftime("%Y-%m-%d")
+            daily_hours[day_str] += duration_hours
+            subject_hours[subject] += duration_hours
+
+    # Fill in missing days with 0 hours
+    for i in range(7):
+        day = (seven_days_ago + timedelta(days=i)).strftime("%Y-%m-%d")
+        daily_hours.setdefault(day, 0.0)
+
+    return WeeklyStudySummaryResponse(
+        daily_hours=dict(sorted(daily_hours.items())),
+        subject_hours=dict(sorted(subject_hours.items()))
+    )

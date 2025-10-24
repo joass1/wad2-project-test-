@@ -314,6 +314,7 @@ onMounted(() => {
   loadWellnessData();
   loadStudyData();
   getTaskGraph();
+  loadWeeklyStudyChart();
 });
 
 const dailyStudyChart = ref(null);
@@ -331,6 +332,44 @@ function formatToUserTimezone(isoDate, options = {}) {
     timeZone: undefined, // user's local timezone by default
     ...options,
   }).format(date);
+}
+
+async function loadWeeklyStudyChart() {
+  try {
+    const data = await api.get("/api/study-sessions/weekly-summary");
+    if (!data || !data.daily_hours) {
+      console.error("No daily_hours found in API response");
+      return;
+    }
+
+    const dates = Object.keys(data.daily_hours);
+    const hours = Object.values(data.daily_hours);
+
+    dailyStudySeries.value = [{ name: "Study Time (hrs)", data: hours }];
+
+    dailyStudyOptions.value = {
+      ...dailyStudyOptions.value,
+      xaxis: {
+        ...dailyStudyOptions.value.xaxis,
+        categories: dates.map((date) =>
+          new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        ),
+      },
+    };
+
+    const subjects = Object.keys(data.subject_hours);
+    const subjectHours = Object.values(data.subject_hours);
+
+    subjectSeries.value = subjectHours;
+
+    subjectOptions.value = {
+      ...subjectOptions.value,
+      labels: subjects,
+    };
+    subjectOptions.value.colors = subjects.map(hashStringToColor);
+  } catch (error) {
+    console.error("Failed to load weekly study chart:", error);
+  }
 }
 
 const taskStat = reactive({
@@ -482,28 +521,32 @@ function calculateStreak(checkIns) {
 
 const tab = ref(0);
 
-// ---- Dummy Data ----
 // Bar chart (Daily Study Time)
-const dailyStudySeries = ref([
-  { name: "Study Time (mins)", data: [2, 4, 1, 0, 3, 2, 4] },
-]);
+const dailyStudySeries = ref([]);
 const dailyStudyOptions = ref({
   ...getApexThemeOptions(isDark.value),
   chart: { toolbar: { show: false } },
-  xaxis: {
-    categories: ["Oct 02", "Oct 03", "Oct 04", "Oct 05", "Oct 06", "Oct 07", "Oct 08"],
-  },
+  xaxis: { categories: [] },
   colors: ["#6A7A5A"],
   dataLabels: { enabled: false },
 });
 
 // Donut chart (Study Time by Subject)
-const subjectSeries = ref([30, 15, 25, 10, 20]);
+const subjectSeries = ref([]);
 const subjectOptions = ref({
-  labels: ["Math", "Science", "English", "History", "Art"],
-  colors: ["#6A7A5A", "#8DAF9B", "#BED2BA", "#AAC4BC", "#D7CBB2"],
+  labels: [],
+  colors: [],
   legend: { position: "bottom" },
 });
+
+function hashStringToColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 70%, 60%)`; // you can adjust saturation/lightness
+}
 
 // Line chart (Productivity Trend)
 const productivitySeries = ref([{ name: "Productivity", data: [0, 2, 4, 3, 5, 6, 4] }]);
@@ -718,8 +761,9 @@ const insights = computed(() => [
         : "insight-negative",
   },
 ]);
-watch(isDark, async (newVal) => {
-  const themeOptions = getApexThemeOptions(newVal);
+
+async function updateAllChartsTheme(isDarkMode) {
+  const themeOptions = getApexThemeOptions(isDarkMode);
   await nextTick();
 
   const charts = [
@@ -768,6 +812,11 @@ watch(isDark, async (newVal) => {
       );
     }
   });
+}
+
+// Then watch like this:
+watch(isDark, (newVal) => {
+  updateAllChartsTheme(newVal);
 });
 </script>
 
