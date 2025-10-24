@@ -32,6 +32,11 @@ DEFAULT_USER_PREFERENCES = {
     },
 }
 
+DEFAULT_PET_SETTINGS = {
+    "selected_pet": None,
+    "has_selected_pet": False,
+}
+
 
 class TimerSettings(BaseModel):
     focus_duration: int = 25
@@ -60,6 +65,7 @@ def upsert_profile(payload: dict, user: dict = Depends(require_user)):
             "coins": 500,  # Default coins for new users
             "notification_settings": deepcopy(DEFAULT_NOTIFICATION_SETTINGS),
             "user_preferences": deepcopy(DEFAULT_USER_PREFERENCES),
+            "pet_settings": deepcopy(DEFAULT_PET_SETTINGS),
         },
         merge=True,
     )
@@ -511,3 +517,54 @@ def get_recent_activity(user: dict = Depends(require_user)):
     except Exception as e:
         print(f"Error fetching recent activity: {e}")
         return {"activities": []}
+
+
+@router.get("/pet-selection-status")
+def get_pet_selection_status(user: dict = Depends(require_user)):
+    """Check if user has selected a pet (for first-time user detection)"""
+    uid = user["uid"]
+    doc_snapshot = db.collection("users").document(uid).get()
+    
+    if not doc_snapshot.exists:
+        return {"has_selected_pet": False, "selected_pet": None}
+    
+    user_data = doc_snapshot.to_dict() or {}
+    pet_settings = user_data.get("pet_settings", {})
+    
+    return {
+        "has_selected_pet": pet_settings.get("has_selected_pet", False),
+        "selected_pet": pet_settings.get("selected_pet", None)
+    }
+
+
+@router.post("/select-pet")
+def select_pet(payload: dict, user: dict = Depends(require_user)):
+    """Set user's selected pet"""
+    uid = user["uid"]
+    pet_key = payload.get("pet_key")
+    
+    if not pet_key:
+        return {"ok": False, "message": "Missing 'pet_key' field"}
+    
+    # Validate pet key (you can add validation against your pet catalog here)
+    valid_pets = ["catBlack", "catGrey", "catNew", "dogBlonde", "dogGrey", "dogLight"]
+    if pet_key not in valid_pets:
+        return {"ok": False, "message": "Invalid pet selection"}
+    
+    # Update user's pet settings
+    db.collection("users").document(uid).set(
+        {
+            "pet_settings": {
+                "selected_pet": pet_key,
+                "has_selected_pet": True,
+                "selected_at": datetime.now(timezone.utc)
+            }
+        },
+        merge=True,
+    )
+    
+    return {
+        "ok": True, 
+        "message": "Pet selected successfully",
+        "selected_pet": pet_key
+    }

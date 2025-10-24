@@ -8,12 +8,13 @@ import Progress from "@/views/progress.vue";
 import Checkin from "@/views/checkin.vue";
 import SocialHub from '@/views/socialhub.vue'
 import PetPage from '@/views/petpage.vue'
+import PetSelection from '@/views/PetSelection.vue'
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
 
 const routes = [
-  { path: "/", redirect: { name: "Login" } },
+  { path: "/", redirect: { name: "Dashboard" } },
   {
     path: "/login",
     name: "Login",
@@ -68,9 +69,9 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/pet',
-    name: 'PetPage',
-    component: PetPage,
+    path: '/pet-selection',
+    name: 'PetSelection',
+    component: PetSelection,
     meta: { requiresAuth: true },
   },
 ];
@@ -95,9 +96,29 @@ router.beforeEach(async (to, from, next) => {
 
   if (to.meta.requiresAuth && !currentUser) {
     next({ name: "Login" }); 
-  } else {
-    next();
+  } else if (currentUser && to.name !== 'PetSelection') {
+    // Check if user has selected a pet (first-time user check)
+    try {
+      const response = await fetch('/api/profile/pet-selection-status', {
+        headers: {
+          'Authorization': `Bearer ${await currentUser.getIdToken()}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (!data.has_selected_pet) {
+          next({ name: "PetSelection" });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking pet selection status:', error);
+      // Continue to the requested route if there's an error
+    }
   }
+  
+  next();
 });
 
 export default router;

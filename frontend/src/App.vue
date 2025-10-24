@@ -1,7 +1,7 @@
 <template>
   <v-app>
-    <!-- Login route renders only the view (no navbar, no sidebar) -->
-    <router-view v-if="isLogin" />
+    <!-- Login and Pet Selection routes render only the view (no navbar, no sidebar) -->
+    <router-view v-if="isLogin || isPetSelection" />
 
     <!-- Authenticated layout: permanent sidebar, scrollable main -->
     <template v-else>
@@ -19,8 +19,8 @@
         <router-view @toggle-fullscreen="handleFullscreen" />
       </v-main>
 
-      <!-- Global floating pet - Visible on all pages except pet page -->
-      <GlobalDesktopPet v-if="!isPetPage" />
+      <!-- Global floating pet - Visible on all pages except pet page and pet selection -->
+      <GlobalDesktopPet v-if="!isPetPage && !isPetSelection" />
     </template>
   </v-app>
 </template>
@@ -35,6 +35,7 @@ import GlobalDesktopPet from '@/components/GlobalDesktopPet.vue'
 const route = useRoute()
 const isLogin = computed(() => route.name === 'Login')
 const isPetPage = computed(() => route.path === '/pet')
+const isPetSelection = computed(() => route.name === 'PetSelection')
 
 // Sidebar state - starts open
 const sidebarOpen = ref(true)

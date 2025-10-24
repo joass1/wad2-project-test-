@@ -19,7 +19,7 @@ import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useGlobalPet } from '@/composables/useGlobalPet.js'
 
 // Get global pet state
-const { selectedPet } = useGlobalPet()
+const { selectedPet, loadPetFromBackend } = useGlobalPet()
 
 // Dynamic sprite configuration based on selected pet
 const spriteConfig = computed(() => {
@@ -525,6 +525,8 @@ watch(spriteConfig, async (newConfig, oldConfig) => {
 
 /* Lifecycle */
 onMounted(async () => {
+  // Load pet from backend first
+  await loadPetFromBackend()
   await initializePet()
 })
 
