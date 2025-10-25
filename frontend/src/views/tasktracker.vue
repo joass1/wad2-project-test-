@@ -33,7 +33,7 @@
               color: white;
               text-transform: none;
             "
-            @click="showAddTask = true"
+            @click="openAddTaskDialog"
           >
             <v-icon size="small" class="mr-1">mdi-plus</v-icon>
             Add Task
@@ -252,15 +252,39 @@
                     <div class="text-body-2" style="color: var(--text-primary)">
                       {{ task.title }}
                     </div>
-                    <v-btn
-                      icon
-                      size="x-small"
-                      variant="text"
-                      @click="handleDeleteTask(task.id)"
-                      style="color: var(--text-disabled)"
-                    >
-                      <v-icon size="16">mdi-close</v-icon>
-                    </v-btn>
+                    <div class="d-flex align-center ga-1">
+                      <v-btn
+                        icon
+                        size="x-small"
+                        variant="text"
+                        @click="startEditTask(task)"
+                        style="color: var(--text-muted)"
+                        :aria-label="`Edit ${task.title}`"
+                      >
+                        <svg
+                          class="task-action-icon"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path
+                            d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                          />
+                        </svg>
+                      </v-btn>
+                      <v-btn
+                        icon
+                        size="x-small"
+                        variant="text"
+                        @click="handleDeleteTask(task.id)"
+                        style="color: var(--text-disabled)"
+                        :aria-label="`Delete ${task.title}`"
+                      >
+                        <v-icon size="16">mdi-close</v-icon>
+                      </v-btn>
+                    </div>
                   </div>
                   <div class="d-flex flex-wrap ga-2 mb-3">
                     <span
@@ -355,15 +379,39 @@
                 <div class="text-body-2" style="color: var(--text-primary)">
                   {{ task.title }}
                 </div>
-                <v-btn
-                  icon
-                  size="x-small"
-                  variant="text"
-                  @click="handleDeleteTask(task.id)"
-                  style="color: var(--text-disabled)"
-                >
-                  <v-icon size="16">mdi-close</v-icon>
-                </v-btn>
+                <div class="d-flex align-center ga-1">
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="startEditTask(task)"
+                    style="color: var(--text-muted)"
+                    :aria-label="`Edit ${task.title}`"
+                  >
+                    <svg
+                      class="task-action-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path
+                        d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                      />
+                    </svg>
+                  </v-btn>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="handleDeleteTask(task.id)"
+                    style="color: var(--text-disabled)"
+                    :aria-label="`Delete ${task.title}`"
+                  >
+                    <v-icon size="16">mdi-close</v-icon>
+                  </v-btn>
+                </div>
               </div>
               <div class="d-flex flex-wrap ga-2 mb-3">
                 <span
@@ -475,15 +523,39 @@
                   <div class="text-body-2" style="color: var(--text-primary)">
                     {{ task.title }}
                   </div>
-                  <v-btn
-                    icon
-                    size="x-small"
-                    variant="text"
-                    @click="handleDeleteTask(task.id)"
-                    style="color: var(--text-disabled)"
-                  >
-                    <v-icon size="16">mdi-close</v-icon>
-                  </v-btn>
+                  <div class="d-flex align-center ga-1">
+                    <v-btn
+                      icon
+                      size="x-small"
+                      variant="text"
+                      @click="startEditTask(task)"
+                      style="color: var(--text-muted)"
+                      :aria-label="`Edit ${task.title}`"
+                    >
+                      <svg
+                        class="task-action-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path
+                          d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                        />
+                      </svg>
+                    </v-btn>
+                    <v-btn
+                      icon
+                      size="x-small"
+                      variant="text"
+                      @click="handleDeleteTask(task.id)"
+                      style="color: var(--text-disabled)"
+                      :aria-label="`Delete ${task.title}`"
+                    >
+                      <v-icon size="16">mdi-close</v-icon>
+                    </v-btn>
+                  </div>
                 </div>
                 <div class="d-flex flex-wrap ga-2 mb-3">
                   <span
@@ -544,11 +616,8 @@
     <v-dialog v-model="showAddTask" max-width="500">
       <v-card rounded="lg" elevation="0" style="background: var(--surface)">
         <v-card-title class="pa-5">
-          <h2
-            class="text-h6 font-weight-regular"
-            style="color: var(--text-primary)"
-          >
-            Add New Task
+          <h2 class="text-h6 font-weight-regular" style="color: var(--text-primary)">
+            {{ isEditing ? "Edit Task" : "Add New Task" }}
           </h2>
         </v-card-title>
         <v-card-text class="px-5 pb-5">
@@ -616,7 +685,7 @@
             Cancel
           </v-btn>
           <v-btn
-            @click="handleAddTask"
+            @click="handleSubmitTask"
             elevation="0"
             rounded="lg"
             class="text-none"
@@ -626,7 +695,7 @@
               text-transform: none;
             "
           >
-            Add Task
+            {{ isEditing ? "Save Changes" : "Add Task" }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -668,6 +737,8 @@ const stats = ref({ total: 0, completed: 0, dueToday: 0, overdue: 0 });
 const loading = ref(false);
 const errorMessage = ref("");
 const addTaskError = ref("");
+const isEditing = ref(false);
+const editingTaskId = ref(null);
 
 const newTaskDefaults = {
   title: "",
@@ -733,6 +804,9 @@ watch([filterStatus, filterPriority, sortBy], () => {
 watch(showAddTask, (value) => {
   if (!value) {
     addTaskError.value = "";
+    isEditing.value = false;
+    editingTaskId.value = null;
+    newTask.value = { ...newTaskDefaults };
   }
 });
 
@@ -765,8 +839,33 @@ const getUpcomingTasks = () => {
   return grouped;
 };
 
-// add task
-const handleAddTask = async () => {
+const openAddTaskDialog = () => {
+  addTaskError.value = "";
+  isEditing.value = false;
+  editingTaskId.value = null;
+  newTask.value = { ...newTaskDefaults };
+  showAddTask.value = true;
+};
+
+// prepare dialog for edit
+const startEditTask = (task) => {
+  if (!task) return;
+  addTaskError.value = "";
+  errorMessage.value = "";
+  editingTaskId.value = task.id;
+  isEditing.value = true;
+  newTask.value = {
+    title: task.title ?? "",
+    status: task.status ?? "todo",
+    priority: task.priority ?? "medium",
+    dueDate: task.dueDate ?? "",
+    category: task.category ?? "General",
+  };
+  showAddTask.value = true;
+};
+
+// add/update task
+const handleSubmitTask = async () => {
   errorMessage.value = "";
   addTaskError.value = "";
 
@@ -785,18 +884,22 @@ const handleAddTask = async () => {
     title: trimmedTitle,
     status: newTask.value.status,
     priority: newTask.value.priority,
-    dueDate: newTask.value.dueDate,
+    dueDate: newTask.value.dueDate || null,
     category: newTask.value.category || "General",
   };
 
   try {
     loading.value = true;
-    await api.post("/api/tasks/add-task", payload);
-    showAddTask.value = false;
-    newTask.value = { ...newTaskDefaults };
+    if (isEditing.value && editingTaskId.value) {
+      await api.patch(`/api/tasks/${editingTaskId.value}`, payload);
+    } else {
+      await api.post("/api/tasks/add-task", payload);
+    }
+    handleCloseAddTaskDialog();
     await fetchTasks();
   } catch (error) {
-    addTaskError.value = error.message || "Failed to add task";
+    const fallback = isEditing.value ? "Failed to update task" : "Failed to add task";
+    addTaskError.value = error.message || fallback;
   } finally {
     loading.value = false;
   }
@@ -805,6 +908,9 @@ const handleAddTask = async () => {
 const handleCloseAddTaskDialog = () => {
   showAddTask.value = false;
   addTaskError.value = "";
+  isEditing.value = false;
+  editingTaskId.value = null;
+  newTask.value = { ...newTaskDefaults };
 };
 
 // delete task
@@ -896,5 +1002,10 @@ const isOverdue = (task) => {
   display: inline-flex;
   align-items: center;
   line-height: 1;
+}
+
+.task-action-icon {
+  width: 16px;
+  height: 16px;
 }
 </style>
