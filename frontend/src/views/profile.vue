@@ -487,8 +487,10 @@
               />
             </div>
             <div class="modal-actions">
-              <button type="submit" class="btn-save">Save Changes</button>
-              <button type="button" class="btn-cancel" @click="closeEditModal">
+              <button type="submit" class="btn-save" :disabled="isUpdatingProfile">
+                {{ isUpdatingProfile ? 'Saving...' : 'Save Changes' }}
+              </button>
+              <button type="button" class="btn-cancel" @click="closeEditModal" :disabled="isUpdatingProfile">
                 Cancel
               </button>
             </div>
@@ -722,6 +724,7 @@ const preferences = reactive({
 });
 
 const isLoadingSettings = ref(false);
+const isUpdatingProfile = ref(false);
 let shouldRehydrate = false;
 
 // Profile data is now managed by useUserProfile composable
@@ -1037,12 +1040,52 @@ function closeEditModal() {
   editForm.email = "";
 }
 
-function saveProfile() {
-  updateName(editForm.name);
-  updateEmail(editForm.email);
+async function saveProfile() {
+  if (isUpdatingProfile.value) return; // Prevent multiple submissions
+  
+  isUpdatingProfile.value = true;
+  
+  try {
+    // Update local state first
+    updateName(editForm.name);
+    updateEmail(editForm.email);
 
-  closeEditModal();
-  showSuccessNotification();
+    // Update Firebase Auth profile
+    const { updateProfile: updateFirebaseProfile, updateEmail: updateFirebaseEmail } = await import("firebase/auth");
+    const currentUser = authUser.value;
+    
+    if (currentUser) {
+      // Update Firebase Auth displayName
+      await updateFirebaseProfile(currentUser, {
+        displayName: editForm.name
+      });
+      
+      // Update email if it has changed
+      if (editForm.email !== displayEmail.value) {
+        try {
+          await updateFirebaseEmail(currentUser, editForm.email);
+        } catch (emailError) {
+          console.warn("Email update failed, but continuing with profile update:", emailError);
+          // Email update might require re-authentication, but we can still update the backend
+        }
+      }
+      
+      // Update backend database via API
+      await api.post("/api/profile/", {
+        name: editForm.name,
+        email: editForm.email
+      });
+    }
+
+    closeEditModal();
+    showSuccessNotification();
+  } catch (error) {
+    console.error("Failed to update profile:", error);
+    // Show error notification
+    alert("Failed to update profile. Please try again.");
+  } finally {
+    isUpdatingProfile.value = false;
+  }
 }
 
 function showSuccessNotification() {
@@ -3523,6 +3566,16 @@ async function saveSettings() {
   background-color: var(--secondary);
 }
 
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--surface-lighter);
+}
+
+.btn-save:disabled:hover {
+  background-color: var(--surface-lighter);
+}
+
 .btn-cancel {
   background-color: var(--surface);
   color: var(--text-primary);
@@ -3537,6 +3590,15 @@ async function saveSettings() {
 
 .btn-cancel:hover {
   background-color: var(--surface-light);
+}
+
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-cancel:disabled:hover {
+  background-color: var(--surface);
 }
 
 /* Danger (destructive action) button */
