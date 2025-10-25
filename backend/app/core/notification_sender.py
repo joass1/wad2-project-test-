@@ -30,11 +30,18 @@ def get_user_email(uid: str) -> Optional[str]:
         user_doc = _user_doc(uid).get()
         if user_doc.exists:
             user_data = user_doc.to_dict() or {}
-            if "email" in user_data:
+            if "email" in user_data and user_data["email"]:
                 return user_data["email"]
         
-        # If not found, you could also get it from Firebase Auth
-        # This would require firebase-admin auth module
+        # If not found in Firestore, get from Firebase Auth
+        try:
+            import firebase_admin.auth as auth
+            user_record = auth.get_user(uid)
+            if user_record.email:
+                return user_record.email
+        except Exception as auth_error:
+            print(f"Error getting email from Firebase Auth: {auth_error}")
+        
         return None
     except Exception as e:
         print(f"Error getting user email: {e}")

@@ -1,0 +1,25 @@
+# Shared Email Configuration for WAD2 Project Team
+# This file contains the email settings that work for the entire team
+
+# Email Service Configuration
+# Using a shared email account for the project
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=wad2project.team@gmail.com
+SMTP_PASSWORD=your-shared-app-password
+SMTP_FROM_EMAIL=wad2project.team@gmail.com
+SMTP_FROM_NAME=WAD2 Project Team
+
+# Instructions for Team Setup:
+# 1. Copy this file to backend/.env
+# 2. Replace 'your-shared-app-password' with the actual app password
+# 3. Make sure the Gmail account has 2FA enabled and app password generated
+# 4. All team members can use the same credentials
+
+# Alternative: Use SendGrid (Recommended for Production)
+# SMTP_HOST=smtp.sendgrid.net
+# SMTP_PORT=587
+# SMTP_USER=apikey
+# SMTP_PASSWORD=your-sendgrid-api-key
+# SMTP_FROM_EMAIL=noreply@wad2project.com
+# SMTP_FROM_NAME=WAD2 Project Team
