@@ -264,19 +264,19 @@
                   </div>
                   <div class="d-flex flex-wrap ga-2 mb-3">
                     <span
-                      class="px-2 py-1 text-caption rounded"
+                      class="task-chip px-2 py-1 text-caption rounded"
                       :style="getPriorityStyle(task.priority)"
                     >
                       {{ task.priority }}
                     </span>
                     <span
-                      class="text-caption"
+                      class="task-chip px-2 py-1 text-caption"
                       style="color: var(--text-muted)"
                       >{{ task.category }}</span
                     >
                     <span
                       v-if="isOverdue(task)"
-                      class="px-2 py-1 text-caption rounded font-weight-medium"
+                      class="task-chip px-2 py-1 text-caption rounded font-weight-medium"
                       style="
                         background-color: rgba(220, 38, 38, 0.1);
                         color: var(--error);
@@ -367,17 +367,19 @@
               </div>
               <div class="d-flex flex-wrap ga-2 mb-3">
                 <span
-                  class="px-2 py-1 text-caption rounded"
+                  class="task-chip px-2 py-1 text-caption rounded"
                   :style="getPriorityStyle(task.priority)"
                 >
                   {{ task.priority }}
                 </span>
-                <span class="text-caption" style="color: var(--text-muted)">{{
-                  task.category
-                }}</span>
+                <span
+                  class="task-chip px-2 py-1 text-caption"
+                  style="color: var(--text-muted)"
+                  >{{ task.category }}</span
+                >
                 <span
                   v-if="isOverdue(task)"
-                  class="px-2 py-1 text-caption rounded font-weight-medium"
+                  class="task-chip px-2 py-1 text-caption rounded font-weight-medium"
                   style="
                     background-color: rgba(220, 38, 38, 0.1);
                     color: var(--error);
@@ -485,17 +487,19 @@
                 </div>
                 <div class="d-flex flex-wrap ga-2 mb-3">
                   <span
-                    class="px-2 py-1 text-caption rounded"
+                    class="task-chip px-2 py-1 text-caption rounded"
                     :style="getPriorityStyle(task.priority)"
                   >
                     {{ task.priority }}
                   </span>
-                  <span class="text-caption" style="color: var(--text-muted)">{{
-                    task.category
-                  }}</span>
+                  <span
+                    class="task-chip px-2 py-1 text-caption"
+                    style="color: var(--text-muted)"
+                    >{{ task.category }}</span
+                  >
                   <span
                     v-if="isOverdue(task)"
-                    class="px-2 py-1 text-caption rounded font-weight-medium"
+                    class="task-chip px-2 py-1 text-caption rounded font-weight-medium"
                     style="
                       background-color: rgba(220, 38, 38, 0.1);
                       color: var(--error);
@@ -886,3 +890,11 @@ const isOverdue = (task) => {
   return dueDate < today && task.status !== "done";
 };
 </script>
+
+<style scoped>
+.task-chip {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+</style>
