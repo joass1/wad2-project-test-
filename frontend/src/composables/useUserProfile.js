@@ -9,20 +9,27 @@ const _profile = ref({
   level: 1
 })
 
-// Initialize from localStorage on module load
+// Track current user ID to detect user changes
+let currentUserId = null
+
+// Function to clear localStorage
+function clearStorage() {
+  try {
+    localStorage.removeItem("demo_user")
+  } catch (error) {
+    console.warn('Failed to clear user profile from localStorage:', error)
+  }
+}
+
+// Function to load from localStorage (only for avatar)
 function loadFromStorage() {
   try {
     const data = JSON.parse(localStorage.getItem("demo_user") || "{}")
-    if (data?.name) _profile.value.name = data.name
-    if (data?.email) _profile.value.email = data.email
     if (data?.avatar) _profile.value.avatar = data.avatar
   } catch (error) {
     console.warn('Failed to load user profile from localStorage:', error)
   }
 }
-
-// Load from storage immediately
-loadFromStorage()
 
 export function useUserProfile() {
   const { user: authUser, userProfile: firebaseProfile } = useAuth()
@@ -30,35 +37,75 @@ export function useUserProfile() {
   // Computed properties for easy access
   const profile = computed(() => _profile.value)
   const displayName = computed(() => {
-    // Prioritize locally stored name, then Firebase displayName, then email as last resort
-    if (_profile.value.name && _profile.value.name.trim() !== '') {
-      return _profile.value.name
+    // Use only Firebase data for name
+    if (authUser.value?.displayName) {
+      return authUser.value.displayName
     }
-    return authUser.value?.displayName || authUser.value?.email || 'User'
+    if (firebaseProfile.value?.full_name) {
+      return firebaseProfile.value.full_name
+    }
+    if (firebaseProfile.value?.name) {
+      return firebaseProfile.value.name
+    }
+    return authUser.value?.email || 'User'
   })
-  const displayEmail = computed(() => _profile.value.email || authUser.value?.email || '')
-  const displayAvatar = computed(() => _profile.value.avatar || authUser.value?.photoURL || null)
+  const displayEmail = computed(() => {
+    // Use only Firebase data for email
+    return authUser.value?.email || firebaseProfile.value?.email || ''
+  })
+  const displayAvatar = computed(() => {
+    // Prioritize localStorage avatar, then Firebase
+    return _profile.value.avatar || authUser.value?.photoURL || firebaseProfile.value?.avatar || firebaseProfile.value?.avatar_url || null
+  })
   const level = computed(() => _profile.value.level || 1)
 
   // Watch for changes in Firebase auth/profile and update local state
   watch(
     [() => firebaseProfile.value, () => authUser.value],
     ([profile, firebaseUser]) => {
+      // Check if user has changed
+      const newUserId = firebaseUser?.uid
+      if (newUserId !== currentUserId) {
+        // User has changed, clear localStorage and reset profile
+        if (currentUserId !== null) {
+          clearStorage()
+        }
+        currentUserId = newUserId
+        
+        // Reset profile state
+        _profile.value = {
+          name: '',
+          email: '',
+          avatar: null,
+          level: 1
+        }
+        
+        // Load from localStorage for the new user (if any)
+        if (newUserId) {
+          loadFromStorage()
+        }
+      }
+      
       if (profile) {
-        const fallbackName = firebaseUser?.displayName || firebaseUser?.email || ""
-        // Only update name if local name is empty or not set
-        if (!_profile.value.name || _profile.value.name.trim() === '') {
-          _profile.value.name = profile.full_name || profile.name || fallbackName || _profile.value.name
+        // Only update avatar from Firebase if no localStorage avatar exists
+        if (!_profile.value.avatar) {
+          _profile.value.avatar = profile.avatar || profile.avatar_url || firebaseUser?.photoURL || _profile.value.avatar
         }
-        _profile.value.email = profile.email || firebaseUser?.email || _profile.value.email
-        _profile.value.avatar = profile.avatar || profile.avatar_url || firebaseUser?.photoURL || _profile.value.avatar
       } else if (firebaseUser) {
-        // Only update name if local name is empty or not set
-        if (!_profile.value.name || _profile.value.name.trim() === '') {
-          _profile.value.name = firebaseUser.displayName || firebaseUser.email || _profile.value.name
+        // Only update avatar from Firebase Auth if no localStorage avatar exists
+        if (!_profile.value.avatar) {
+          _profile.value.avatar = firebaseUser.photoURL || _profile.value.avatar
         }
-        _profile.value.email = firebaseUser.email || _profile.value.email
-        _profile.value.avatar = firebaseUser.photoURL || _profile.value.avatar
+      } else {
+        // User logged out, clear everything
+        currentUserId = null
+        _profile.value = {
+          name: '',
+          email: '',
+          avatar: null,
+          level: 1
+        }
+        clearStorage()
       }
     },
     { immediate: true }
@@ -70,14 +117,11 @@ export function useUserProfile() {
     saveToStorage()
   }
 
-  // Function to save to localStorage
+  // Function to save to localStorage (only avatar)
   function saveToStorage() {
     try {
       const userData = {
-        name: _profile.value.name,
-        email: _profile.value.email,
-        avatar: _profile.value.avatar,
-        level: _profile.value.level
+        avatar: _profile.value.avatar
       }
       localStorage.setItem("demo_user", JSON.stringify(userData))
     } catch (error) {
@@ -85,14 +129,16 @@ export function useUserProfile() {
     }
   }
 
-  // Function to update name
+  // Function to update name (local state only, not saved to localStorage)
   function updateName(name) {
-    updateProfile({ name })
+    _profile.value.name = name
+    // Don't save to localStorage since name comes from Firebase
   }
 
-  // Function to update email
+  // Function to update email (local state only, not saved to localStorage)
   function updateEmail(email) {
-    updateProfile({ email })
+    _profile.value.email = email
+    // Don't save to localStorage since email comes from Firebase
   }
 
   // Function to update avatar
@@ -116,6 +162,7 @@ export function useUserProfile() {
     updateEmail,
     updateAvatar,
     updateLevel,
-    saveToStorage
+    saveToStorage,
+    clearStorage
   }
 }
