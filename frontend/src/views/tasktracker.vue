@@ -590,11 +590,21 @@
             density="compact"
             hide-details
           ></v-text-field>
+          <v-alert
+            v-if="addTaskError"
+            type="error"
+            variant="tonal"
+            color="error"
+            density="compact"
+            class="mt-1 mb-3"
+          >
+            {{ addTaskError }}
+          </v-alert>
         </v-card-text>
         <v-card-actions class="px-5 pb-5">
           <v-spacer></v-spacer>
           <v-btn
-            @click="showAddTask = false"
+            @click="handleCloseAddTaskDialog"
             variant="text"
             class="text-none"
             style="color: var(--text-muted); text-transform: none"
@@ -653,6 +663,7 @@ const tasks = ref([]);
 const stats = ref({ total: 0, completed: 0, dueToday: 0, overdue: 0 });
 const loading = ref(false);
 const errorMessage = ref("");
+const addTaskError = ref("");
 
 const newTaskDefaults = {
   title: "",
@@ -671,6 +682,7 @@ const fetchTasks = async () => {
   loading.value = true;
   errorMessage.value = "";
   try {
+    // construct query params
     const params = new URLSearchParams();
     if (filterStatus.value !== "all") {
       params.append("status", filterStatus.value);
@@ -680,9 +692,11 @@ const fetchTasks = async () => {
     }
     params.append("sortBy", sortBy.value);
 
+    // make api call
     const query = params.toString();
     const response = await api.get(`/api/tasks${query ? `?${query}` : ""}`);
 
+    // handle race condition
     if (token !== fetchToken) return;
 
     tasks.value = Array.isArray(response.tasks) ? response.tasks : [];
@@ -710,6 +724,12 @@ onMounted(fetchTasks);
 
 watch([filterStatus, filterPriority, sortBy], () => {
   fetchTasks();
+});
+
+watch(showAddTask, (value) => {
+  if (!value) {
+    addTaskError.value = "";
+  }
 });
 
 const getFilteredTasks = () => tasks.value;
@@ -743,15 +763,25 @@ const getUpcomingTasks = () => {
 
 // add task
 const handleAddTask = async () => {
-  if (!newTask.value.title.trim()) {
+  errorMessage.value = "";
+  addTaskError.value = "";
+
+  const trimmedTitle = newTask.value.title.trim();
+  if (!trimmedTitle) {
+    addTaskError.value = "Task title is required";
+    return;
+  }
+
+  if (!newTask.value.dueDate) {
+    addTaskError.value = "Please select a due date";
     return;
   }
 
   const payload = {
-    title: newTask.value.title.trim(),
+    title: trimmedTitle,
     status: newTask.value.status,
     priority: newTask.value.priority,
-    dueDate: newTask.value.dueDate || null,
+    dueDate: newTask.value.dueDate,
     category: newTask.value.category || "General",
   };
 
@@ -762,10 +792,15 @@ const handleAddTask = async () => {
     newTask.value = { ...newTaskDefaults };
     await fetchTasks();
   } catch (error) {
-    errorMessage.value = error.message || "Failed to add task";
+    addTaskError.value = error.message || "Failed to add task";
   } finally {
     loading.value = false;
   }
+};
+
+const handleCloseAddTaskDialog = () => {
+  showAddTask.value = false;
+  addTaskError.value = "";
 };
 
 // delete task
