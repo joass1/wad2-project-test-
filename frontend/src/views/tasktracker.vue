@@ -211,7 +211,10 @@
       <v-col
         v-for="status in ['todo', 'inProgress', 'done']"
         :key="status"
-        cols="4"
+        cols="12"
+        sm="12"
+        md="6"
+        lg="4"
       >
         <v-card
           elevation="0"
