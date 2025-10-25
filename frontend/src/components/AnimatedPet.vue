@@ -12,11 +12,8 @@ const props = defineProps({
     required: true
   },
   droppedItems: { type: Array, default: () => [] },  // Items dropped on the background
-  collisionMap: { type: Array, default: () => [] },  // 2D boolean array for tile collision
-  tileSize: { type: Number, default: 32 },  // Size of each tile (32px, no scaling)
-  mapCols: { type: Number, default: 40 },
-  mapRows: { type: Number, default: 25 },
-  manualControl: { type: Boolean, default: false }  // Enable WASD keyboard controls
+  manualControl: { type: Boolean, default: false },  // Enable WASD keyboard controls
+  collisionObjects: { type: Array, default: () => [] }  // Collision rectangles from TMX
 })
 
 const emit = defineEmits(['item-eaten', 'border-warning'])
@@ -49,7 +46,6 @@ const isDragging = ref(false)
 let dragOffset = { x: 0, y: 0 }
 let mouseDownTime = 0
 let mouseDownPos = { x: 0, y: 0 }
-let lastValidPos = { x: 0, y: 0 }  // Store last valid position for collision snap-back
 let lastBorderWarning = 0  // Timestamp of last border warning to prevent spam
 
 // Keyboard controls
@@ -108,50 +104,81 @@ function randomIdleAnim() {
   setAnim(chosen, true)
 }
 
-/* Tile-based collision detection */
-function isPositionValid(x, y) {
-  if (!props.collisionMap || props.collisionMap.length === 0) return true
-
-  const petSize = props.slice * props.scale
-
-  // Check all four corners of the pet's bounding box
-  const corners = [
-    { px: x, py: y },                           // top-left
-    { px: x + petSize, py: y },                 // top-right
-    { px: x, py: y + petSize },                 // bottom-left
-    { px: x + petSize, py: y + petSize }        // bottom-right
-  ]
-
-  for (const corner of corners) {
-    const tileCol = Math.floor(corner.px / props.tileSize)
-    const tileRow = Math.floor(corner.py / props.tileSize)
-
-    // Check bounds
-    if (tileRow < 0 || tileRow >= props.mapRows || tileCol < 0 || tileCol >= props.mapCols) {
-      return false // Out of bounds
-    }
-
-    // Check if tile is solid
-    if (props.collisionMap[tileRow] && props.collisionMap[tileRow][tileCol]) {
-      return false // Solid tile
-    }
-  }
-
-  return true
+/* AABB Collision Detection *
+/**
+ * Check if two rectangles collide
+ * @param {Object} rect1 - {x, y, width, height}
+ * @param {Object} rect2 - {x, y, width, height}
+ * @returns {boolean}
+ */
+function aabbCollision(rect1, rect2) {
+  return (
+    rect1.x < rect2.x + rect2.width &&
+    rect1.x + rect1.width > rect2.x &&
+    rect1.y < rect2.y + rect2.height &&
+    rect1.y + rect1.height > rect2.y
+  )
 }
 
-/* Simple pathfinding - check if path to destination is clear */
-function hasLineOfSight(x1, y1, x2, y2) {
-  const steps = 20
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps
-    const x = x1 + (x2 - x1) * t
-    const y = y1 + (y2 - y1) * t
-    if (!isPositionValid(x, y)) {
-      return false
+/**
+ * Check if position collides with any collision objects
+ * @param {number} x - X position
+ * @param {number} y - Y position
+ * @returns {boolean}
+ */
+function checkCollisionAtPosition(x, y) {
+  if (!props.collisionObjects || props.collisionObjects.length === 0) return false
+
+  const petSize = props.slice * props.scale
+  const petRect = {
+    x,
+    y,
+    width: petSize,
+    height: petSize
+  }
+
+  for (const obj of props.collisionObjects) {
+    if (aabbCollision(petRect, obj)) {
+      return true
     }
   }
-  return true
+
+  return false
+}
+
+/**
+ * Get valid position with smooth wall sliding
+ * Tries to move in both X and Y, then individually if combined movement fails
+ * @param {number} newX - Desired X position
+ * @param {number} newY - Desired Y position
+ * @param {number} currentX - Current X position
+ * @param {number} currentY - Current Y position
+ * @returns {Object} {x, y} - Valid position
+ */
+function getValidPositionWithSliding(newX, newY, currentX, currentY) {
+  const petSize = props.slice * props.scale
+
+  // Clamp to boundaries first
+  newX = Math.max(0, Math.min(newX, bounds.w - petSize))
+  newY = Math.max(0, Math.min(newY, bounds.h - petSize))
+
+  // Try full movement (both X and Y)
+  if (!checkCollisionAtPosition(newX, newY)) {
+    return { x: newX, y: newY }
+  }
+
+  // Try sliding along X axis only (keep current Y)
+  if (!checkCollisionAtPosition(newX, currentY)) {
+    return { x: newX, y: currentY }
+  }
+
+  // Try sliding along Y axis only (keep current X)
+  if (!checkCollisionAtPosition(currentX, newY)) {
+    return { x: currentX, y: newY }
+  }
+
+  // Can't move - stay at current position
+  return { x: currentX, y: currentY }
 }
 
 function chooseDest() {
@@ -160,11 +187,13 @@ function chooseDest() {
   let attempts = 0
   const maxAttempts = 50
 
+  // Try to find a valid random destination (avoiding collisions)
   while (attempts < maxAttempts) {
     const newX = pad + Math.random() * Math.max(0, bounds.w - petSize - pad * 2)
     const newY = pad + Math.random() * Math.max(0, bounds.h - petSize - pad * 2)
 
-    if (isPositionValid(newX, newY)) {
+    // Check if this position is collision-free
+    if (!checkCollisionAtPosition(newX, newY)) {
       dest.x = newX
       dest.y = newY
       return
@@ -172,7 +201,7 @@ function chooseDest() {
     attempts++
   }
 
-  // Fallback: keep current destination if we can't find a valid one
+  // If no valid position found, keep current destination
 }
 
 /* Collision detection with dropped items */
@@ -349,10 +378,6 @@ function handleMouseMove(event) {
     if (!isDragging.value) {
       isDragging.value = true
 
-      // Store current position as last valid position
-      lastValidPos.x = pos.value.x
-      lastValidPos.y = pos.value.y
-
       // Wake up if sleeping
       if (sleeping) {
         wakeUpPet()
@@ -376,10 +401,6 @@ function handleMouseMove(event) {
     // Check if trying to go outside boundaries
     const hitBorder = newX < 0 || newX > bounds.w - petSize || newY < 0 || newY > bounds.h - petSize
 
-    // Clamp to boundaries
-    newX = Math.max(0, Math.min(newX, bounds.w - petSize))
-    newY = Math.max(0, Math.min(newY, bounds.h - petSize))
-
     // Emit warning if hitting border (throttled to once per second)
     if (hitBorder) {
       const now = Date.now()
@@ -389,28 +410,10 @@ function handleMouseMove(event) {
       }
     }
 
-    // Check if new position is valid (not on solid tiles)
-    if (isPositionValid(newX, newY)) {
-      // Valid position - update and store as last valid
-      pos.value.x = newX
-      pos.value.y = newY
-      lastValidPos.x = newX
-      lastValidPos.y = newY
-    } else {
-      // Try sliding along X axis only
-      if (isPositionValid(newX, lastValidPos.y)) {
-        pos.value.x = newX
-        pos.value.y = lastValidPos.y
-        lastValidPos.x = newX
-      }
-      // Try sliding along Y axis only
-      else if (isPositionValid(lastValidPos.x, newY)) {
-        pos.value.x = lastValidPos.x
-        pos.value.y = newY
-        lastValidPos.y = newY
-      }
-      // If neither works, stay at lastValidPos (blocked completely)
-    }
+    // Update position with collision detection and wall sliding
+    const validPos = getValidPositionWithSliding(newX, newY, pos.value.x, pos.value.y)
+    pos.value.x = validPos.x
+    pos.value.y = validPos.y
   }
 }
 
@@ -514,33 +517,26 @@ function loop(t) {
       let newX = pos.value.x + vx * dt
       let newY = pos.value.y + vy * dt
 
-      // Clamp to boundaries
-      newX = Math.min(Math.max(0, newX), bounds.w - petSize)
-      newY = Math.min(Math.max(0, newY), bounds.h - petSize)
+      // Update position with collision detection and wall sliding
+      const validPos = getValidPositionWithSliding(newX, newY, pos.value.x, pos.value.y)
+      pos.value.x = validPos.x
+      pos.value.y = validPos.y
 
-      // Check collision and update position
-      if (isPositionValid(newX, newY)) {
-        pos.value.x = newX
-        pos.value.y = newY
-        lastValidPos.x = newX
-        lastValidPos.y = newY
+      // Set appropriate animation based on direction
+      if (vx !== 0 || vy !== 0) {
+        const absDx = Math.abs(vx)
+        const absDy = Math.abs(vy)
 
-        // Set appropriate animation based on direction
-        if (vx !== 0 || vy !== 0) {
-          const absDx = Math.abs(vx)
-          const absDy = Math.abs(vy)
-
-          // Check if this is a dog and if we should use running animations
-          if (absDx > absDy) {
-            if (vx > 0) setAnim('move_right')
-            else setAnim('move_left')
-          } else {
-            if (vy > 0) setAnim('move_down')
-            else setAnim('move_up')
-          }
+        // Check if this is a dog and if we should use running animations
+        if (absDx > absDy) {
+          if (vx > 0) setAnim('move_right')
+          else setAnim('move_left')
         } else {
-          setAnim('idle')
+          if (vy > 0) setAnim('move_down')
+          else setAnim('move_up')
         }
+      } else {
+        setAnim('idle')
       }
     } else if (!props.manualControl) {
       // Autonomous AI behavior (only when manual control is disabled)
@@ -550,16 +546,10 @@ function loop(t) {
         const targetX = nearestItem.x - petSize / 2
         const targetY = nearestItem.y - petSize / 2
 
-        // Check if path to food is clear
-        if (hasLineOfSight(pos.value.x, pos.value.y, targetX, targetY)) {
-          dest.x = targetX
-          dest.y = targetY
-          idleUntil = 0  // Override any idle time to move immediately
-        } else {
-          // Path is blocked, choose new random destination instead
-          chooseDest()
-          idleUntil = now + (1000 + Math.random() * 2000)
-        }
+        // Move to food (no collision checking)
+        dest.x = targetX
+        dest.y = targetY
+        idleUntil = 0  // Override any idle time to move immediately
       }
 
       if (now >= idleUntil) {
@@ -582,42 +572,31 @@ function loop(t) {
           let newX = pos.value.x + vx * dt
           let newY = pos.value.y + vy * dt
 
-          // Clamp to boundaries
-          newX = Math.min(Math.max(0, newX), bounds.w - petSize)
-          newY = Math.min(Math.max(0, newY), bounds.h - petSize)
+          // Update position with collision detection and wall sliding
+          const validPos = getValidPositionWithSliding(newX, newY, pos.value.x, pos.value.y)
+          pos.value.x = validPos.x
+          pos.value.y = validPos.y
 
-          // Check if new position is valid (not on solid tiles)
-          if (isPositionValid(newX, newY)) {
-            pos.value.x = newX
-            pos.value.y = newY
-            // Update last valid position during automatic movement
-            lastValidPos.x = newX
-            lastValidPos.y = newY
+          // Determine which direction is dominant for animation
+          const absDx = Math.abs(dx)
+          const absDy = Math.abs(dy)
 
-            // Determine which direction is dominant for animation
-            const absDx = Math.abs(dx)
-            const absDy = Math.abs(dy)
-
-            // Choose animation based on dominant direction
-            // Check if this is a dog and if we should use running animations
-            if (absDx > absDy) {
-              // Moving horizontally more than vertically
-              if (vx > 0) {
-                if (animKey !== 'move_right') setAnim('move_right')
-              } else {
-                if (animKey !== 'move_left') setAnim('move_left')
-              }
+          // Choose animation based on dominant direction
+          // Check if this is a dog and if we should use running animations
+          if (absDx > absDy) {
+            // Moving horizontally more than vertically
+            if (vx > 0) {
+              if (animKey !== 'move_right') setAnim('move_right')
             } else {
-              // Moving vertically more than horizontally
-              if (vy > 0) {
-                if (animKey !== 'move_down') setAnim('move_down')
-              } else {
-                if (animKey !== 'move_up') setAnim('move_up')
-              }
+              if (animKey !== 'move_left') setAnim('move_left')
             }
           } else {
-            // Can't move to destination, choose new one
-            chooseDest()
+            // Moving vertically more than horizontally
+            if (vy > 0) {
+              if (animKey !== 'move_down') setAnim('move_down')
+            } else {
+              if (animKey !== 'move_up') setAnim('move_up')
+            }
           }
 
           // more frequent loitering: around 12% chance per second to pause 2–5s (but not if chasing food!)
@@ -735,12 +714,40 @@ onMounted(async () => {
   // auto-detect columns from image width to prevent out-of-range reads
   sheetCols = Math.max(1, Math.floor(img.naturalWidth / props.slice))
 
-  pos.value.x = Math.random() * 120 + 40
-  pos.value.y = Math.random() * 80 + 40
+  // Spawn pet in a safe position (center of map, avoiding collisions)
+  const petSize = props.slice * props.scale
+  const centerX = (bounds.w - petSize) / 2
+  const centerY = (bounds.h - petSize) / 2
 
-  // Initialize last valid position
-  lastValidPos.x = pos.value.x
-  lastValidPos.y = pos.value.y
+  // Try to spawn at center first
+  if (!checkCollisionAtPosition(centerX, centerY)) {
+    pos.value.x = centerX
+    pos.value.y = centerY
+  } else {
+    // If center is blocked, try to find a safe spawn point
+    let spawnAttempts = 0
+    let foundSafeSpot = false
+
+    while (spawnAttempts < 100 && !foundSafeSpot) {
+      const testX = Math.random() * Math.max(0, bounds.w - petSize)
+      const testY = Math.random() * Math.max(0, bounds.h - petSize)
+
+      if (!checkCollisionAtPosition(testX, testY)) {
+        pos.value.x = testX
+        pos.value.y = testY
+        foundSafeSpot = true
+      }
+      spawnAttempts++
+    }
+
+    // Fallback: spawn at center even if blocked (will get corrected on first move)
+    if (!foundSafeSpot) {
+      pos.value.x = centerX
+      pos.value.y = centerY
+    }
+  }
+
+  console.log(`Pet spawned at (${pos.value.x}, ${pos.value.y})`)
 
   chooseDest()
   setAnim('idle')

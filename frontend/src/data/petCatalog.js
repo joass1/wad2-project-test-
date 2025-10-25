@@ -9,7 +9,7 @@
 // Row 6: Falling asleep animation (last frame is sleeping)
 // Row 7: Sleeping curled up (first frame - loop this), Waking up animation (frames 1-3)
 
-const SCALE = 5  // Global pet scale
+const SCALE = 2  // Global pet scale
 
 export const PET_CATALOG = {
   catBlack: {

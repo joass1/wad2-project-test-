@@ -3,11 +3,10 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import AnimatedPet from '@/components/AnimatedPet.vue'
 import SpritePreview from '@/components/SpritePreview.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
-import TileBackground from '@/components/TileBackground.vue'
+import TMXTileBackground from '@/components/TMXTileBackground.vue'
 import { useCoins } from '@/composables/useCoins.js'
 import { useGlobalPet } from '@/composables/useGlobalPet.js'
 import { api } from '@/lib/api.js'
-import { TILE_MAPS, MAP_LIST } from '@/data/tilemaps.js'
 import { PET_CATALOG, PET_KEYS } from '@/data/petCatalog.js'
 
 /* ================= PET CATALOG ================= */
@@ -41,25 +40,24 @@ function selectPet() {
   console.log(`Selected pet: ${PETS[newPetKey].label}`)
 }
 
-/* ==== Tile-based Backgrounds ==== */
-const bgIndex = ref(0)
-const availableBackgrounds = ref(MAP_LIST)
-const currentMapKey = computed(() => availableBackgrounds.value[bgIndex.value].key)
-const currentMapData = computed(() => TILE_MAPS[currentMapKey.value])
+/* ==== TMX Map Backgrounds ==== */
+const tmxMapPath = ref('/background/pet map.tmx')
 
-// Collision map data from TileBackground component
+// Collision data from TMX map
 const collisionData = ref({
-  collisionMap: [],
-  tileSize: 32,  // No scaling
-  cols: 40,
-  rows: 25
+  collisionObjects: [],
+  mapWidth: 0,
+  mapHeight: 0,
+  scale: 1
 })
 
-function previousBackground() { if (bgIndex.value > 0) bgIndex.value-- }
-function nextBackground() { if (bgIndex.value < availableBackgrounds.value.length - 1) bgIndex.value++ }
-
-function handleCollisionMapReady(data) {
+function handleCollisionReady(data) {
   collisionData.value = data
+  console.log('Collision data ready:', data)
+}
+
+function handleMapLoaded(data) {
+  console.log('TMX map loaded:', data)
 }
 
 /* ==== Inventory API ==== */
@@ -412,13 +410,11 @@ onMounted(() => {
         @drop="onDrop"
         @dragover="onDragOver"
       >
-        <!-- Tile-based background -->
-        <TileBackground
-          :key="currentMapKey"
-          :map-data="currentMapData"
-          :tile-size="32"
-          :scale="1"
-          @collision-map-ready="handleCollisionMapReady"
+        <!-- TMX Map Background -->
+        <TMXTileBackground
+          :tmx-path="tmxMapPath"
+          @collision-ready="handleCollisionReady"
+          @map-loaded="handleMapLoaded"
         />
 
         <!-- 🔑 key makes sure AnimatedPet remounts when selectedPetKey changes -->
@@ -430,11 +426,8 @@ onMounted(() => {
           :speed="PETS[selectedPetKey].config.speed"
           :animations="PETS[selectedPetKey].config.animations"
           :dropped-items="droppedItems"
-          :collision-map="collisionData.collisionMap"
-          :tile-size="collisionData.tileSize"
-          :map-cols="collisionData.cols"
-          :map-rows="collisionData.rows"
           :manual-control="manualControlEnabled"
+          :collision-objects="collisionData.collisionObjects"
           @item-eaten="removeDroppedItem"
           @border-warning="handleBorderWarning"
         />
@@ -532,18 +525,6 @@ onMounted(() => {
 
         <!-- Optional now; you can remove if you want instant-switch only -->
         <button class="action-btn" @click="selectPet">Select Pet</button>
-      </div>
-
-      <!-- Background -->
-      <div class="panel-section">
-        <h4 class="section-title">Map</h4>
-        <div class="selection-container">
-          <button class="nav-btn" @click="previousBackground" :disabled="bgIndex === 0">‹</button>
-          <div class="item-display">
-            <div class="map-name-display">{{ availableBackgrounds[bgIndex].name }}</div>
-          </div>
-          <button class="nav-btn" @click="nextBackground" :disabled="bgIndex === availableBackgrounds.length - 1">›</button>
-        </div>
       </div>
 
       <!-- Manual Control -->

@@ -28,7 +28,7 @@ const spriteConfig = computed(() => {
   return {
     spriteUrl: pet.config.spriteUrl,
     slice: pet.config.slice,
-    scale: pet.config.scale * 0.7, // Make global pet 30% smaller than pet page
+    scale: 4, // Make global pet 30% smaller than pet page
     columns: 4, // Auto-detected from image
     animations: pet.config.animations
   }
