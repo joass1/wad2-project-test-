@@ -182,6 +182,81 @@ def update_user_inventory(payload: dict, user: dict = Depends(require_user)):
     return {"ok": True, "inventory": inventory, "message": "Inventory updated successfully"}
 
 
+@router.delete("/account")
+def delete_user_account(user: dict = Depends(require_user)):
+    """Delete user account and all associated data"""
+    uid = user["uid"]
+    try:
+        # List of collections to clean up
+        collections_to_clean = [
+            "wellness_checkins",
+            "study_sessions", 
+            "tasks",
+            "achievements",
+            "notifications",
+        ]
+        
+        # Delete documents from root collections
+        for collection_name in collections_to_clean:
+            try:
+                # Delete documents where user_id matches
+                docs = db.collection(collection_name).where("user_id", "==", uid).stream()
+                for doc in docs:
+                    doc.reference.delete()
+                
+                # Delete documents where uid matches (alternative field name)
+                docs = db.collection(collection_name).where("uid", "==", uid).stream()
+                for doc in docs:
+                    doc.reference.delete()
+                    
+                print(f"Cleaned up {collection_name} collection for user {uid}")
+            except Exception as e:
+                print(f"Error deleting from {collection_name}: {str(e)}")
+        
+        # Delete user's subcollections (Firestore doesn't auto-delete these)
+        try:
+            # Delete notifications subcollection
+            notifications_ref = db.collection("users").document(uid).collection("notifications")
+            notifications = notifications_ref.stream()
+            for notification in notifications:
+                notification.reference.delete()
+            print(f"Deleted notifications subcollection for user {uid}")
+            
+            # Delete study sessions subcollection
+            study_sessions_ref = db.collection("users").document(uid).collection("studySessions")
+            study_sessions = study_sessions_ref.stream()
+            for session in study_sessions:
+                session.reference.delete()
+            print(f"Deleted studySessions subcollection for user {uid}")
+            
+            # Delete wellness checkins subcollection
+            wellness_ref = db.collection("users").document(uid).collection("wellness_checkins")
+            wellness_checkins = wellness_ref.stream()
+            for checkin in wellness_checkins:
+                checkin.reference.delete()
+            print(f"Deleted wellness_checkins subcollection for user {uid}")
+            
+            # Delete achievements subcollection
+            achievements_ref = db.collection("users").document(uid).collection("achievements")
+            achievements = achievements_ref.stream()
+            for achievement in achievements:
+                achievement.reference.delete()
+            print(f"Deleted achievements subcollection for user {uid}")
+            
+        except Exception as e:
+            print(f"Error deleting subcollections: {str(e)}")
+        
+        # Finally, delete the main user document
+        db.collection("users").document(uid).delete()
+        print(f"Deleted main user document for user {uid}")
+        
+        return {"ok": True, "message": "All user data has been successfully deleted from the database"}
+        
+    except Exception as e:
+        print(f"Error deleting user account: {str(e)}")
+        return {"ok": False, "message": f"Failed to delete user data: {str(e)}"}
+
+
 @router.post("/seed-test-data")
 def seed_test_data(user: dict = Depends(require_user)):
     """Add test data for development/testing (FOR TESTING ONLY)"""

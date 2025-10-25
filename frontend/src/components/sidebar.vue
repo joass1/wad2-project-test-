@@ -11,7 +11,7 @@
     <div class="sidebar-container">
       <!-- Profile header -->
       <div class="profile-header">
-        <div class="profile-avatar-container">
+        <div class="profile-avatar-container" @click="navigateToProfile">
           <div class="profile-avatar">
             <img v-if="displayAvatar" :src="displayAvatar" alt="Profile Avatar" class="avatar-image" />
             <span v-else class="avatar-text">{{ displayName.charAt(0).toUpperCase() }}</span>
@@ -101,6 +101,7 @@
 
 <script setup>
 import { watch } from 'vue'
+import { useRouter } from 'vue-router'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import { useCoins } from '@/composables/useCoins.js'
@@ -113,6 +114,9 @@ defineProps({
 
 defineEmits(['update:modelValue'])
 
+// Router for navigation
+const router = useRouter()
+
 // Use shared coin state
 const { coins, coinsLoading, coinsError, fetchCoins } = useCoins()
 
@@ -121,6 +125,11 @@ const { displayName, displayAvatar, level } = useUserProfile()
 
 // Use auth state to wait for authentication
 const { loading: authLoading, isAuthed } = useAuth()
+
+// Navigate to profile page
+function navigateToProfile() {
+  router.push('/profile')
+}
 
 // Watch for authentication to be ready before fetching coins
 watch([authLoading, isAuthed], ([loading, authed]) => {
@@ -196,12 +205,19 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
   border: 2px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
 }
 
 .profile-avatar-container:hover {
   background: rgba(255, 255, 255, 0.8);
   transform: translateY(-2px);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.profile-avatar-container:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 /* Dark mode profile header */
@@ -214,6 +230,11 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
 [data-theme="dark"] .profile-avatar-container:hover {
   background: rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .profile-avatar-container:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .profile-avatar {

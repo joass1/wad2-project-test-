@@ -605,6 +605,32 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete Success Modal -->
+    <div v-if="showDeleteSuccessModal" class="modal-overlay">
+      <div class="modal-content success-modal">
+        <div class="success-header">
+          <div class="success-icon">😔</div>
+          <h3 class="success-title">Oh no, it's sad to see you go...</h3>
+        </div>
+        <div class="success-body">
+          <p class="success-message">
+            Your account has been successfully deleted.
+          </p>
+          <p class="goodbye-message">
+            Thank you for using pomogotchi! You're welcome back anytime. 💙
+          </p>
+        </div>
+        <div class="success-footer">
+          <div class="countdown-text">
+            Redirecting to login in <span class="countdown-number">{{ deleteCountdown }}</span> seconds...
+          </div>
+          <button class="success-btn" @click="router.push('/login')">
+            Go to Login
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -626,6 +652,8 @@ const showSuccessToast = ref(false);
 const showAvatarModal = ref(false);
 const showLogoutModal = ref(false);
 const showDeleteModal = ref(false);
+const showDeleteSuccessModal = ref(false);
+const deleteCountdown = ref(3);
 const deleteChallenge = reactive({ a: 0, b: 0, op: '+', userInput: '' });
 const isDeleteAnswerCorrect = ref(false);
 const avatarInput = ref(null);
@@ -1133,10 +1161,51 @@ function closeDeleteModal() {
   showDeleteModal.value = false;
 }
 
-function confirmDeleteProceed() {
+async function confirmDeleteProceed() {
   showDeleteModal.value = false;
-  // Implement deletion here (API call). For demo, sign out afterward.
-  logout();
+  
+  try {
+    // Step 1: Call backend to delete all user data from Firestore collections
+    await api.del("/api/profile/account");
+    console.log("User data deleted from backend collections");
+    
+    // Step 2: Delete user from Firebase Authentication
+    const { deleteUser } = await import("firebase/auth");
+    const currentUser = authUser.value;
+    
+    if (currentUser) {
+      await deleteUser(currentUser);
+      console.log("User account deleted from Firebase Authentication");
+    }
+    
+    // Step 3: Clear local state and redirect
+    // The auth state will be automatically cleared when Firebase Auth detects the user deletion
+    
+    // Show success message and redirect
+    showDeleteSuccessModal.value = true;
+    deleteCountdown.value = 3;
+    
+    // Start countdown
+    const countdownInterval = setInterval(() => {
+      deleteCountdown.value--;
+      if (deleteCountdown.value <= 0) {
+        clearInterval(countdownInterval);
+        router.push("/login");
+      }
+    }, 1000);
+    
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    
+    // Check if error is due to requiring recent authentication
+    if (error.code === 'auth/requires-recent-login') {
+      alert("For security reasons, please sign out and sign in again before deleting your account.");
+    } else if (error.code === 'auth/user-token-expired') {
+      alert("Your session has expired. Please sign in again before deleting your account.");
+    } else {
+      alert(`Failed to delete account: ${error.message}`);
+    }
+  }
 }
 
 function resetNotificationSettings() {
@@ -2192,6 +2261,128 @@ async function saveSettings() {
 
 .btn-icon.rotated {
   transform: rotate(180deg);
+}
+
+/* Success Modal Styles */
+.success-modal {
+  max-width: 400px;
+  text-align: center;
+  animation: successSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes successSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.success-header {
+  margin-bottom: 20px;
+}
+
+.success-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  animation: gentleBounce 0.8s ease-out;
+}
+
+@keyframes gentleBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.success-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.success-body {
+  margin-bottom: 32px;
+}
+
+.success-message {
+  font-size: 16px;
+  color: var(--text-primary);
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.goodbye-message {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 0;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.success-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.countdown-text {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.countdown-number {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 16px;
+}
+
+.success-btn {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(106, 122, 90, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.success-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: transform 0.6s ease;
+}
+
+.success-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.success-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(106, 122, 90, 0.4);
+}
+
+.success-btn:active {
+  transform: translateY(0);
 }
 
 
