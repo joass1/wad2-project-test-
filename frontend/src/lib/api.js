@@ -31,6 +31,8 @@ export const api = {
   get: (path) => authorizedFetch(path),
   post: (path, body) =>
     authorizedFetch(path, { method: "POST", body: JSON.stringify(body) }),
+  patch: (path, body) =>
+    authorizedFetch(path, { method: "PATCH", body: JSON.stringify(body) }),
   put: (path, body) =>
     authorizedFetch(path, { method: "PUT", body: JSON.stringify(body) }),
   del: (path) => authorizedFetch(path, { method: "DELETE" }),
