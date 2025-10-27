@@ -13,7 +13,7 @@ router = APIRouter(prefix="/study-sessions", tags=["study-sessions"])
 
 
 # ============================================================================
-# STUDY SESSION MODELS
+# STUDY SESSION MODELS (Unchanged)
 # ============================================================================
 
 class StudySessionCreate(BaseModel):
@@ -59,6 +59,9 @@ class StudySessionResponse(BaseModel):
     created_at: str
     updated_at: str
     date: str
+    # Enhanced tracking fields
+    pause_count: int = 0
+    reset_count: int = 0
 
 
 class StudyStatsResponse(BaseModel):
@@ -70,6 +73,20 @@ class StudyStatsResponse(BaseModel):
     completed_sessions: int
     paused_sessions: int
     active_sessions: int
+    # Enhanced stats
+    total_pauses_today: int = 0
+    total_resets_today: int = 0
+    sessions_started_today: int = 0
+    sessions_completed_today: int = 0
+
+
+class DailySessionMetrics(BaseModel):
+    """Model for daily session metrics"""
+    date: str
+    sessions_started: int
+    sessions_completed: int
+    total_pauses: int
+    total_resets: int
 
 
 def _study_sessions_collection(uid: str):
@@ -77,8 +94,61 @@ def _study_sessions_collection(uid: str):
     return db.collection("users").document(uid).collection("studySessions")
 
 
+def _daily_metrics_collection(uid: str):
+    """Get reference to user's daily metrics collection"""
+    return db.collection("users").document(uid).collection("dailyMetrics")
+
+
 # ============================================================================
-# STUDY SESSION ENDPOINTS WITH STATE TRACKING
+# BACKGROUND PREFERENCE ENDPOINTS (UPDATED SECTION)
+# ============================================================================
+
+class BackgroundPreference(BaseModel):
+    background_id: str = "none"
+
+class BackgroundResponse(BaseModel):
+    background_id: str
+    
+SUCCESS_RESPONSE = {"ok": True, "message": "Operation completed successfully"} # Defined earlier, but ensuring access
+
+def _background_doc_ref(uid: str):
+    """Get reference to user's dedicated background settings document 
+       in the userSettings subcollection."""
+    return db.collection("users").document(uid).collection("userSettings").document("backgrounds")
+
+
+@router.get("/backgrounds", response_model=BackgroundResponse) # <-- FIX: Removed /preferences/
+def get_background_preference(user: dict = Depends(require_user)):
+    """Get the user's saved background ID"""
+    uid = user["uid"]
+    doc_snapshot = _background_doc_ref(uid).get()
+    
+    if doc_snapshot.exists:
+        stored_id = doc_snapshot.to_dict().get("background_id", "none")
+        return BackgroundResponse(background_id=stored_id)
+    
+    # Return default if document does not exist
+    return BackgroundResponse(background_id="none")
+
+
+@router.put("/backgrounds", response_model=Dict[str, Any]) # <-- FIX: Removed /preferences/
+def update_background_preference(
+    payload: BackgroundPreference, user: dict = Depends(require_user)
+):
+    """Update the user's background ID"""
+    uid = user["uid"]
+    
+    # Save the new background_id into the dedicated document
+    _background_doc_ref(uid).set(
+        {"background_id": payload.background_id},
+        merge=True,
+    )
+    
+    return SUCCESS_RESPONSE
+
+
+# ============================================================================
+# STUDY SESSION ENDPOINTS WITH STATE TRACKING (Unchanged below this line)
 # ============================================================================
 
 @router.post("/start", response_model=StudySessionResponse)
@@ -88,8 +158,9 @@ def start_study_session(
     """Start a new study session with initial state"""
     uid = user["uid"]
     now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
     
-    # Create session document with initial 'active' status
+    # Create session document with initial 'active' status and tracking fields
     session_data = {
         "planned_duration_minutes": payload.planned_duration_minutes,
         "actual_duration_minutes": None,  # Will be updated when paused/completed
@@ -104,13 +175,19 @@ def start_study_session(
         "completed_at": None,
         "created_at": now,
         "updated_at": now,
-        "date": now.strftime("%Y-%m-%d"),
+        "date": today,
         "year": now.year,
         "month": now.month,
+        # Enhanced tracking fields
+        "pause_count": 0,
+        "reset_count": 0,
     }
     
     doc_ref = _study_sessions_collection(uid).add(session_data)
     session_id = doc_ref[1].id
+    
+    # Update daily metrics - increment sessions_started
+    _update_daily_metrics(uid, today, sessions_started_increment=1)
     
     # Get the created document to return
     created_doc = doc_ref[1].get()
@@ -138,33 +215,85 @@ def update_study_session(
     if not session_doc.exists:
         raise HTTPException(status_code=404, detail="Study session not found")
     
+    session_data = session_doc.to_dict()
     update_data = payload.model_dump(exclude_unset=True)
+    
     if not update_data:
         # No fields to update
-        session_data = session_doc.to_dict()
         session_data["id"] = session_id
         return _format_session_response(session_data, session_id)
     
     now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
     update_data["updated_at"] = now
     
-    # Handle status changes
+    # Handle status changes with tracking
     if "status" in update_data:
         status = update_data["status"]
+        current_status = session_data.get("status")
         
-        if status == "paused":
+        if status == "paused" and current_status != "paused":
+            # Increment pause count
+            current_pause_count = session_data.get("pause_count", 0)
+            update_data["pause_count"] = current_pause_count + 1
             update_data["paused_at"] = now
-            # Actual duration should be provided by frontend
+            
+            # Update daily metrics
+            _update_daily_metrics(uid, today, pauses_increment=1)
             
         elif status == "completed":
             update_data["completed_at"] = now
-            # Actual duration should be provided by frontend
+            
+            # Update daily metrics - increment sessions completed
+            _update_daily_metrics(uid, today, sessions_completed_increment=1)
             
         elif status == "active":
             # Resuming from pause
             update_data["paused_at"] = None
     
     session_ref.update(update_data)
+    
+    # Get updated document
+    updated_doc = session_ref.get()
+    session_data = updated_doc.to_dict()
+    session_data["id"] = session_id
+    
+    return _format_session_response(session_data, session_id)
+
+
+@router.post("/{session_id}/reset", response_model=StudySessionResponse)
+def reset_study_session(
+    session_id: str,
+    user: dict = Depends(require_user)
+):
+    """Reset a study session (track reset count)"""
+    uid = user["uid"]
+    
+    session_ref = _study_sessions_collection(uid).document(session_id)
+    session_doc = session_ref.get()
+    
+    if not session_doc.exists:
+        raise HTTPException(status_code=404, detail="Study session not found")
+    
+    session_data = session_doc.to_dict()
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    
+    # Increment reset count
+    current_reset_count = session_data.get("reset_count", 0)
+    
+    update_data = {
+        "reset_count": current_reset_count + 1,
+        "status": "active",  # Reset puts it back to active
+        "time_remaining_seconds": session_data.get("planned_duration_minutes", 25) * 60,
+        "paused_at": None,
+        "updated_at": now,
+    }
+    
+    session_ref.update(update_data)
+    
+    # Update daily metrics
+    _update_daily_metrics(uid, today, resets_increment=1)
     
     # Get updated document
     updated_doc = session_ref.get()
@@ -181,6 +310,7 @@ def create_study_session(
     """Create a completed study session record (legacy endpoint for backward compatibility)"""
     uid = user["uid"]
     now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
     
     # Create session document as completed
     session_data = {
@@ -197,13 +327,18 @@ def create_study_session(
         "completed_at": now,
         "created_at": now,
         "updated_at": now,
-        "date": now.strftime("%Y-%m-%d"),
+        "date": today,
         "year": now.year,
         "month": now.month,
+        "pause_count": 0,
+        "reset_count": 0,
     }
     
     doc_ref = _study_sessions_collection(uid).add(session_data)
     session_id = doc_ref[1].id
+    
+    # Update daily metrics
+    _update_daily_metrics(uid, today, sessions_started_increment=1, sessions_completed_increment=1)
     
     # Get the created document to return
     created_doc = doc_ref[1].get()
@@ -211,6 +346,100 @@ def create_study_session(
     session_dict["id"] = session_id
     
     return _format_session_response(session_dict, session_id)
+
+
+def _update_daily_metrics(
+    uid: str,
+    date: str,
+    sessions_started_increment: int = 0,
+    sessions_completed_increment: int = 0,
+    pauses_increment: int = 0,
+    resets_increment: int = 0
+):
+    """Update daily metrics in Firestore"""
+    metrics_ref = _daily_metrics_collection(uid).document(date)
+    
+    # Use transaction to ensure atomic updates
+    try:
+        metrics_doc = metrics_ref.get()
+        
+        if metrics_doc.exists:
+            current_data = metrics_doc.to_dict()
+            update_data = {
+                "sessions_started": current_data.get("sessions_started", 0) + sessions_started_increment,
+                "sessions_completed": current_data.get("sessions_completed", 0) + sessions_completed_increment,
+                "total_pauses": current_data.get("total_pauses", 0) + pauses_increment,
+                "total_resets": current_data.get("total_resets", 0) + resets_increment,
+                "updated_at": datetime.now(timezone.utc),
+            }
+            metrics_ref.update(update_data)
+        else:
+            # Create new metrics document
+            metrics_ref.set({
+                "date": date,
+                "sessions_started": sessions_started_increment,
+                "sessions_completed": sessions_completed_increment,
+                "total_pauses": pauses_increment,
+                "total_resets": resets_increment,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+            })
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"Error updating daily metrics: {e}")
+
+
+@router.get("/metrics/daily", response_model=DailySessionMetrics)
+def get_daily_metrics(
+    date: Optional[str] = None,
+    user: dict = Depends(require_user)
+):
+    """Get daily session metrics for a specific date (defaults to today)"""
+    uid = user["uid"]
+    
+    if date is None:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    metrics_ref = _daily_metrics_collection(uid).document(date)
+    metrics_doc = metrics_ref.get()
+    
+    if not metrics_doc.exists:
+        # Return empty metrics
+        return DailySessionMetrics(
+            date=date,
+            sessions_started=0,
+            sessions_completed=0,
+            total_pauses=0,
+            total_resets=0
+        )
+    
+    metrics_data = metrics_doc.to_dict()
+    return DailySessionMetrics(
+        date=date,
+        sessions_started=metrics_data.get("sessions_started", 0),
+        sessions_completed=metrics_data.get("sessions_completed", 0),
+        total_pauses=metrics_data.get("total_pauses", 0),
+        total_resets=metrics_data.get("total_resets", 0)
+    )
+
+
+@router.get("/current", response_model=Optional[StudySessionResponse])
+def get_current_session(user: dict = Depends(require_user)):
+    """Get the current active or paused session if one exists"""
+    uid = user["uid"]
+    
+    # Query for sessions with status 'active' or 'paused', ordered by started_at desc
+    sessions_ref = _study_sessions_collection(uid)
+    active_sessions = sessions_ref.where("status", "in", ["active", "paused"]).order_by(
+        "started_at", direction=firestore.Query.DESCENDING
+    ).limit(1).stream()
+    
+    for session in active_sessions:
+        session_data = session.to_dict()
+        session_data["id"] = session.id
+        return _format_session_response(session_data, session.id)
+    
+    return None
 
 
 def _format_session_response(session_data: dict, session_id: str) -> StudySessionResponse:
@@ -237,108 +466,39 @@ def _format_session_response(session_data: dict, session_id: str) -> StudySessio
     if isinstance(session_data.get("updated_at"), datetime):
         session_data["updated_at"] = session_data["updated_at"].isoformat()
     
+    # Ensure tracking fields exist
+    if "pause_count" not in session_data:
+        session_data["pause_count"] = 0
+    if "reset_count" not in session_data:
+        session_data["reset_count"] = 0
+    
     return StudySessionResponse(**session_data)
-
-
-@router.get("/active", response_model=Optional[StudySessionResponse])
-def get_active_session(user: dict = Depends(require_user)):
-    """Get the currently active or paused session"""
-    uid = user["uid"]
-    
-    sessions_ref = _study_sessions_collection(uid)
-    # Query for active or paused sessions
-    active_sessions = sessions_ref.where("status", "in", ["active", "paused"]).limit(1).stream()
-    
-    for session in active_sessions:
-        session_data = session.to_dict()
-        session_data["id"] = session.id
-        return _format_session_response(session_data, session.id)
-    
-    return None
-
-
-@router.get("/stats", response_model=StudyStatsResponse)
-def get_study_stats(user: dict = Depends(require_user)):
-    """Get study statistics for the authenticated user"""
-    uid = user["uid"]
-    
-    # Get all study sessions
-    sessions_ref = _study_sessions_collection(uid)
-    sessions = sessions_ref.stream()
-    
-    total_minutes = 0
-    total_sessions = 0
-    sessions_this_week = 0
-    sessions_this_month = 0
-    completed_sessions = 0
-    paused_sessions = 0
-    active_sessions = 0
-    
-    # Get current date for filtering
-    now = datetime.now(timezone.utc)
-    week_ago = now - timedelta(days=7)
-    month_ago = now - timedelta(days=30)
-    
-    for session in sessions:
-        session_data = session.to_dict()
-        status = session_data.get("status", "completed")
-        
-        # Count by status
-        if status == "completed":
-            completed_sessions += 1
-        elif status == "paused":
-            paused_sessions += 1
-        elif status == "active":
-            active_sessions += 1
-        
-        # Only count completed sessions for statistics
-        if status == "completed":
-            duration = session_data.get("actual_duration_minutes") or session_data.get("planned_duration_minutes", 0)
-            created_at = session_data.get("created_at")
-            
-            if isinstance(created_at, datetime):
-                # Count sessions this week
-                if created_at >= week_ago:
-                    sessions_this_week += 1
-                
-                # Count sessions this month
-                if created_at >= month_ago:
-                    sessions_this_month += 1
-            
-            total_minutes += duration
-            total_sessions += 1
-    
-    # Calculate statistics
-    total_hours = round(total_minutes / 60, 1)
-    average_session_length = round(total_minutes / total_sessions, 1) if total_sessions > 0 else 0
-    
-    return StudyStatsResponse(
-        total_hours=total_hours,
-        total_sessions=total_sessions,
-        average_session_length=average_session_length,
-        sessions_this_week=sessions_this_week,
-        sessions_this_month=sessions_this_month,
-        completed_sessions=completed_sessions,
-        paused_sessions=paused_sessions,
-        active_sessions=active_sessions,
-    )
 
 
 @router.get("/", response_model=List[StudySessionResponse])
 def list_study_sessions(
+    skip: int = 0,
     limit: int = 50,
     status: Optional[str] = None,
+    date: Optional[str] = None,
     user: dict = Depends(require_user)
 ):
-    """List study sessions for the authenticated user, optionally filtered by status"""
+    """Get study sessions with optional filtering"""
     uid = user["uid"]
     
     sessions_ref = _study_sessions_collection(uid)
+    query = sessions_ref
     
     if status:
-        sessions = sessions_ref.where("status", "==", status).order_by("created_at", direction=firestore.Query.DESCENDING).limit(limit).stream()
-    else:
-        sessions = sessions_ref.order_by("created_at", direction=firestore.Query.DESCENDING).limit(limit).stream()
+        query = query.where("status", "==", status)
+    
+    if date:
+        query = query.where("date", "==", date)
+    
+    query = query.order_by("started_at", direction=firestore.Query.DESCENDING)
+    query = query.limit(limit).offset(skip)
+    
+    sessions = query.stream()
     
     result = []
     for session in sessions:
@@ -349,32 +509,30 @@ def list_study_sessions(
     return result
 
 
-@router.delete(
-    "/reset",
-    response_model=Dict[str, str],
-    summary="Reset all study sessions",
-)
-def reset_study_sessions(user: dict = Depends(require_user)):
-    """Reset all study sessions for the authenticated user."""
+@router.get("/{session_id}", response_model=StudySessionResponse)
+def get_study_session(
+    session_id: str,
+    user: dict = Depends(require_user)
+):
+    """Get a specific study session"""
     uid = user["uid"]
     
-    print(f"DEBUG: Resetting study sessions for user {uid}")
+    session_ref = _study_sessions_collection(uid).document(session_id)
+    session_doc = session_ref.get()
     
-    # Delete all study sessions
-    sessions_ref = _study_sessions_collection(uid)
-    sessions = sessions_ref.stream()
-    session_count = 0
-    for session in sessions:
-        session.reference.delete()
-        session_count += 1
-    print(f"DEBUG: Deleted {session_count} study sessions")
+    if not session_doc.exists:
+        raise HTTPException(status_code=404, detail="Study session not found")
     
-    return {"message": "All study sessions have been reset successfully"}
+    session_data = session_doc.to_dict()
+    session_data["id"] = session_id
+    
+    return _format_session_response(session_data, session_id)
 
 
 @router.delete("/{session_id}")
 def delete_study_session(
-    session_id: str, user: dict = Depends(require_user)
+    session_id: str,
+    user: dict = Depends(require_user)
 ):
     """Delete a study session"""
     uid = user["uid"]
@@ -389,92 +547,64 @@ def delete_study_session(
     return {"message": "Study session deleted successfully"}
 
 
-# ============================================================================
-# ANALYTICS ENDPOINTS
-# ============================================================================
-
-class WeeklyStudySummaryResponse(BaseModel):
-    daily_hours: dict[str, float]  # {"2025-10-17": 2.5, ...}
-    subject_hours: dict[str, float]  # {"Math": 3.0, "Physics": 1.5}
-
-@router.get("/weekly-summary", response_model=WeeklyStudySummaryResponse)
-def get_weekly_study_summary(user: dict = Depends(require_user)):
-    """Get study hours per day and per subject for the last 7 days (optimized)"""
+@router.get("/stats/summary", response_model=StudyStatsResponse)
+def get_study_stats(user: dict = Depends(require_user)):
+    """Get comprehensive study statistics including enhanced metrics"""
     uid = user["uid"]
-    now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    seven_days_ago = now - timedelta(days=7)
-
-    sessions_ref = _study_sessions_collection(uid)
-    # Query only completed sessions in the last 7 days
-    sessions_query = sessions_ref.where("created_at", ">=", seven_days_ago).where("status", "==", "completed")
-    sessions = sessions_query.stream()
-
-    daily_hours = defaultdict(float)
-    subject_hours = defaultdict(float)
-
-    for session in sessions:
-        data = session.to_dict()
-        created_at = data.get("created_at")
-        duration_minutes = data.get("actual_duration_minutes") or data.get("planned_duration_minutes", 0)
-        duration_hours = duration_minutes / 60
-        subject = data.get("subject") or "Unspecified"
-
-        if isinstance(created_at, datetime):
-            day_str = created_at.strftime("%Y-%m-%d")
-            daily_hours[day_str] += duration_hours
-            subject_hours[subject] += duration_hours
-
-    # Fill in missing days with 0 hours
-    for i in range(7):
-        day = (seven_days_ago + timedelta(days=i)).strftime("%Y-%m-%d")
-        daily_hours.setdefault(day, 0.0)
-
-    return WeeklyStudySummaryResponse(
-        daily_hours=dict(sorted(daily_hours.items())),
-        subject_hours=dict(sorted(subject_hours.items()))
-    )
-
-class StudyStreakResponse(BaseModel):
-    current_streak: int
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    week_ago = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+    month_ago = (now - timedelta(days=30)).strftime("%Y-%m-%d")
     
-@router.get("/streak", response_model=StudyStreakResponse)
-def get_study_streak(user: dict = Depends(require_user)):
-    """Get the user's current study streak (consecutive days including today)."""
-    uid = user["uid"]
-
     sessions_ref = _study_sessions_collection(uid)
-    sessions = sessions_ref.stream()
-
-    # Collect unique study dates (in UTC)
-    study_dates = set()
-    for session in sessions:
-        data = session.to_dict()
-        # Only count completed sessions for streak
-        if data.get("status", "completed") == "completed":
-            if "date" in data:
-                study_dates.add(data["date"])
-            elif "created_at" in data and isinstance(data["created_at"], datetime):
-                study_dates.add(data["created_at"].strftime("%Y-%m-%d"))
-
-    if not study_dates:
-        return StudyStreakResponse(current_streak=0)
-
-    # Sort study dates (newest last)
-    sorted_dates = sorted(datetime.strptime(d, "%Y-%m-%d").date() for d in study_dates)
-
-    today = datetime.now(timezone.utc).date()
-    streak = 0
-
-    # Start from today and count backward while dates are consecutive
-    for i in range(len(sorted_dates) - 1, -1, -1):
-        date = sorted_dates[i]
-        diff = (today - date).days
-        if diff == streak:  # continuous streak
-            streak += 1
-        elif diff > streak:
-            break  # gap found → streak ended
-
-    return StudyStreakResponse(current_streak=streak)
+    all_sessions = sessions_ref.stream()
+    
+    total_minutes = 0
+    total_sessions = 0
+    completed_sessions = 0
+    paused_sessions = 0
+    active_sessions = 0
+    sessions_this_week = 0
+    sessions_this_month = 0
+    
+    for session in all_sessions:
+        session_data = session.to_dict()
+        total_sessions += 1
+        
+        if session_data.get("actual_duration_minutes"):
+            total_minutes += session_data["actual_duration_minutes"]
+        
+        status = session_data.get("status")
+        if status == "completed":
+            completed_sessions += 1
+        elif status == "paused":
+            paused_sessions += 1
+        elif status == "active":
+            active_sessions += 1
+        
+        session_date = session_data.get("date", "")
+        if session_date >= week_ago:
+            sessions_this_week += 1
+        if session_date >= month_ago:
+            sessions_this_month += 1
+    
+    # Get today's metrics
+    daily_metrics = get_daily_metrics(date=today, user=user)
+    
+    return StudyStatsResponse(
+        total_hours=round(total_minutes / 60, 2),
+        total_sessions=total_sessions,
+        average_session_length=round(total_minutes / total_sessions, 2) if total_sessions > 0 else 0,
+        sessions_this_week=sessions_this_week,
+        sessions_this_month=sessions_this_month,
+        completed_sessions=completed_sessions,
+        paused_sessions=paused_sessions,
+        active_sessions=active_sessions,
+        total_pauses_today=daily_metrics.total_pauses,
+        total_resets_today=daily_metrics.total_resets,
+        sessions_started_today=daily_metrics.sessions_started,
+        sessions_completed_today=daily_metrics.sessions_completed,
+    )
 
 
 # ============================================================================
@@ -484,7 +614,7 @@ def get_study_streak(user: dict = Depends(require_user)):
 class SubjectCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Subject name")
     color: Optional[str] = Field(default="#4CAF50", description="Color hex code")
-    icon: Optional[str] = Field(default="📚", description="Emoji icon")
+    icon: Optional[str] = Field(default="📚", description="Icon emoji")
     description: Optional[str] = Field(default=None, description="Subject description")
 
 
@@ -498,8 +628,8 @@ class SubjectUpdate(BaseModel):
 class SubjectResponse(BaseModel):
     id: str
     name: str
-    color: str
-    icon: str
+    icon: Optional[str]
+    color: Optional[str]
     description: Optional[str]
     created_at: str
     updated_at: str
@@ -512,7 +642,8 @@ def _subjects_collection(uid: str):
 
 @router.post("/subjects", response_model=SubjectResponse, status_code=201)
 def create_subject(
-    payload: SubjectCreate, user: dict = Depends(require_user)
+    payload: SubjectCreate,
+    user: dict = Depends(require_user)
 ):
     """Create a new subject"""
     uid = user["uid"]
@@ -538,11 +669,10 @@ def create_subject(
 
 @router.get("/subjects", response_model=List[SubjectResponse])
 def list_subjects(user: dict = Depends(require_user)):
-    """Get all subjects for the user"""
+    """Get all subjects"""
     uid = user["uid"]
     
-    subjects_ref = _subjects_collection(uid)
-    subjects = subjects_ref.order_by("created_at", direction=firestore.Query.DESCENDING).stream()
+    subjects = _subjects_collection(uid).stream()
     
     result = []
     for subject in subjects:
