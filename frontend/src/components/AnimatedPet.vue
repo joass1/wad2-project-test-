@@ -57,6 +57,37 @@ const keysPressed = {
 }
 let lastKeyPressTime = 0  // Track when user last pressed a key
 
+/* Hitbox adjustment constants */
+// Adjust hitbox to be smaller than sprite - tuned for better collision feel
+const HITBOX_WIDTH_RATIO = 0.4    // 60% of sprite width
+const HITBOX_HEIGHT_RATIO = 0.5   // 70% of sprite height
+const HITBOX_Y_OFFSET_RATIO = 0.5 // Start hitbox 40% down from top (keeps bottom aligned)
+
+/**
+ * Calculate adjusted hitbox for the pet
+ * @param {number} x - Pet X position
+ * @param {number} y - Pet Y position
+ * @returns {Object} {x, y, width, height} - Adjusted hitbox rectangle
+ */
+function getPetHitbox(x, y) {
+  const petSize = props.slice * props.scale
+
+  // Calculate adjusted dimensions
+  const hitboxWidth = petSize * HITBOX_WIDTH_RATIO
+  const hitboxHeight = petSize * HITBOX_HEIGHT_RATIO
+
+  // Center horizontally, offset vertically to keep bottom aligned
+  const hitboxX = x + (petSize - hitboxWidth) / 2
+  const hitboxY = y + (petSize * HITBOX_Y_OFFSET_RATIO)
+
+  return {
+    x: hitboxX,
+    y: hitboxY,
+    width: hitboxWidth,
+    height: hitboxHeight
+  }
+}
+
 /* Helpers */
 function setAnim(key, once = false, queueNext = null) {
   // Check if animation exists
@@ -129,13 +160,8 @@ function aabbCollision(rect1, rect2) {
 function checkCollisionAtPosition(x, y) {
   if (!props.collisionObjects || props.collisionObjects.length === 0) return false
 
-  const petSize = props.slice * props.scale
-  const petRect = {
-    x,
-    y,
-    width: petSize,
-    height: petSize
-  }
+  // Use adjusted hitbox instead of full sprite size
+  const petRect = getPetHitbox(x, y)
 
   for (const obj of props.collisionObjects) {
     if (aabbCollision(petRect, obj)) {
@@ -213,7 +239,7 @@ function checkItemCollision() {
 
   const petCenterX = pos.value.x + (props.slice * props.scale) / 2
   const petCenterY = pos.value.y + (props.slice * props.scale) / 2
-  const COLLISION_DISTANCE = 60  // Increased distance to ensure detection with PNG items
+  const COLLISION_DISTANCE = 30  // Increased distance to ensure detection with PNG items
 
   for (const item of props.droppedItems) {
     // Calculate distance between pet center and item position

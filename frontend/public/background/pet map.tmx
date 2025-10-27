@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="40" height="30" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="96">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="40" height="30" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="107">
  <tileset firstgid="1" source="main-tiles.tsx"/>
  <tileset firstgid="78" source="Water.tsx"/>
  <tileset firstgid="82" source="Basic Grass Biom things 1.tsx"/>
@@ -189,24 +189,24 @@
   <object id="68" x="394" y="17.6667" width="57.3333" height="14"/>
   <object id="70" x="411" y="224.333" width="38.6667" height="16.3333"/>
   <object id="71" x="413.333" y="240" width="21" height="18.3333"/>
-  <object id="74" x="397.333" y="31" width="53" height="60.4481"/>
   <object id="75" x="398.333" y="116.641" width="51" height="110.693"/>
   <object id="76" x="464.667" y="129.667" width="94" height="13.3333"/>
   <object id="77" x="557" y="64.3333" width="2.66667" height="70.3333"/>
   <object id="78" x="464.333" y="63.6667" width="93.6667" height="2"/>
-  <object id="79" x="464.333" y="62.6667" width="2.33333" height="22.9939"/>
   <object id="80" x="464.667" y="118.397" width="3" height="15.2698"/>
-  <object id="81" x="380.667" y="66.3333" width="3" height="19.807"/>
   <object id="82" x="273.333" y="63.6667" width="110.333" height="2.33333"/>
   <object id="84" x="271.667" y="63.3333" width="2.66667" height="127.333"/>
   <object id="85" x="271.333" y="178.333" width="47.1636" height="9.87055"/>
   <object id="86" x="360.144" y="178.609" width="22.5225" height="9.87909"/>
-  <object id="87" x="380.333" y="121.811" width="2" height="56.1892"/>
+  <object id="87" x="380.333" y="117.828" width="2" height="60.1721"/>
   <object id="88" x="292.333" y="84.6667" width="7.66667" height="8"/>
   <object id="89" x="91" y="144.333" width="5.66667" height="79.3333"/>
   <object id="90" x="90.6667" y="208.333" width="30.7899" height="12.2528"/>
   <object id="92" x="166.876" y="209.333" width="14.1234" height="12.724"/>
   <object id="93" x="176.333" y="144" width="4" height="68.6667"/>
   <object id="94" x="91.3333" y="147.031" width="89" height="12.6349"/>
+  <object id="97" x="380" y="64" width="85.3333" height="20.6667"/>
+  <object id="102" x="380.394" y="116.576" width="88" height="16.7576"/>
+  <object id="105" x="400" y="32" width="49.3333" height="37.3333"/>
  </objectgroup>
 </map>
