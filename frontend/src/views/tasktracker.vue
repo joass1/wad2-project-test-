@@ -302,6 +302,13 @@
                       >{{ task.category }}</span
                     >
                     <span
+                      v-if="task.totalStudyMinutes > 0"
+                      class="task-chip px-2 py-1 text-caption rounded"
+                      style="background-color: rgba(76, 175, 80, 0.1); color: var(--success);"
+                    >
+                      {{ Math.floor(task.totalStudyMinutes / 60) }}h {{ task.totalStudyMinutes % 60 }}m studied
+                    </span>
+                    <span
                       v-if="isOverdue(task)"
                       class="task-chip px-2 py-1 text-caption rounded font-weight-medium"
                       style="

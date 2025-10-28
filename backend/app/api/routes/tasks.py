@@ -50,9 +50,9 @@ def _serialize_task_doc(doc) -> Dict[str, Any]:
     # Ensure consistent optional fields
     data.setdefault("category", "General")
     data.setdefault("dueDate", None)
+    data.setdefault("totalStudyMinutes", 0)
 
     return data
-
 
 def _to_task_response(data: Dict[str, Any]) -> TaskResponse:
     return TaskResponse(
@@ -178,6 +178,10 @@ class TaskBase(BaseModel):
         description="Optional grouping label shown in the UI",
         examples=["Personal"],
     )
+    totalStudyMinutes: int | None = Field(
+        default=0,
+        description="Total study time logged for this task in minutes"
+    )
 
 
 class TaskCreate(TaskBase):
@@ -225,6 +229,10 @@ class TaskResponse(TaskBase):
     updatedAt: str | None = Field(
         default=None,
         description="ISO-8601 timestamp (UTC) representing the last update timestamp",
+    )
+    totalStudyMinutes: int = Field(
+        default=0,
+        description="Total study time logged for this task in minutes"
     )
 
     def __init__(self, **data: Any):
@@ -302,6 +310,7 @@ def create_task(payload: TaskCreate, user: dict = Depends(require_user)):
     data = payload.model_dump()
     data["createdAt"] = now
     data["updatedAt"] = now
+    data["totalStudyMinutes"] = 0
 
     doc_ref = tasks_ref.document()
     doc_ref.set(data)

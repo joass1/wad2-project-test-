@@ -23,7 +23,12 @@ let t = null
 // Session Details Data
 const selectedSubject = ref(null)
 const selectedTopic = ref('') // Can be manual text or selected topic ID
+const selectedTask = ref(null) // Reference to task tracker task
 const sessionNotes = ref('')
+
+// Task completion dialog
+const taskCompletionDialog = ref(false)
+const tasksFromTracker = ref([])
 
 // NEW: Store all topics (not filtered by subject)
 const allRecurringTopics = ref([])
@@ -45,6 +50,18 @@ const editingSubject = ref(null)
 
 // Topic Dialog
 const topicDialog = ref(false)
+
+// Fetch tasks from tracker
+async function fetchTasksFromTracker() {
+  try {
+    const response = await fetch('/api/tasks')
+    const data = await response.json()
+    tasksFromTracker.value = data.tasks || []
+  } catch (error) {
+    console.error('Error fetching tasks:', error)
+  }
+}
+
 const topicForm = ref({
   subject_id: null, // NOW OPTIONAL - can create topics without subject
   title: '',
@@ -129,7 +146,8 @@ watch(running, (newVal) => {
 
 onMounted(async () => {
   await loadSubjects()
-  await loadAllRecurringTopics() // NEW: Load ALL topics on mount
+  await loadAllRecurringTopics()
+  await fetchTasksFromTracker()
 })
 
 // ============================================================================
@@ -208,22 +226,38 @@ async function handleDeleteSubject(subjectId) {
 // ============================================================================
 
 // NEW: Load ALL topics regardless of subject
+
 async function loadAllRecurringTopics() {
   try {
-    // Call fetchTopics with no subject filter (pass null or don't filter)
-    await fetchTopics() // This should fetch all topics
+    await fetchTopics()
     allRecurringTopics.value = recurringTopics.value
   } catch (error) {
     console.error('Error loading topics:', error)
   }
 }
 
-async function loadRecurringTopics(subjectId) {
+function showTaskCompletionDialog() {
+  taskCompletionDialog.value = true
+}
+
+async function markTaskAsComplete() {
+  if (!selectedTask.value) return
+  
   try {
-    await fetchTopics(subjectId)
+    await fetch(`/api/tasks/${selectedTask.value}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'done' })
+    })
+    taskCompletionDialog.value = false
   } catch (error) {
-    console.error('Error loading topics:', error)
+    console.error('Error updating task:', error)
+    alert('Failed to update task status')
   }
+}
+
+function dismissTaskCompletionDialog() {
+  taskCompletionDialog.value = false
 }
 
 // UPDATED: Open topic dialog - subject_id is now optional
@@ -324,7 +358,7 @@ function start(){
   }, 1000) 
 }
 
-function dispatchStudySessionCompleted() {
+async function dispatchStudySessionCompleted() {
   console.log('✅ Focus session completed! Dispatching event...');
   
   const subjectName = selectedSubject.value 
@@ -334,7 +368,6 @@ function dispatchStudySessionCompleted() {
   // Get topic title - could be manual text or a topic ID
   let taskDisplay = selectedTopic.value
   if (selectedTopic.value) {
-    // Check if it's a topic ID from the dropdown
     const topic = allRecurringTopics.value.find(t => t.id === selectedTopic.value)
     if (topic) {
       taskDisplay = topic.title
@@ -347,10 +380,16 @@ function dispatchStudySessionCompleted() {
       mode: mode.value,
       subject: subjectName,
       task: taskDisplay,
+      task_id: selectedTask.value,
       notes: sessionNotes.value,
       timestamp: new Date()
     }
   }))
+  
+  // Show completion dialog with task option
+  if (selectedTask.value) {
+    showTaskCompletionDialog()
+  }
 }
 
 function stop(){ 
@@ -543,7 +582,7 @@ onUnmounted(() => { clearInterval(t) })
                 </div>
 
                 <div class="mb-4">
-                  <label class="text-body-2 font-weight-medium mb-2 d-block">Task/Topic</label>
+                  <label class="text-body-2 font-weight-medium mb-2 d-block">Topic (Recurring)</label>
                   <v-combobox
                     v-model="selectedTopic"
                     :items="topicDropdownItems"
@@ -563,6 +602,35 @@ onUnmounted(() => { clearInterval(t) })
                       </v-list-item>
                     </template>
                   </v-combobox>
+                </div>
+
+                <div class="mb-4">
+                  <label class="text-body-2 font-weight-medium mb-2 d-block">Task (from Task Tracker)</label>
+                  <v-select
+                    v-model="selectedTask"
+                    :items="tasksFromTracker"
+                    item-title="title"
+                    item-value="id"
+                    variant="outlined"
+                    rounded="lg"
+                    placeholder="Select a task (optional)"
+                    hide-details
+                    density="comfortable"
+                    clearable
+                    :menu-props="{ contentClass: 'dropdown-opaque' }"
+                  >
+                    <template v-slot:item="{ props, item }">
+                      <v-list-item v-bind="props">
+                        <template v-slot:title>{{ item.raw.title }}</template>
+                        <template v-slot:subtitle>
+                          <v-chip size="x-small" :color="item.raw.priority === 'high' ? 'error' : item.raw.priority === 'medium' ? 'warning' : 'success'" class="mr-1">
+                            {{ item.raw.priority }}
+                          </v-chip>
+                          {{ item.raw.category }}
+                        </template>
+                      </v-list-item>
+                    </template>
+                  </v-select>
                 </div>
 
                 <div class="mb-4">
@@ -970,6 +1038,41 @@ onUnmounted(() => { clearInterval(t) })
       </v-card>
     </v-dialog>
 
+    <!-- Task Completion Dialog -->
+    <v-dialog v-model="taskCompletionDialog" max-width="400px">
+      <v-card rounded="xl">
+        <v-card-title class="pa-6">
+          <span class="text-h6">Session Complete! 🎉</span>
+        </v-card-title>
+        
+        <v-card-text class="pa-6 pt-0">
+          <p class="text-body-2 mb-4">Great focus session! Did you complete this task?</p>
+          <p class="text-body-2 font-weight-medium">
+            {{ tasksFromTracker.find(t => t.id === selectedTask)?.title }}
+          </p>
+        </v-card-text>
+        
+        <v-card-actions class="px-6 pb-6">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            @click="dismissTaskCompletionDialog"
+            class="text-none"
+          >
+            Not Yet
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="markTaskAsComplete"
+            class="text-none"
+          >
+            Yes, Complete Task!
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    
   </div>
 </template>
 

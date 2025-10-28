@@ -20,6 +20,7 @@ class StudySessionCreate(BaseModel):
     duration_minutes: int = Field(..., ge=1, le=480, description="Session duration in minutes")
     subject: Optional[str] = Field(None, description="Subject or topic studied")
     task: Optional[str] = Field(None, description="Specific task or topic")
+    task_id: Optional[str] = Field(None, description="Reference to task tracker task ID")
     notes: Optional[str] = Field(None, description="Additional notes")
     session_type: str = Field(default="focus", description="Type of session (focus, break, etc.)")
 
@@ -29,6 +30,7 @@ class StudySessionStart(BaseModel):
     planned_duration_minutes: int = Field(..., ge=1, le=480, description="Planned session duration in minutes")
     subject: Optional[str] = Field(None, description="Subject or topic studied")
     task: Optional[str] = Field(None, description="Specific task or topic")
+    task_id: Optional[str] = Field(None, description="Reference to task tracker task ID")
     notes: Optional[str] = Field(None, description="Additional notes")
     session_type: str = Field(default="focus", description="Type of session (focus, break, etc.)")
 
@@ -41,6 +43,7 @@ class StudySessionUpdate(BaseModel):
     notes: Optional[str] = Field(None, description="Updated notes")
     subject: Optional[str] = Field(None, description="Updated subject")
     task: Optional[str] = Field(None, description="Updated task")
+    task_id: Optional[str] = Field(None, description="Updated task ID")
 
 
 class StudySessionResponse(BaseModel):
@@ -50,6 +53,7 @@ class StudySessionResponse(BaseModel):
     time_remaining_seconds: Optional[int] = None
     subject: Optional[str] = None
     task: Optional[str] = None
+    task_id: Optional[str] = None
     notes: Optional[str] = None
     session_type: str
     status: str  # 'active', 'paused', 'completed', 'cancelled'
@@ -97,6 +101,18 @@ def _study_sessions_collection(uid: str):
 def _daily_metrics_collection(uid: str):
     """Get reference to user's daily metrics collection"""
     return db.collection("users").document(uid).collection("dailyMetrics")
+
+def _add_study_time_to_task(uid: str, task_id: str, minutes: int):
+    """Add study time to a task"""
+    from google.cloud.firestore import Increment
+    task_ref = db.collection("users").document(uid).collection("tasks").document(task_id)
+    task_doc = task_ref.get()
+    
+    if task_doc.exists:
+        task_ref.update({
+            "totalStudyMinutes": Increment(minutes),
+            "updatedAt": datetime.now(timezone.utc)
+        })
 
 class SubjectCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Subject name")
@@ -460,6 +476,7 @@ def start_study_session(
         "time_remaining_seconds": payload.planned_duration_minutes * 60,  # Full duration initially
         "subject": payload.subject,
         "task": payload.task,
+        "task_id": payload.task_id,
         "notes": payload.notes,
         "session_type": payload.session_type,
         "status": "active",
@@ -545,6 +562,15 @@ def update_study_session(
             # Resuming from pause
             update_data["paused_at"] = None
     
+    # If session completed and has task_id, update task's total study time
+    if update_data.get("status") == "completed" and session_data.get("task_id"):
+        try:
+            task_id = session_data["task_id"]
+            duration = update_data.get("actual_duration_minutes") or session_data.get("planned_duration_minutes", 0)
+            _add_study_time_to_task(uid, task_id, duration)
+        except Exception as e:
+            print(f"Error updating task study time: {e}")
+    
     session_ref.update(update_data)
     
     # Get updated document
@@ -613,6 +639,7 @@ def create_study_session(
         "time_remaining_seconds": 0,
         "subject": payload.subject,
         "task": payload.task,
+        "task_id": payload.task_id,
         "notes": payload.notes,
         "session_type": payload.session_type,
         "status": "completed",
