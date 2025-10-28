@@ -10,9 +10,19 @@ import { useAuth } from './useAuth'
 export const BACKGROUNDS = [
     { id: 'castle', name: 'Animated Castle', thumbnail: '/background/gifs/castle.gif', path: '/background/gifs/castle.gif' },
     { id: 'lilypads', name: 'Lilypads Pond', thumbnail: '/background/gifs/lilypads.gif', path: '/background/gifs/lilypads.gif' },
-    { id: 'city-skyline', name: 'City Skyline', thumbnail: '/background/gifs/city skyline.gif', path: '/background/gifs/city skyline.gif' },
-    { id: 'winter-pond', name: 'Winter Pond', thumbnail: '/background/gifs/winter pond.gif', path: '/background/gifs/winter pond.gif' },
-    { id: 'none', name: 'None (Falling Leaves)', thumbnail: null, path: null } // Updated name
+    { id: 'cityskyline', name: 'City Skyline', thumbnail: '/background/gifs/cityskyline.gif', path: '/background/gifs/cityskyline.gif' },
+    { id: 'winterpond', name: 'Winter Pond', thumbnail: '/background/gifs/winterpond.gif', path: '/background/gifs/winterpond.gif' },
+    { id: 'sunsets', name: 'Sunsets', thumbnail: '/background/gifs/sunsets.gif', path: '/background/gifs/sunsets.gif' },
+    { id: 'winterforest', name: 'Winter Forest', thumbnail: '/background/gifs/winterforest.gif', path: '/background/gifs/winterforest.gif' },
+    { id: 'wintermountains', name: 'Winter Mountains', thumbnail: '/background/gifs/wintermountains.gif', path: '/background/gifs/wintermountains.gif' },
+    { id: 'springmountains', name: 'Spring Mountains', thumbnail: '/background/gifs/springmountains.gif', path: '/background/gifs/springmountains.gif' },
+    { id: 'rainymountains', name: 'Rainy Mountains', thumbnail: '/background/gifs/rainymountains.gif', path: '/background/gifs/rainymountains.gif' },
+    { id: 'boating', name: 'Boating', thumbnail: '/background/gifs/boating.gif', path: '/background/gifs/boating.gif' },
+    { id: 'japaninautumn', name: 'Japan in Autumn', thumbnail: '/background/gifs/japaninautumn.gif', path: '/background/gifs/japaninautumn.gif' },
+    { id: 'wintertrain', name: 'Winter Train', thumbnail: '/background/gifs/wintertrain.gif', path: '/background/gifs/wintertrain.gif' },
+    { id: 'japanesehouse', name: 'Japanese House', thumbnail: '/background/gifs/japanesehouse.gif', path: '/background/gifs/japanesehouse.gif' },
+    { id: 'purpleforest', name: 'Purple Forest', thumbnail: '/background/gifs/purpleforest.gif', path: '/background/gifs/purpleforest.gif' },
+    { id: 'none', name: 'None (Falling Leaves)', thumbnail: null, path: null } 
 ]
 
 export function useBackground() {

@@ -388,13 +388,7 @@ onUnmounted(() => { clearInterval(t) })
 
     <div v-if="!running" class="main-page-blurred-background"></div>
     
-    <div v-if="!getCurrentBackground().path" class="falling-leaves-overlay">
-      <div class="leaf" v-for="i in 20" :key="i" :style="{ 
-        left: `${Math.random() * 100}%`, 
-        animationDelay: `${Math.random() * 8}s`,
-        animationDuration: `${10 + Math.random() * 6}s`
-      }">🍂</div>
-    </div>
+    
     
     <div v-if="running && getCurrentBackground().path" class="fullscreen-gif-background"></div>
     
@@ -744,7 +738,7 @@ onUnmounted(() => { clearInterval(t) })
       </v-row>
     </v-container>
 
-    <div v-if="running" class="falling-leaves-overlay">
+    <div v-if="running && !getCurrentBackground().path" class="falling-leaves-overlay">
       <div class="leaf" v-for="i in 20" :key="i" :style="{ 
         left: `${Math.random() * 100}%`, 
         animationDelay: `${Math.random() * 8}s`,
@@ -756,8 +750,6 @@ onUnmounted(() => { clearInterval(t) })
 </template>
 
 <style scoped>
-/* CRITICAL DROPDOWN OPACITY FIX - MUST BE AT TOP */
-/* These rules override ALL Vuetify dropdown transparency */
 
 .timer-page {
   position: relative;
@@ -850,6 +842,24 @@ onUnmounted(() => { clearInterval(t) })
   z-index: 10;
 }
 
+.background-select-card {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.95) !important; 
+  border: 1px solid var(--surface-lighter);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  min-height: 80px;
+  transition: all 0.2s ease;
+}
+
+.background-select-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .background-select-card {
+  background: rgba(30, 30, 30, 0.95) !important;
+}
+
 /* Dark mode adjustment for card opacity */
 [data-theme="dark"] .timer-card, 
 [data-theme="dark"] .details-card, 
@@ -935,15 +945,12 @@ li {
   border: 1px solid var(--surface-lighter);
 }
 
-/* FIX: Dropdown transparency - make ALL backgrounds opaque */
 /* High specificity selectors to override Vuetify defaults */
 .v-overlay .v-overlay__content {
   background: var(--surface) !important;
 }
 
-/* ... (All existing opacity fix styles) ... */
 
-/* Force opaque for ALL vuetify overlays on this page */
 :deep(.v-overlay__scrim) {
   background: rgba(0, 0, 0, 0.5) !important;
 }

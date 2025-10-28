@@ -1,9 +1,7 @@
 <script setup>
 import { ref } from 'vue'
-// FIX: Use the correct function name 'useBackground'
 import { useBackground } from '@/composables/useBackgrounds'
 
-// Destructure the needed properties and functions
 const { selectedBackgroundId, saveBackground, getCurrentBackground, BACKGROUNDS } = useBackground()
 
 const dialog = ref(false)
@@ -19,14 +17,11 @@ function getCardStyle(background) {
             backgroundImage: `url(${background.path})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            // FIX: Removed filter: 'blur(3px) brightness(0.9)', 
-            // and opacity: '0.8', to show the image clearly.
             transition: 'all 0.3s ease'
         }
     }
-    // Style for the 'none' option
     return {
-        backgroundColor: '#e0e0e0', // Light grey or a default color
+        backgroundColor: '#e0e0e0',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -49,41 +44,42 @@ function getCardStyle(background) {
       </div>
     </v-card>
 
-    <v-dialog v-model="dialog" max-width="800">
+    <v-dialog v-model="dialog" max-width="900" scrollable>
       <v-card rounded="xl" class="pa-4">
         <v-card-title class="text-h6 font-weight-medium pa-4 pb-2">
           Choose Your Study Background
         </v-card-title>
-        <v-card-subtitle class="px-4">
+        <v-card-subtitle class="px-4 pb-4">
           Selected: 
           <span class="font-weight-bold text-primary">
             {{ getCurrentBackground().name }}
           </span>
         </v-card-subtitle>
 
-        <v-card-text class="pt-4">
-          <v-row>
+        <v-card-text class="pt-0">
+          <v-row dense>
             <v-col
               v-for="bg in BACKGROUNDS"
               :key="bg.id"
               cols="6"
               sm="4"
-              md="3"
             >
               <v-card
-                :class="['pa-2 h-100 bg-card', { 'bg-selected': selectedBackgroundId === bg.id }]"
+                :class="['pa-2 bg-card', { 'bg-selected': selectedBackgroundId === bg.id }]"
                 @click="selectBackground(bg.id)"
-                :style="getCardStyle(bg)"
                 rounded="lg"
-                height="120"
+                height="160"
                 variant="outlined"
               >
+                <div v-if="bg.path" class="bg-preview" :style="{ backgroundImage: `url(${bg.path})` }"></div>
+                <div v-else class="bg-preview-none">
+                  <span class="text-h5">🍂</span>
+                </div>
                 <div class="bg-overlay">
-                    <span class="font-weight-bold text-white text-shadow">{{ bg.name }}</span>
-                    <v-icon v-if="selectedBackgroundId === bg.id" color="success" size="large">
-                        mdi-check-circle
-                    </v-icon>
-                    <span v-if="bg.id === 'none'" class="text-h6 text-medium-emphasis text-white text-shadow">🚫</span>
+                  <span class="font-weight-bold text-white text-shadow text-body-2">{{ bg.name }}</span>
+                  <v-icon v-if="selectedBackgroundId === bg.id" color="success" size="large" class="mt-2">
+                    mdi-check-circle
+                  </v-icon>
                 </div>
               </v-card>
             </v-col>
@@ -102,9 +98,20 @@ function getCardStyle(background) {
 <style scoped>
 .background-select-card {
   height: 100%;
-  border: 1px dashed var(--surface-lighter);
-  background: var(--surface) !important; 
-  min-height: 80px; 
+  background: rgba(255, 255, 255, 0.95) !important; 
+  border: 1px solid var(--surface-lighter);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  min-height: 80px;
+  transition: all 0.2s ease;
+}
+
+.background-select-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .background-select-card {
+  background: rgba(30, 30, 30, 0.95) !important;
 }
 
 .bg-card {
@@ -114,19 +121,17 @@ function getCardStyle(background) {
   transition: all 0.2s ease;
   background-size: cover !important; 
   background-position: center !important; 
-  
-  /* FIX 1: Remove potentially conflicting box-sizing or border properties */
   padding: 0 !important;
 }
 
 .bg-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .bg-selected {
-  border: 4px solid var(--primary) !important;
-  box-shadow: 0 0 0 2px var(--primary);
+  border: 4px solid var(--v-theme-primary) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 3px var(--v-theme-primary);
 }
 
 .bg-overlay {
@@ -135,11 +140,7 @@ function getCardStyle(background) {
   left: 0;
   width: 100%;
   height: 100%;
-  
-  /* FIX 2: Ensure the internal thumbnail image is NOT blurred by overriding any global filter */
   filter: none !important;
-  
-  /* Use a subtle overlay for text readability */
   background-color: rgba(0, 0, 0, 0.15); 
   display: flex;
   flex-direction: column;
@@ -150,10 +151,33 @@ function getCardStyle(background) {
 }
 
 .bg-card:not(.bg-selected) .bg-overlay:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 0, 0, 0.3);
+}
+.bg-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  z-index: 1;
+}
+
+.bg-preview-none {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
 }
 
 .text-shadow {
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
 }
 </style>
