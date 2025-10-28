@@ -98,6 +98,62 @@ def _daily_metrics_collection(uid: str):
     """Get reference to user's daily metrics collection"""
     return db.collection("users").document(uid).collection("dailyMetrics")
 
+class SubjectCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Subject name")
+    color: Optional[str] = Field(default="#4CAF50", description="Color hex code")
+    icon: Optional[str] = Field(default="📚", description="Icon emoji")
+    description: Optional[str] = Field(default=None, description="Subject description")
+
+
+class SubjectUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    color: Optional[str] = None
+    icon: Optional[str] = None
+    description: Optional[str] = None
+
+
+class SubjectResponse(BaseModel):
+    id: str
+    name: str
+    icon: Optional[str]
+    color: Optional[str]
+    description: Optional[str]
+    created_at: str
+    updated_at: str
+
+
+def _subjects_collection(uid: str):
+    """Get reference to user's subjects collection"""
+    return db.collection("users").document(uid).collection("subjects")
+
+class RecurringTopicCreate(BaseModel):
+    subject_id: Optional[str] = Field(None, description="ID of the parent subject (optional)")
+    title: str = Field(..., min_length=1, max_length=200, description="Topic title")
+    description: Optional[str] = Field(default=None, description="Topic description")
+    recurrence: Optional[str] = Field(default="weekly", description="Recurrence pattern")
+
+
+class RecurringTopicUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    recurrence: Optional[str] = None
+    subject_id: Optional[str] = None
+
+
+class RecurringTopicResponse(BaseModel):
+    id: str
+    subject_id: Optional[str]
+    title: str
+    description: Optional[str]
+    recurrence: str
+    created_at: str
+    updated_at: str
+
+
+def _recurring_topics_collection(uid: str):
+    """Get reference to user's recurring topics collection"""
+    return db.collection("users").document(uid).collection("recurringTopics")
+
 
 # ============================================================================
 # BACKGROUND PREFERENCE ENDPOINTS (UPDATED SECTION)
@@ -147,6 +203,243 @@ def update_background_preference(
     return SUCCESS_RESPONSE
 
 
+@router.post("/subjects", response_model=SubjectResponse, status_code=201)
+def create_subject(
+    payload: SubjectCreate,
+    user: dict = Depends(require_user)
+):
+    """Create a new subject"""
+    uid = user["uid"]
+    
+    now = datetime.now(timezone.utc)
+    subject_data = {
+        **payload.model_dump(),
+        "created_at": now,
+        "updated_at": now,
+    }
+    
+    doc_ref = _subjects_collection(uid).document()
+    doc_ref.set(subject_data)
+    
+    created_doc = doc_ref.get()
+    subject_dict = created_doc.to_dict()
+    subject_dict["id"] = doc_ref.id
+    subject_dict["created_at"] = subject_dict["created_at"].isoformat()
+    subject_dict["updated_at"] = subject_dict["updated_at"].isoformat()
+    
+    return SubjectResponse(**subject_dict)
+
+
+@router.get("/subjects", response_model=List[SubjectResponse])
+def list_subjects(user: dict = Depends(require_user)):
+    """Get all subjects"""
+    uid = user["uid"]
+    
+    subjects = _subjects_collection(uid).stream()
+    
+    result = []
+    for subject in subjects:
+        subject_data = subject.to_dict()
+        subject_data["id"] = subject.id
+        subject_data["created_at"] = subject_data["created_at"].isoformat()
+        subject_data["updated_at"] = subject_data["updated_at"].isoformat()
+        result.append(SubjectResponse(**subject_data))
+    
+    return result
+
+
+@router.get("/subjects/{subject_id}", response_model=SubjectResponse)
+def get_subject(
+    subject_id: str,
+    user: dict = Depends(require_user)
+):
+    """Get a specific subject"""
+    uid = user["uid"]
+    
+    subject_ref = _subjects_collection(uid).document(subject_id)
+    subject_doc = subject_ref.get()
+    
+    if not subject_doc.exists:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    
+    subject_data = subject_doc.to_dict()
+    subject_data["id"] = subject_id
+    subject_data["created_at"] = subject_data["created_at"].isoformat()
+    subject_data["updated_at"] = subject_data["updated_at"].isoformat()
+    
+    return SubjectResponse(**subject_data)
+
+
+@router.patch("/subjects/{subject_id}", response_model=SubjectResponse)
+def update_subject(
+    subject_id: str,
+    payload: SubjectUpdate,
+    user: dict = Depends(require_user)
+):
+    """Update a subject"""
+    uid = user["uid"]
+    
+    subject_ref = _subjects_collection(uid).document(subject_id)
+    subject_doc = subject_ref.get()
+    
+    if not subject_doc.exists:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    
+    update_data = payload.model_dump(exclude_unset=True)
+    if not update_data:
+        # No fields to update, return current
+        subject_data = subject_doc.to_dict()
+        subject_data["id"] = subject_id
+        subject_data["created_at"] = subject_data["created_at"].isoformat()
+        subject_data["updated_at"] = subject_data["updated_at"].isoformat()
+        return SubjectResponse(**subject_data)
+    
+    update_data["updated_at"] = datetime.now(timezone.utc)
+    subject_ref.update(update_data)
+    
+    updated_doc = subject_ref.get()
+    subject_data = updated_doc.to_dict()
+    subject_data["id"] = subject_id
+    subject_data["created_at"] = subject_data["created_at"].isoformat()
+    subject_data["updated_at"] = subject_data["updated_at"].isoformat()
+    
+    return SubjectResponse(**subject_data)
+
+
+@router.delete("/subjects/{subject_id}")
+def delete_subject(
+    subject_id: str,
+    user: dict = Depends(require_user)
+):
+    """Delete a subject"""
+    uid = user["uid"]
+    
+    subject_ref = _subjects_collection(uid).document(subject_id)
+    subject_doc = subject_ref.get()
+    
+    if not subject_doc.exists:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    
+    subject_ref.delete()
+    return {"message": "Subject deleted successfully"}
+
+
+# ============================================================================
+# RECURRING TOPICS ENDPOINTS (for subjects)
+# ============================================================================
+
+
+@router.post("/recurring-topics", response_model=RecurringTopicResponse, status_code=201)
+def create_recurring_topic(
+    payload: RecurringTopicCreate,
+    user: dict = Depends(require_user)
+):
+    """Create a new recurring topic"""
+    uid = user["uid"]
+    
+    # Verify subject exists if provided
+    if payload.subject_id:
+        subject_ref = _subjects_collection(uid).document(payload.subject_id)
+        if not subject_ref.get().exists:
+            raise HTTPException(status_code=404, detail="Subject not found")
+    
+    now = datetime.now(timezone.utc)
+    topic_data = {
+        **payload.model_dump(),
+        "created_at": now,
+        "updated_at": now,
+    }
+    
+    doc_ref = _recurring_topics_collection(uid).document()
+    doc_ref.set(topic_data)
+    
+    created_doc = doc_ref.get()
+    topic_dict = created_doc.to_dict()
+    topic_dict["id"] = doc_ref.id
+    topic_dict["created_at"] = topic_dict["created_at"].isoformat()
+    topic_dict["updated_at"] = topic_dict["updated_at"].isoformat()
+    
+    return RecurringTopicResponse(**topic_dict)
+
+
+@router.get("/recurring-topics", response_model=List[RecurringTopicResponse])
+def list_recurring_topics(
+    subject_id: Optional[str] = None,
+    user: dict = Depends(require_user)
+):
+    """Get all recurring topics, optionally filtered by subject"""
+    uid = user["uid"]
+    
+    topics_ref = _recurring_topics_collection(uid)
+    
+    if subject_id:
+        topics = topics_ref.where("subject_id", "==", subject_id).stream()
+    else:
+        topics = topics_ref.stream()
+    
+    result = []
+    for topic in topics:
+        topic_data = topic.to_dict()
+        topic_data["id"] = topic.id
+        topic_data["created_at"] = topic_data["created_at"].isoformat()
+        topic_data["updated_at"] = topic_data["updated_at"].isoformat()
+        result.append(RecurringTopicResponse(**topic_data))
+    
+    return result
+
+
+@router.patch("/recurring-topics/{topic_id}", response_model=RecurringTopicResponse)
+def update_recurring_topic(
+    topic_id: str,
+    payload: RecurringTopicUpdate,
+    user: dict = Depends(require_user)
+):
+    """Update a recurring topic"""
+    uid = user["uid"]
+    
+    topic_ref = _recurring_topics_collection(uid).document(topic_id)
+    topic_doc = topic_ref.get()
+    
+    if not topic_doc.exists:
+        raise HTTPException(status_code=404, detail="Recurring topic not found")
+    
+    update_data = payload.model_dump(exclude_unset=True)
+    if not update_data:
+        topic_data = topic_doc.to_dict()
+        topic_data["id"] = topic_id
+        topic_data["created_at"] = topic_data["created_at"].isoformat()
+        topic_data["updated_at"] = topic_data["updated_at"].isoformat()
+        return RecurringTopicResponse(**topic_data)
+    
+    update_data["updated_at"] = datetime.now(timezone.utc)
+    topic_ref.update(update_data)
+    
+    updated_doc = topic_ref.get()
+    topic_data = updated_doc.to_dict()
+    topic_data["id"] = topic_id
+    topic_data["created_at"] = topic_data["created_at"].isoformat()
+    topic_data["updated_at"] = topic_data["updated_at"].isoformat()
+    
+    return RecurringTopicResponse(**topic_data)
+
+
+@router.delete("/recurring-topics/{topic_id}")
+def delete_recurring_topic(
+    topic_id: str,
+    user: dict = Depends(require_user)
+):
+    """Delete a recurring topic"""
+    uid = user["uid"]
+    
+    topic_ref = _recurring_topics_collection(uid).document(topic_id)
+    topic_doc = topic_ref.get()
+    
+    if not topic_doc.exists:
+        raise HTTPException(status_code=404, detail="Recurring topic not found")
+    
+    topic_ref.delete()
+    return {"message": "Recurring topic deleted successfully"}
+
 # ============================================================================
 # STUDY SESSION ENDPOINTS WITH STATE TRACKING (Unchanged below this line)
 # ============================================================================
@@ -185,6 +478,7 @@ def start_study_session(
     
     doc_ref = _study_sessions_collection(uid).add(session_data)
     session_id = doc_ref[1].id
+
     
     # Update daily metrics - increment sessions_started
     _update_daily_metrics(uid, today, sessions_started_increment=1)
@@ -606,301 +900,3 @@ def get_study_stats(user: dict = Depends(require_user)):
         sessions_completed_today=daily_metrics.sessions_completed,
     )
 
-
-# ============================================================================
-# SUBJECTS ENDPOINTS
-# ============================================================================
-
-class SubjectCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100, description="Subject name")
-    color: Optional[str] = Field(default="#4CAF50", description="Color hex code")
-    icon: Optional[str] = Field(default="📚", description="Icon emoji")
-    description: Optional[str] = Field(default=None, description="Subject description")
-
-
-class SubjectUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    color: Optional[str] = None
-    icon: Optional[str] = None
-    description: Optional[str] = None
-
-
-class SubjectResponse(BaseModel):
-    id: str
-    name: str
-    icon: Optional[str]
-    color: Optional[str]
-    description: Optional[str]
-    created_at: str
-    updated_at: str
-
-
-def _subjects_collection(uid: str):
-    """Get reference to user's subjects collection"""
-    return db.collection("users").document(uid).collection("subjects")
-
-
-@router.post("/subjects", response_model=SubjectResponse, status_code=201)
-def create_subject(
-    payload: SubjectCreate,
-    user: dict = Depends(require_user)
-):
-    """Create a new subject"""
-    uid = user["uid"]
-    
-    now = datetime.now(timezone.utc)
-    subject_data = {
-        **payload.model_dump(),
-        "created_at": now,
-        "updated_at": now,
-    }
-    
-    doc_ref = _subjects_collection(uid).document()
-    doc_ref.set(subject_data)
-    
-    created_doc = doc_ref.get()
-    subject_dict = created_doc.to_dict()
-    subject_dict["id"] = doc_ref.id
-    subject_dict["created_at"] = subject_dict["created_at"].isoformat()
-    subject_dict["updated_at"] = subject_dict["updated_at"].isoformat()
-    
-    return SubjectResponse(**subject_dict)
-
-
-@router.get("/subjects", response_model=List[SubjectResponse])
-def list_subjects(user: dict = Depends(require_user)):
-    """Get all subjects"""
-    uid = user["uid"]
-    
-    subjects = _subjects_collection(uid).stream()
-    
-    result = []
-    for subject in subjects:
-        subject_data = subject.to_dict()
-        subject_data["id"] = subject.id
-        subject_data["created_at"] = subject_data["created_at"].isoformat()
-        subject_data["updated_at"] = subject_data["updated_at"].isoformat()
-        result.append(SubjectResponse(**subject_data))
-    
-    return result
-
-
-@router.get("/subjects/{subject_id}", response_model=SubjectResponse)
-def get_subject(
-    subject_id: str,
-    user: dict = Depends(require_user)
-):
-    """Get a specific subject"""
-    uid = user["uid"]
-    
-    subject_ref = _subjects_collection(uid).document(subject_id)
-    subject_doc = subject_ref.get()
-    
-    if not subject_doc.exists:
-        raise HTTPException(status_code=404, detail="Subject not found")
-    
-    subject_data = subject_doc.to_dict()
-    subject_data["id"] = subject_id
-    subject_data["created_at"] = subject_data["created_at"].isoformat()
-    subject_data["updated_at"] = subject_data["updated_at"].isoformat()
-    
-    return SubjectResponse(**subject_data)
-
-
-@router.patch("/subjects/{subject_id}", response_model=SubjectResponse)
-def update_subject(
-    subject_id: str,
-    payload: SubjectUpdate,
-    user: dict = Depends(require_user)
-):
-    """Update a subject"""
-    uid = user["uid"]
-    
-    subject_ref = _subjects_collection(uid).document(subject_id)
-    subject_doc = subject_ref.get()
-    
-    if not subject_doc.exists:
-        raise HTTPException(status_code=404, detail="Subject not found")
-    
-    update_data = payload.model_dump(exclude_unset=True)
-    if not update_data:
-        # No fields to update, return current
-        subject_data = subject_doc.to_dict()
-        subject_data["id"] = subject_id
-        subject_data["created_at"] = subject_data["created_at"].isoformat()
-        subject_data["updated_at"] = subject_data["updated_at"].isoformat()
-        return SubjectResponse(**subject_data)
-    
-    update_data["updated_at"] = datetime.now(timezone.utc)
-    subject_ref.update(update_data)
-    
-    updated_doc = subject_ref.get()
-    subject_data = updated_doc.to_dict()
-    subject_data["id"] = subject_id
-    subject_data["created_at"] = subject_data["created_at"].isoformat()
-    subject_data["updated_at"] = subject_data["updated_at"].isoformat()
-    
-    return SubjectResponse(**subject_data)
-
-
-@router.delete("/subjects/{subject_id}")
-def delete_subject(
-    subject_id: str,
-    user: dict = Depends(require_user)
-):
-    """Delete a subject"""
-    uid = user["uid"]
-    
-    subject_ref = _subjects_collection(uid).document(subject_id)
-    subject_doc = subject_ref.get()
-    
-    if not subject_doc.exists:
-        raise HTTPException(status_code=404, detail="Subject not found")
-    
-    subject_ref.delete()
-    return {"message": "Subject deleted successfully"}
-
-
-# ============================================================================
-# RECURRING TOPICS ENDPOINTS (for subjects)
-# ============================================================================
-
-class RecurringTopicCreate(BaseModel):
-    subject_id: Optional[str] = Field(None, description="ID of the parent subject (optional)")
-    title: str = Field(..., min_length=1, max_length=200, description="Topic title")
-    description: Optional[str] = Field(default=None, description="Topic description")
-    recurrence: Optional[str] = Field(default="weekly", description="Recurrence pattern")
-
-
-class RecurringTopicUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=200)
-    description: Optional[str] = None
-    recurrence: Optional[str] = None
-    subject_id: Optional[str] = None
-
-
-class RecurringTopicResponse(BaseModel):
-    id: str
-    subject_id: Optional[str]
-    title: str
-    description: Optional[str]
-    recurrence: str
-    created_at: str
-    updated_at: str
-
-
-def _recurring_topics_collection(uid: str):
-    """Get reference to user's recurring topics collection"""
-    return db.collection("users").document(uid).collection("recurringTopics")
-
-
-@router.post("/recurring-topics", response_model=RecurringTopicResponse, status_code=201)
-def create_recurring_topic(
-    payload: RecurringTopicCreate,
-    user: dict = Depends(require_user)
-):
-    """Create a new recurring topic"""
-    uid = user["uid"]
-    
-    # Verify subject exists if provided
-    if payload.subject_id:
-        subject_ref = _subjects_collection(uid).document(payload.subject_id)
-        if not subject_ref.get().exists:
-            raise HTTPException(status_code=404, detail="Subject not found")
-    
-    now = datetime.now(timezone.utc)
-    topic_data = {
-        **payload.model_dump(),
-        "created_at": now,
-        "updated_at": now,
-    }
-    
-    doc_ref = _recurring_topics_collection(uid).document()
-    doc_ref.set(topic_data)
-    
-    created_doc = doc_ref.get()
-    topic_dict = created_doc.to_dict()
-    topic_dict["id"] = doc_ref.id
-    topic_dict["created_at"] = topic_dict["created_at"].isoformat()
-    topic_dict["updated_at"] = topic_dict["updated_at"].isoformat()
-    
-    return RecurringTopicResponse(**topic_dict)
-
-
-@router.get("/recurring-topics", response_model=List[RecurringTopicResponse])
-def list_recurring_topics(
-    subject_id: Optional[str] = None,
-    user: dict = Depends(require_user)
-):
-    """Get all recurring topics, optionally filtered by subject"""
-    uid = user["uid"]
-    
-    topics_ref = _recurring_topics_collection(uid)
-    
-    if subject_id:
-        topics = topics_ref.where("subject_id", "==", subject_id).stream()
-    else:
-        topics = topics_ref.stream()
-    
-    result = []
-    for topic in topics:
-        topic_data = topic.to_dict()
-        topic_data["id"] = topic.id
-        topic_data["created_at"] = topic_data["created_at"].isoformat()
-        topic_data["updated_at"] = topic_data["updated_at"].isoformat()
-        result.append(RecurringTopicResponse(**topic_data))
-    
-    return result
-
-
-@router.patch("/recurring-topics/{topic_id}", response_model=RecurringTopicResponse)
-def update_recurring_topic(
-    topic_id: str,
-    payload: RecurringTopicUpdate,
-    user: dict = Depends(require_user)
-):
-    """Update a recurring topic"""
-    uid = user["uid"]
-    
-    topic_ref = _recurring_topics_collection(uid).document(topic_id)
-    topic_doc = topic_ref.get()
-    
-    if not topic_doc.exists:
-        raise HTTPException(status_code=404, detail="Recurring topic not found")
-    
-    update_data = payload.model_dump(exclude_unset=True)
-    if not update_data:
-        topic_data = topic_doc.to_dict()
-        topic_data["id"] = topic_id
-        topic_data["created_at"] = topic_data["created_at"].isoformat()
-        topic_data["updated_at"] = topic_data["updated_at"].isoformat()
-        return RecurringTopicResponse(**topic_data)
-    
-    update_data["updated_at"] = datetime.now(timezone.utc)
-    topic_ref.update(update_data)
-    
-    updated_doc = topic_ref.get()
-    topic_data = updated_doc.to_dict()
-    topic_data["id"] = topic_id
-    topic_data["created_at"] = topic_data["created_at"].isoformat()
-    topic_data["updated_at"] = topic_data["updated_at"].isoformat()
-    
-    return RecurringTopicResponse(**topic_data)
-
-
-@router.delete("/recurring-topics/{topic_id}")
-def delete_recurring_topic(
-    topic_id: str,
-    user: dict = Depends(require_user)
-):
-    """Delete a recurring topic"""
-    uid = user["uid"]
-    
-    topic_ref = _recurring_topics_collection(uid).document(topic_id)
-    topic_doc = topic_ref.get()
-    
-    if not topic_doc.exists:
-        raise HTTPException(status_code=404, detail="Recurring topic not found")
-    
-    topic_ref.delete()
-    return {"message": "Recurring topic deleted successfully"}

@@ -745,8 +745,232 @@ onUnmounted(() => { clearInterval(t) })
         animationDuration: `${10 + Math.random() * 6}s`
       }">🍂</div>
     </div>
-
+      
+    <div v-if="running && !getCurrentBackground().path" class="falling-leaves-overlay">
+      <div class="leaf" v-for="i in 20" :key="i" :style="{ 
+        left: `${Math.random() * 100}%`, 
+        animationDelay: `${Math.random() * 8}s`,
+        animationDuration: `${10 + Math.random() * 6}s`
+      }">🍂</div>
     </div>
+
+    <!-- Subject Dialog -->
+    <v-dialog v-model="subjectDialog" max-width="500px" persistent>
+      <v-card rounded="xl">
+        <v-card-title class="pa-6">
+          <span class="text-h6">{{ editingSubject ? 'Edit Subject' : 'New Subject' }}</span>
+        </v-card-title>
+        
+        <v-card-text class="pa-6 pt-0">
+          <v-form @submit.prevent="saveSubject">
+            <v-text-field
+              v-model="subjectForm.name"
+              label="Subject Name"
+              variant="outlined"
+              rounded="lg"
+              class="mb-4"
+              required
+            />
+            
+            <div class="mb-4">
+              <label class="text-body-2 font-weight-medium mb-2 d-block">Icon</label>
+              <div class="d-flex flex-wrap ga-2">
+                <v-chip
+                  v-for="icon in iconOptions"
+                  :key="icon"
+                  :color="subjectForm.icon === icon ? 'primary' : 'default'"
+                  :variant="subjectForm.icon === icon ? 'flat' : 'outlined'"
+                  @click="subjectForm.icon = icon"
+                  class="cursor-pointer"
+                >
+                  {{ icon }}
+                </v-chip>
+              </div>
+            </div>
+            
+            <div class="mb-4">
+              <label class="text-body-2 font-weight-medium mb-2 d-block">Color</label>
+              <div class="d-flex flex-wrap ga-2">
+                <div
+                  v-for="color in colorOptions"
+                  :key="color.value"
+                  @click="subjectForm.color = color.value"
+                  :style="{ 
+                    backgroundColor: color.value,
+                    border: subjectForm.color === color.value ? '3px solid #000' : '1px solid #ddd'
+                  }"
+                  class="color-swatch cursor-pointer"
+                  :title="color.name"
+                />
+              </div>
+            </div>
+            
+            <v-textarea
+              v-model="subjectForm.description"
+              label="Description (optional)"
+              variant="outlined"
+              rounded="lg"
+              rows="3"
+            />
+          </v-form>
+        </v-card-text>
+        
+        <v-card-actions class="pa-6 pt-0">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            @click="subjectDialog = false"
+            class="text-none"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="saveSubject"
+            class="text-none"
+          >
+            {{ editingSubject ? 'Update' : 'Create' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Topic Dialog -->
+    <v-dialog v-model="topicDialog" max-width="500px" persistent>
+      <v-card rounded="xl">
+        <v-card-title class="pa-6">
+          <span class="text-h6">{{ editingTopic ? 'Edit Topic' : 'New Recurring Topic' }}</span>
+        </v-card-title>
+        
+        <v-card-text class="pa-6 pt-0">
+          <v-form @submit.prevent="saveTopic">
+            <v-select
+              v-model="topicForm.subject_id"
+              :items="subjects"
+              item-title="name"
+              item-value="id"
+              label="Subject (optional)"
+              variant="outlined"
+              rounded="lg"
+              class="mb-4"
+              clearable
+            >
+              <template v-slot:item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template v-slot:prepend>
+                    <span class="text-h6 mr-2">{{ item.raw.icon }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+              
+              <template v-slot:selection="{ item }">
+                <span class="text-h6 mr-2">{{ item.raw.icon }}</span>
+                <span>{{ item.raw.name }}</span>
+              </template>
+            </v-select>
+            
+            <v-text-field
+              v-model="topicForm.title"
+              label="Topic Title"
+              variant="outlined"
+              rounded="lg"
+              class="mb-4"
+              required
+            />
+            
+            <v-select
+              v-model="topicForm.recurrence"
+              :items="['daily', 'weekly', 'biweekly', 'monthly']"
+              label="Recurrence"
+              variant="outlined"
+              rounded="lg"
+              class="mb-4"
+            />
+            
+            <v-textarea
+              v-model="topicForm.description"
+              label="Description (optional)"
+              variant="outlined"
+              rounded="lg"
+              rows="3"
+            />
+          </v-form>
+        </v-card-text>
+        
+        <v-card-actions class="pa-6 pt-0">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            @click="topicDialog = false"
+            class="text-none"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="saveTopic"
+            class="text-none"
+          >
+            {{ editingTopic ? 'Update' : 'Create' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Settings Dialog -->
+    <v-dialog v-model="settingsDialog" max-width="400px">
+      <v-card rounded="xl">
+        <v-card-title class="pa-6">
+          <span class="text-h6">Timer Settings</span>
+        </v-card-title>
+        
+        <v-card-text class="pa-6 pt-0">
+          <v-text-field
+            v-model.number="customFocusTime"
+            label="Focus Duration (minutes)"
+            type="number"
+            variant="outlined"
+            rounded="lg"
+            class="mb-4"
+            min="1"
+            max="480"
+          />
+          
+          <v-text-field
+            v-model.number="customBreakTime"
+            label="Break Duration (minutes)"
+            type="number"
+            variant="outlined"
+            rounded="lg"
+            min="1"
+            max="60"
+          />
+        </v-card-text>
+        
+        <v-card-actions class="pa-6 pt-0">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            @click="settingsDialog = false"
+            class="text-none"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="saveSettings"
+            class="text-none"
+          >
+            Save
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+  </div>
 </template>
 
 <style scoped>
@@ -1057,6 +1281,20 @@ li {
 .v-dialog .v-overlay__content .v-card {
   border-radius: 24px !important;
   overflow: hidden !important;
+}
+.color-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 
 /* 3. REMOVE LINE THROUGH LABEL IN V-SELECT */

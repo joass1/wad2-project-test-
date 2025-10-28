@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+
 import socketio
 import asyncio
 import os
@@ -11,12 +12,26 @@ from app.core.firebase import db
 app = FastAPI()
 
 
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["http://localhost:8080/", "*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+app = FastAPI()
+
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080/", "*"],
+    allow_origins=[
+        "http://localhost:8081",  # Your frontend URL
+        "http://127.0.0.1:8081",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Mount static files for sprites
