@@ -255,13 +255,7 @@
                 :style="getDateStyle(date)"
             >
             <span class="date-number">{{ date.day }}</span>
-    
-            <!-- Mood indicator dot -->
-            <div v-if="date.hasCheckIn && date.checkInData" 
-                class="mood-indicator"
-                :style="{ background: getMoodColor(date.checkInData.mood) }">
-            </div>
-            
+  
             <!-- Hover tooltip -->
             <div v-if="date.hasCheckIn && date.checkInData" class="date-tooltip">
               <div class="tooltip-emoji">{{ getDateEmoji(date.checkInData) }}</div>
@@ -282,6 +276,30 @@
             </div>
           </div>
         </div>
+
+        <div class="right-sidebar">
+          <!-- Legend -->
+          <div class="calendar-legend">
+            <h4 class="legend-title">Wellness Score</h4>
+            <div class="legend-items">
+              <div class="legend-item">
+                <div class="legend-color legend-green"></div>
+                <span class="legend-label">Great (8-10)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color legend-blue"></div>
+                <span class="legend-label">Good (6-7.9)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color legend-yellow"></div>
+                <span class="legend-label">Okay (4-5.9)</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color legend-red"></div>
+                <span class="legend-label">Needs Care (&lt;4)</span>
+              </div>
+            </div>
+          </div>
 
         <div class="pet-stats-panel" v-if="selectedCheckInData">
             <h3 class="section-title">Check-in for {{ selectedDateFormatted }}</h3>
@@ -316,6 +334,7 @@
                 <p>No check-in recorded for this date</p>
             </div>
         </div>
+      </div>
     </div>
     
     <div class="wellness-tips">
@@ -942,7 +961,7 @@ onMounted(async () => {
   await loadCheckIns()
 
   // TEMPORARY: Auto-add test data if calendar is empty
-  if (totalCheckIns.value < 5) {
+  if (totalCheckIns.value < 100) {
     console.log('Adding test data to visualize calendar...')
     await addTestData()
   }
@@ -1346,24 +1365,6 @@ onMounted(async () => {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
   border-color: var(--primary);
   z-index: 10;
-}
-
-/* Mood indicator dot */
-.mood-indicator {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  z-index: 2;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.8; }
 }
 
 /* Hover tooltip */
@@ -1810,5 +1811,64 @@ onMounted(async () => {
 
 .complete-btn:active {
   transform: translateY(0);
+}
+
+/* Calendar Legend */
+.calendar-legend {
+  margin-top: 1.5rem;
+  padding: 1rem 1.5rem;
+  background: var(--surface);
+  border: 1px solid rgba(170, 196, 188, 0.2);
+  border-radius: 10px;
+}
+
+.legend-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.75rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.legend-items {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid rgba(90, 138, 122, 0.3);
+}
+
+.legend-green {
+  background: rgba(74, 222, 128, 0.4);
+}
+
+.legend-blue {
+  background: rgba(96, 165, 250, 0.4);
+}
+
+.legend-yellow {
+  background: rgba(251, 191, 36, 0.4);
+}
+
+.legend-red {
+  background: rgba(248, 113, 113, 0.4);
+}
+
+.legend-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 </style>
