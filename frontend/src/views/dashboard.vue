@@ -59,6 +59,7 @@
             color="primary"
             class="text-white"
             prepend-icon="mdi-heart-outline"
+            @click="navigateToPetPage"
           >
             Feed Pet
           </v-btn>
@@ -166,8 +167,14 @@
 <script setup>
 import { computed } from "vue";
 import { useAuth } from "@/composables/useAuth";
+import { useRouter } from "vue-router";
 
 const { userProfile, loading } = useAuth();
+const router = useRouter();
+
+const navigateToPetPage = () => {
+  router.push({ name: 'PetPage' });
+};
 
 const gradient = computed(() => ({
   background:

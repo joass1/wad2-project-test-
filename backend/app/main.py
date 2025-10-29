@@ -28,10 +28,13 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8081",  # Your frontend URL
         "http://127.0.0.1:8081",
+        "http://localhost:8080",  # Alternative frontend URL
+        "http://127.0.0.1:8080",
     ],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods (GET, POST, PUT, DELETE, etc.)
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Explicitly allow OPTIONS
     allow_headers=["*"],  # Allows all headers
+    expose_headers=["*"],  # Expose all headers
 )
 
 # Mount static files for sprites

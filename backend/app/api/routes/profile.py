@@ -35,6 +35,7 @@ DEFAULT_USER_PREFERENCES = {
 DEFAULT_PET_SETTINGS = {
     "selected_pet": None,
     "has_selected_pet": False,
+    "pet_name": None,
 }
 
 
@@ -601,14 +602,15 @@ def get_pet_selection_status(user: dict = Depends(require_user)):
     doc_snapshot = db.collection("users").document(uid).get()
     
     if not doc_snapshot.exists:
-        return {"has_selected_pet": False, "selected_pet": None}
+        return {"has_selected_pet": False, "selected_pet": None, "pet_name": None}
     
     user_data = doc_snapshot.to_dict() or {}
     pet_settings = user_data.get("pet_settings", {})
     
     return {
         "has_selected_pet": pet_settings.get("has_selected_pet", False),
-        "selected_pet": pet_settings.get("selected_pet", None)
+        "selected_pet": pet_settings.get("selected_pet", None),
+        "pet_name": pet_settings.get("pet_name", None)
     }
 
 
@@ -642,4 +644,37 @@ def select_pet(payload: dict, user: dict = Depends(require_user)):
         "ok": True, 
         "message": "Pet selected successfully",
         "selected_pet": pet_key
+    }
+
+
+@router.put("/pet-name")
+def update_pet_name(payload: dict, user: dict = Depends(require_user)):
+    """Update user's pet name"""
+    uid = user["uid"]
+    pet_name = payload.get("pet_name")
+    
+    if not pet_name:
+        return {"ok": False, "message": "Missing 'pet_name' field"}
+    
+    # Validate pet name (basic validation)
+    if len(pet_name.strip()) == 0:
+        return {"ok": False, "message": "Pet name cannot be empty"}
+    
+    if len(pet_name) > 20:
+        return {"ok": False, "message": "Pet name must be 20 characters or less"}
+    
+    # Update user's pet settings
+    db.collection("users").document(uid).set(
+        {
+            "pet_settings": {
+                "pet_name": pet_name.strip()
+            }
+        },
+        merge=True,
+    )
+    
+    return {
+        "ok": True, 
+        "message": "Pet name updated successfully",
+        "pet_name": pet_name.strip()
     }

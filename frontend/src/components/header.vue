@@ -16,9 +16,7 @@
 
     <v-spacer />
 
-    <v-avatar size="36" color="secondary" variant="tonal" class="mr-2 avatar-glow">
-      🐱
-    </v-avatar>
+
   </v-app-bar>
 </template>
 

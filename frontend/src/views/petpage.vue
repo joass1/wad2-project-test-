@@ -28,7 +28,7 @@ let nextDroppedItemId = 0
 /* ==== Pet picker (preview vs active pet) ==== */
 const petKeys = PET_KEYS
 const petIndex = ref(0) // Preview pet index
-const { selectedPetKey: globalPetKey, setGlobalPet } = useGlobalPet()
+const { selectedPetKey: globalPetKey, setGlobalPet, petName, updatePetName } = useGlobalPet()
 const selectedPetKey = computed(() => globalPetKey.value) // Active pet from global state
 const previewPetKey = computed(() => petKeys[petIndex.value]) // Preview pet
 
@@ -164,7 +164,6 @@ function onDrop(event) {
   // Save inventory to backend
   saveInventory()
 
-  // Clear drag state
   draggedItem = null
   draggedItemIndex = null
 }
@@ -198,6 +197,45 @@ const manualControlEnabled = ref(false)
 
 function toggleManualControl() {
   manualControlEnabled.value = !manualControlEnabled.value
+}
+
+/* ==== Pet Name Editing ==== */
+const isEditingPetName = ref(false)
+const tempPetName = ref('')
+const petNameError = ref('')
+
+function startEditingPetName() {
+  isEditingPetName.value = true
+  tempPetName.value = petName.value || ''
+  petNameError.value = ''
+}
+
+function cancelEditingPetName() {
+  isEditingPetName.value = false
+  tempPetName.value = ''
+  petNameError.value = ''
+}
+
+async function savePetName() {
+  if (!tempPetName.value.trim()) {
+    petNameError.value = 'Pet name cannot be empty'
+    return
+  }
+  
+  if (tempPetName.value.length > 20) {
+    petNameError.value = 'Pet name must be 20 characters or less'
+    return
+  }
+  
+  const result = await updatePetName(tempPetName.value.trim())
+  
+  if (result.success) {
+    isEditingPetName.value = false
+    tempPetName.value = ''
+    petNameError.value = ''
+  } else {
+    petNameError.value = result.error || 'Failed to update pet name'
+  }
 }
 
 /* ==== Border Warning ==== */
@@ -351,7 +389,6 @@ async function buyFood(item) {
     const result = await updateCoins(newCoinAmount)
 
     if (result.success) {
-      // Add to inventory: if same item exists, increase count; otherwise add new slot
       const existingItem = inventory.value.find(f => f.name === item.name)
       if (existingItem) {
         existingItem.count++
@@ -472,6 +509,36 @@ onMounted(() => {
           <span class="status-value">{{ petStatus.health }}%</span>
         </div>
         
+      </div>
+
+      <!-- Pet Name -->
+      <div class="panel-section">
+        <h4 class="section-title">Pet Name</h4>
+        <div v-if="!isEditingPetName" class="pet-name-display">
+          <div class="current-pet-name">
+            {{ petName || PETS[selectedPetKey].label }}
+          </div>
+          <button class="edit-name-btn" @click="startEditingPetName">
+            <span class="edit-icon">✏️</span>
+            Edit Name
+          </button>
+        </div>
+        <div v-else class="pet-name-edit">
+          <input 
+            v-model="tempPetName" 
+            type="text" 
+            class="name-input" 
+            placeholder="Enter pet name"
+            maxlength="20"
+            @keyup.enter="savePetName"
+            @keyup.escape="cancelEditingPetName"
+          />
+          <div v-if="petNameError" class="name-error">{{ petNameError }}</div>
+          <div class="edit-buttons">
+            <button class="save-btn" @click="savePetName">Save</button>
+            <button class="cancel-btn" @click="cancelEditingPetName">Cancel</button>
+          </div>
+        </div>
       </div>
 
       <!-- Inventory -->
@@ -1066,5 +1133,100 @@ onMounted(() => {
   0%, 100%{transform:rotate(0deg);}
   25%{transform:rotate(-10deg);}
   75%{transform:rotate(10deg);}
+}
+
+/* Pet Name Editing Styles */
+.pet-name-display{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.current-pet-name{
+  font-size:16px;
+  font-weight:600;
+  color:var(--text-primary);
+  padding:12px;
+  background:var(--surface-light);
+  border-radius:8px;
+  text-align:center;
+}
+.edit-name-btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:8px 12px;
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:600;
+  transition:all 0.2s ease;
+}
+.edit-name-btn:hover{
+  background:var(--primary-dark);
+  transform:translateY(-1px);
+}
+.edit-icon{
+  font-size:14px;
+}
+.pet-name-edit{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.name-input{
+  padding:10px 12px;
+  border:2px solid var(--surface-lighter);
+  border-radius:6px;
+  background:var(--surface);
+  color:var(--text-primary);
+  font-size:14px;
+  transition:border-color 0.2s ease;
+}
+.name-input:focus{
+  outline:none;
+  border-color:var(--primary);
+}
+.name-error{
+  color:#ff6b6b;
+  font-size:12px;
+  font-weight:500;
+}
+.edit-buttons{
+  display:flex;
+  gap:8px;
+}
+.save-btn{
+  flex:1;
+  padding:8px 12px;
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:600;
+  transition:all 0.2s ease;
+}
+.save-btn:hover{
+  background:var(--primary-dark);
+}
+.cancel-btn{
+  flex:1;
+  padding:8px 12px;
+  background:var(--surface-lighter);
+  color:var(--text-muted);
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:600;
+  transition:all 0.2s ease;
+}
+.cancel-btn:hover{
+  background:var(--surface-light);
 }
 </style>
