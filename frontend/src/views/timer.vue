@@ -3,12 +3,14 @@ import { ref, computed, onUnmounted, watch, onMounted } from 'vue'
 import { useSubjects, useRecurringTopics } from '@/composables/useSubjects'
 // NEW: Background imports
 import { useBackground } from '@/composables/useBackgrounds'
-import BackgroundsGallery from '@/components/BackgroundsGallery.vue' 
+import BackgroundsGallery from '@/components/BackgroundsGallery.vue'
+import { useCoins } from '@/composables/useCoins.js' 
 
 const { subjects, loading: subjectsLoading, fetchSubjects, createSubject, updateSubject, deleteSubject } = useSubjects()
 const { topics: recurringTopics, loading: topicsLoading, fetchTopics, createTopic, updateTopic, deleteTopic } = useRecurringTopics()
 // NEW: Use Background composable
 const { getCurrentBackground } = useBackground()
+const { coins, updateCoins } = useCoins()
 
 const presets = { 'Focus': 25, 'Short Break': 5, 'Long Break': 15 }
 const mode = ref('Focus')
@@ -359,12 +361,12 @@ function start(){
 }
 
 async function dispatchStudySessionCompleted() {
-  console.log('✅ Focus session completed! Dispatching event...');
-  
-  const subjectName = selectedSubject.value 
-    ? subjects.value.find(s => s.id === selectedSubject.value)?.name 
+  console.log('Focus session completed! Dispatching event...');
+
+  const subjectName = selectedSubject.value
+    ? subjects.value.find(s => s.id === selectedSubject.value)?.name
     : null
-  
+
   // Get topic title - could be manual text or a topic ID
   let taskDisplay = selectedTopic.value
   if (selectedTopic.value) {
@@ -373,7 +375,7 @@ async function dispatchStudySessionCompleted() {
       taskDisplay = topic.title
     }
   }
-  
+
   window.dispatchEvent(new CustomEvent('study-session-completed', {
     detail: {
       duration: minutes.value,
@@ -385,7 +387,31 @@ async function dispatchStudySessionCompleted() {
       timestamp: new Date()
     }
   }))
-  
+
+  // Award coins for completing study session (pro-rated: 10 coins per 25 minutes)
+  try {
+    const durationMinutes = minutes.value
+    const coinsEarned = Math.floor((durationMinutes) * 10)
+
+    console.log(`Calculating coins: ${durationMinutes} minutes × 10 / 25 = ${coinsEarned} coins`)
+
+    if (coinsEarned > 0) {
+      const currentCoins = coins.value || 0
+      const newCoins = currentCoins + coinsEarned
+      console.log(`Updating coins: ${currentCoins} + ${coinsEarned} = ${newCoins}`)
+
+      const result = await updateCoins(newCoins)
+      if (result.success) {
+        console.log(`Study session rewarded ${coinsEarned} coins! Total: ${newCoins}`)
+      }
+    } else {
+      console.log('No coins earned (duration too short)')
+    }
+  } catch (coinError) {
+    console.error('Error awarding study session coins:', coinError)
+    // Don't fail the session completion if coins fail to update
+  }
+
   // Show completion dialog with task option
   if (selectedTask.value) {
     showTaskCompletionDialog()

@@ -11,7 +11,8 @@
     @mousedown="handleMouseDown"
   >
     <canvas ref="canvasRef" class="pet-canvas" />
-    <img v-if="showHeart" src="/heart.png" class="heart-icon" />
+    <img v-if="showHeart && petStatus && !petStatus.isDead" src="/heart.png" class="heart-icon" />
+    <img v-if="petStatus && petStatus.isDead" src="/dead.png" class="dead-icon" />
   </div>
 </template>
 
@@ -20,7 +21,10 @@ import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useGlobalPet } from '@/composables/useGlobalPet.js'
 
 // Get global pet state
-const { selectedPet, loadPetFromBackend } = useGlobalPet()
+const { selectedPet, loadPetFromBackend, petStatus } = useGlobalPet()
+
+console.log('GlobalDesktopPet: Component loaded')
+console.log('Initial petStatus:', petStatus?.value)
 
 // Dynamic sprite configuration based on selected pet
 const spriteConfig = computed(() => {
@@ -96,8 +100,6 @@ function setAnim(key, once = false, queueNext = null) {
   lastDrawnFrame = -1
   playingOnce = once && !anim.loop
   nextOnceKey = queueNext
-
-  console.log(` Animation changed to: ${key}${once ? ' (one-shot)' : ''}`, anim)
 }
 
 function getSeqLength(a) {
@@ -115,22 +117,31 @@ function getSourceCol(a, f) {
 let lastDrawnFrame = -1
 
 function drawFrame() {
-  if (!ctx || !img || !anim) return
+  // Check if basic rendering requirements are met (but not anim yet)
+  if (!ctx || !img) return
+
+  const s = spriteConfig.value.slice
+
+  // Override sprite for dead state (row 7, col 1) - dead state doesn't need anim
+  if (petStatus?.value?.isDead) {
+    ctx.clearRect(0, 0, s, s)
+    const sx = 1 * s  // column 1
+    const sy = 7 * s  // row 7
+    ctx.drawImage(img, sx, sy, s, s, 0, 0, s, s)
+    return
+  }
+
+  // For normal animations, we need anim to be set
+  if (!anim) return
 
   // Only redraw if the frame has changed
   if (frame === lastDrawnFrame) return
   lastDrawnFrame = frame
 
-  const s = spriteConfig.value.slice
   const colIndex = getSourceCol(anim, frame)
   const safeCol = Math.max(0, Math.min(colIndex, sheetCols - 1))
   const sx = safeCol * s
   const sy = anim.row * s
-
-  // Debug: Log frame drawing for walking animations
-  if (animKey === 'move_right' || animKey === 'move_left') {
-    console.log(`Drawing frame: ${frame}, col: ${safeCol}, row: ${anim.row}`)
-  }
 
   ctx.save()
 
@@ -231,6 +242,9 @@ function applyPhysics() {
 }
 
 function updateWalking(dt) {
+  // Don't move if pet is dead
+  if (petStatus?.value?.isDead) return
+
   if (isDragging.value || isFalling || !isOnGround || isSleeping || isScared) return
 
   walkCooldown -= dt
@@ -319,6 +333,12 @@ function wakeUp() {
 }
 
 function showLove() {
+  // Don't show love if pet is dead
+  if (petStatus?.value?.isDead) {
+    console.log('Pet cannot receive love - dead!')
+    return
+  }
+
   // Wake up if sleeping
   if (isSleeping) {
     wakeUp()
@@ -395,11 +415,6 @@ function loop(t) {
           }
         }
       }
-    }
-    
-    // Debug: Log animation state for walking animations
-    if (animKey === 'move_right' || animKey === 'move_left') {
-      console.log(`Walking animation: ${animKey}, frame: ${frame}, fps: ${anim.fps}, loop: ${anim.loop}`)
     }
   }
 
@@ -540,6 +555,11 @@ watch(spriteConfig, async (newConfig, oldConfig) => {
   }
 }, { deep: true })
 
+// Watch pet status changes
+watch(() => petStatus?.value, (newStatus) => {
+  console.log('GlobalDesktopPet: Pet status changed:', newStatus)
+}, { deep: true })
+
 /* Lifecycle */
 onMounted(async () => {
   // Load pet from backend first
@@ -606,5 +626,16 @@ onBeforeUnmount(() => {
     opacity: 0;
     transform: translateX(-50%) translateY(-20px);
   }
+}
+
+.dead-icon {
+  position: absolute;
+  top: 0%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50%;
+  height: auto;
+  pointer-events: none;
+  z-index: 10;
 }
 </style>

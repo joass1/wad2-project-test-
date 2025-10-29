@@ -237,10 +237,14 @@
 import { ref, computed, onMounted} from 'vue'
 import { getFirestore, collection, addDoc, query, where, getDocs, orderBy } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
+import { useCoins } from '@/composables/useCoins.js'
 
-// Initialize Firebase instances 
+// Initialize Firebase instances
 const db = getFirestore()
 const auth = getAuth()
+
+// Coins composable (shared state with sidebar)
+const { coins, updateCoins } = useCoins()
 
 // State
 const mood = ref(7)
@@ -498,10 +502,24 @@ const completeCheckIn = async () => {
     }
 
     await addDoc(collection(db, 'wellnessCheckIns'), checkInData)
-    
+
     isCompleted.value = true
     hasCheckedInToday.value = true
-    
+
+    // Award coins for completing wellness check-in (20 coins)
+    try {
+      const currentCoins = coins.value || 0
+      const newCoins = currentCoins + 20
+
+      const result = await updateCoins(newCoins)
+      if (result.success) {
+        console.log(`✅ Wellness check-in rewarded 20 coins! Total: ${newCoins}`)
+      }
+    } catch (coinError) {
+      console.error('Error awarding coins:', coinError)
+      // Don't fail the check-in if coins fail to update
+    }
+
     // Reload data
     await loadCheckIns()
   } catch (error) {
