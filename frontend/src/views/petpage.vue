@@ -13,7 +13,20 @@ import { PET_CATALOG, PET_KEYS } from '@/data/petCatalog.js'
 const PETS = PET_CATALOG
 
 /* ==== Status ==== */
-const petStatus = reactive({ happiness: 75, health: 80, energy: 60 })
+const petStatus = reactive({ happiness: 100, health: 100, energy: 60, is_dead: false, soju_count: 0 })
+const petStatusLoading = ref(false)
+
+// Computed property for death state
+const isPetDead = computed(() => petStatus.is_dead || petStatus.happiness === 0 || petStatus.health === 0)
+
+// Alert state for low stats
+const showLowStatsAlert = ref(false)
+const lowStatsMessage = ref('')
+
+// Soju emote state
+const showSojuEmote = ref(false)
+const sojuEmoteType = ref('happy') // 'happy' or 'drunk'
+const isDrunk = ref(false) // Track if pet is currently drunk (3rd+ drink)
 
 /* ==== Inventory ==== */
 const INVENTORY_SLOTS = 16  // 4 rows x 4 columns
@@ -28,7 +41,15 @@ let nextDroppedItemId = 0
 /* ==== Pet picker (preview vs active pet) ==== */
 const petKeys = PET_KEYS
 const petIndex = ref(0) // Preview pet index
-const { selectedPetKey: globalPetKey, setGlobalPet, petName, updatePetName } = useGlobalPet()
+const {
+  selectedPetKey: globalPetKey,
+  setGlobalPet,
+  petName,
+  updatePetName,
+  petStatus: globalPetStatus,
+  updatePetStatus,
+  setPetDead
+} = useGlobalPet()
 const selectedPetKey = computed(() => globalPetKey.value) // Active pet from global state
 const previewPetKey = computed(() => petKeys[petIndex.value]) // Preview pet
 
@@ -90,21 +111,156 @@ async function saveInventory() {
   }
 }
 
+/* ==== Pet Status API ==== */
+async function fetchPetStatus() {
+  petStatusLoading.value = true
+  try {
+    const response = await api.get('/api/profile/pet-status')
+    if (response) {
+      petStatus.happiness = response.happiness ?? 100
+      petStatus.health = response.health ?? 100
+      petStatus.is_dead = response.is_dead ?? false
+      petStatus.soju_count = response.soju_count ?? 0
+
+      // Sync to global pet status
+      updatePetStatus({
+        happiness: petStatus.happiness,
+        health: petStatus.health,
+        isDead: petStatus.is_dead || petStatus.happiness === 0 || petStatus.health === 0
+      })
+      setPetDead(petStatus.is_dead || petStatus.happiness === 0 || petStatus.health === 0)
+
+      // Show alert if pet needs food
+      checkPetNeeds()
+    }
+  } catch (error) {
+    console.error('Failed to fetch pet status:', error)
+  } finally {
+    petStatusLoading.value = false
+  }
+}
+
+async function savePetStatus() {
+  try {
+    const response = await api.put('/api/profile/pet-status', {
+      happiness: petStatus.happiness,
+      health: petStatus.health,
+      soju_count: petStatus.soju_count
+    })
+    if (response && response.ok) {
+      console.log('Pet status saved successfully')
+      // Update is_dead status from server response
+      if (response.pet_status) {
+        petStatus.is_dead = response.pet_status.is_dead
+      }
+    }
+  } catch (error) {
+    console.error('Failed to save pet status:', error)
+  }
+}
+
+function checkPetNeeds() {
+  // Check if pet is dead
+  if (petStatus.is_dead || petStatus.happiness === 0 || petStatus.health === 0) {
+    lowStatsMessage.value = 'Your pet has died! Feed it to revive it.'
+    showLowStatsAlert.value = true
+    return
+  }
+
+  // Check if pet needs food urgently (below 20)
+  if (petStatus.happiness < 20 || petStatus.health < 20) {
+    lowStatsMessage.value = 'Your pet is starving! Feed it immediately!'
+    showLowStatsAlert.value = true
+    return
+  }
+
+  // Check if pet needs food soon (below 40)
+  if (petStatus.happiness < 40 || petStatus.health < 40) {
+    lowStatsMessage.value = 'Your pet is getting hungry. Feed it soon!'
+    showLowStatsAlert.value = true
+    return
+  }
+
+  // Pet is healthy
+  showLowStatsAlert.value = false
+}
+
 /* ==== Inventory actions ==== */
 function feedPet(slotIndex) {
   const item = inventory.value[slotIndex]
   if (item && item.count > 0) {
+    // Find food configuration by name
+    const foodConfig = shopItems.value.find(shopItem => shopItem.name === item.name)
+
     item.count--
-    petStatus.happiness = Math.min(100, petStatus.happiness + 10)
-    petStatus.health = Math.min(100, petStatus.health + 5)
+
+    // Check if item is soju
+    const isSoju = item.name === 'Soju'
+
+    if (isSoju && foodConfig) {
+      // Handle soju consumption
+      petStatus.soju_count++
+      console.log('Soju consumed (clicked)! Count:', petStatus.soju_count)
+
+      if (petStatus.soju_count <= 2) {
+        // First 2 drinks: use configured happiness value
+        const happinessGain = foodConfig.soju_1st_2nd_happiness || 10
+        petStatus.happiness = Math.min(100, petStatus.happiness + happinessGain)
+        sojuEmoteType.value = 'happy'
+        console.log(`First/Second soju: +${happinessGain} happiness`)
+
+        // Show soju emote for 2.5 seconds
+        showSojuEmote.value = true
+        setTimeout(() => {
+          showSojuEmote.value = false
+        }, 2500)
+      } else {
+        // 3rd drink onwards: use configured values
+        const happinessGain = foodConfig.soju_3rd_plus_happiness || 20
+        const healthChange = foodConfig.soju_3rd_plus_health || -20
+        petStatus.happiness = Math.min(100, petStatus.happiness + happinessGain)
+        petStatus.health = Math.max(0, petStatus.health + healthChange)
+        sojuEmoteType.value = 'drunk'
+        console.log(`Third+ soju: +${happinessGain} happiness, ${healthChange} health - PET IS DRUNK!`)
+
+        // Set drunk state for 5 seconds
+        isDrunk.value = true
+        showSojuEmote.value = true
+
+        setTimeout(() => {
+          isDrunk.value = false
+          showSojuEmote.value = false
+        }, 5000)
+      }
+
+      petStatus.is_dead = false  // Revive pet if it was dead
+    } else if (foodConfig) {
+      // Regular food: use configured happiness and health values
+      const happinessGain = foodConfig.happiness || 10
+      const healthGain = foodConfig.health || 5
+      petStatus.happiness = Math.min(100, petStatus.happiness + happinessGain)
+      petStatus.health = Math.min(100, petStatus.health + healthGain)
+      petStatus.is_dead = false  // Revive pet if it was dead
+      console.log(`Regular food (clicked): +${happinessGain} happiness, +${healthGain} health`)
+    } else {
+      // Fallback if item not found in configuration
+      console.warn('Food configuration not found for:', item.name)
+      petStatus.happiness = Math.min(100, petStatus.happiness + 10)
+      petStatus.health = Math.min(100, petStatus.health + 5)
+      petStatus.is_dead = false
+    }
 
     // Remove item from inventory if count reaches 0
     if (item.count === 0) {
       inventory.value.splice(slotIndex, 1)
     }
 
-    // Save inventory to backend
+    console.log('Updated stats - Happiness:', petStatus.happiness, 'Health:', petStatus.health)
+
+    // Save inventory and pet status to backend
     saveInventory()
+    savePetStatus()
+    checkPetNeeds()
   }
 }
 
@@ -183,10 +339,73 @@ function removeDroppedItem(itemId) {
     const removedItem = droppedItems.value[index]
     console.log('Removing item:', removedItem)
     droppedItems.value.splice(index, 1)
-    // Increase pet stats when eating
-    petStatus.happiness = Math.min(100, petStatus.happiness + 10)
-    petStatus.health = Math.min(100, petStatus.health + 5)
+
+    // Find food configuration by name
+    const foodConfig = shopItems.value.find(item => item.name === removedItem.name)
+
+    // Check if item is soju
+    const isSoju = removedItem.name === 'Soju'
+
+    if (isSoju && foodConfig) {
+      // Handle soju consumption
+      petStatus.soju_count++
+      console.log('Soju consumed! Count:', petStatus.soju_count)
+
+      if (petStatus.soju_count <= 2) {
+        // First 2 drinks: use configured happiness value
+        const happinessGain = foodConfig.soju_1st_2nd_happiness || 10
+        petStatus.happiness = Math.min(100, petStatus.happiness + happinessGain)
+        sojuEmoteType.value = 'happy'
+        console.log(`First/Second soju: +${happinessGain} happiness`)
+
+        // Show soju emote for 2.5 seconds
+        showSojuEmote.value = true
+        setTimeout(() => {
+          showSojuEmote.value = false
+        }, 2500)
+      } else {
+        // 3rd drink onwards: use configured values
+        const happinessGain = foodConfig.soju_3rd_plus_happiness || 20
+        const healthChange = foodConfig.soju_3rd_plus_health || -20
+        petStatus.happiness = Math.min(100, petStatus.happiness + happinessGain)
+        petStatus.health = Math.max(0, petStatus.health + healthChange)
+        sojuEmoteType.value = 'drunk'
+        console.log(`Third+ soju: +${happinessGain} happiness, ${healthChange} health - PET IS DRUNK!`)
+
+        // Set drunk state for 5 seconds
+        isDrunk.value = true
+        showSojuEmote.value = true
+
+        setTimeout(() => {
+          isDrunk.value = false
+          showSojuEmote.value = false
+        }, 5000) // 5 seconds drunk state
+      }
+
+      petStatus.is_dead = false  // Revive pet if it was dead
+    } else if (foodConfig) {
+      // Regular food: use configured happiness and health values
+      const happinessGain = foodConfig.happiness || 10
+      const healthGain = foodConfig.health || 5
+      petStatus.happiness = Math.min(100, petStatus.happiness + happinessGain)
+      petStatus.health = Math.min(100, petStatus.health + healthGain)
+      petStatus.is_dead = false  // Revive pet if it was dead
+      console.log(`Regular food: +${happinessGain} happiness, +${healthGain} health`)
+    } else {
+      // Fallback if item not found in configuration
+      console.warn('Food configuration not found for:', removedItem.name)
+      petStatus.happiness = Math.min(100, petStatus.happiness + 10)
+      petStatus.health = Math.min(100, petStatus.health + 5)
+      petStatus.is_dead = false
+    }
+
     console.log('Updated stats - Happiness:', petStatus.happiness, 'Health:', petStatus.health)
+
+    // Save updated status to backend
+    savePetStatus()
+
+    // Check if pet still needs food
+    checkPetNeeds()
   } else {
     console.log('Item not found in droppedItems array!')
   }
@@ -197,6 +416,26 @@ const manualControlEnabled = ref(false)
 
 function toggleManualControl() {
   manualControlEnabled.value = !manualControlEnabled.value
+}
+
+/* ==== Test Functions ==== */
+function testDeteriorate() {
+  // Decrease happiness and health by 15 points
+  petStatus.happiness = Math.max(0, petStatus.happiness - 15)
+  petStatus.health = Math.max(0, petStatus.health - 15)
+
+  // Update death state
+  if (petStatus.happiness === 0 || petStatus.health === 0) {
+    petStatus.is_dead = true
+  }
+
+  // Save to backend
+  savePetStatus()
+
+  // Check and show alerts
+  checkPetNeeds()
+
+  console.log('Test deteriorate: Happiness:', petStatus.happiness, 'Health:', petStatus.health)
 }
 
 /* ==== Pet Name Editing ==== */
@@ -263,13 +502,64 @@ const showShop = ref(false)
 const { coins: playerGold, coinsLoading, coinsError, fetchCoins, updateCoins } = useCoins()
 
 const shopItems = ref([
-  { icon: '/food/fish.png', name: 'Fish', price: 80, description: 'Fresh fish, a premium treat for pets.' },
-  { icon: '/food/milk.png', name: 'Milk', price: 40, description: 'Fresh milk, good for growing pets.' },
-  { icon: '/food/beef.png', name: 'Beef', price: 120, description: 'Premium beef, the ultimate pet treat.' },
-  { icon: '/food/shrimp.png', name: 'Shrimp', price: 90, description: 'Delicious shrimp, a seafood delight.' },
-  { icon: '/food/cherry.png', name: 'Cherry', price: 50, description: 'Sweet cherries, a tasty snack.' },
-  { icon: '/food/pumpkin.png', name: 'Pumpkin', price: 60, description: 'Healthy pumpkin, full of nutrients.' },
-  { icon: '/food/soju.png', name: 'Soju', price: 100, description: 'Special drink for celebrating!' }
+  {
+    icon: '/food/fish.png',
+    name: 'Fish',
+    price: 80,
+    description: 'Fresh fish, a premium treat for pets.',
+    happiness: 15,
+    health: 15
+  },
+  {
+    icon: '/food/milk.png',
+    name: 'Milk',
+    price: 40,
+    description: 'Fresh milk, good for growing pets.',
+    happiness: 10,
+    health: 10
+  },
+  {
+    icon: '/food/beef.png',
+    name: 'Beef',
+    price: 120,
+    description: 'Premium beef, the ultimate pet treat.',
+    happiness: 25,
+    health: 20
+  },
+  {
+    icon: '/food/shrimp.png',
+    name: 'Shrimp',
+    price: 90,
+    description: 'Delicious shrimp, a seafood delight.',
+    happiness: 18,
+    health: 12
+  },
+  {
+    icon: '/food/cherry.png',
+    name: 'Cherry',
+    price: 50,
+    description: 'Sweet cherries, a tasty snack.',
+    happiness: 12,
+    health: 8
+  },
+  {
+    icon: '/food/pumpkin.png',
+    name: 'Pumpkin',
+    price: 60,
+    description: 'Healthy pumpkin, full of nutrients.',
+    happiness: 10,
+    health: 18
+  },
+  {
+    icon: '/food/soju.png',
+    name: 'Soju',
+    price: 100,
+    description: 'Special drink for celebrating! Bad things happen after the 2nd drink',
+    // Soju has special logic: first 2 drinks vs 3rd+ drinks
+    soju_1st_2nd_happiness: 20,
+    soju_3rd_plus_happiness: -10,
+    soju_3rd_plus_health: -20
+  }
 ])
 
 /* ==== Shopkeeper Animation ==== */
@@ -435,6 +725,34 @@ onMounted(() => {
   }
   // Always fetch inventory on mount
   fetchInventory()
+
+  // Fetch pet status on mount
+  fetchPetStatus()
+})
+
+// Watch pet status and save periodically (debounced)
+let saveStatusTimeout = null
+watch(() => [petStatus.happiness, petStatus.health], () => {
+  // Debounce saving to avoid too many requests
+  if (saveStatusTimeout) {
+    clearTimeout(saveStatusTimeout)
+  }
+  saveStatusTimeout = setTimeout(() => {
+    savePetStatus()
+    checkPetNeeds()
+  }, 2000)  // Save 2 seconds after last change
+
+  // Sync happiness and health to global pet status
+  updatePetStatus({
+    happiness: petStatus.happiness,
+    health: petStatus.health
+  })
+})
+
+// Watch dead state and sync to global pet
+watch(isPetDead, (newIsDead) => {
+  setPetDead(newIsDead)
+  console.log('Pet dead state synced to global:', newIsDead)
 })
 </script>
 
@@ -465,6 +783,10 @@ onMounted(() => {
           :dropped-items="droppedItems"
           :manual-control="manualControlEnabled"
           :collision-objects="collisionData.collisionObjects"
+          :is-dead="isPetDead"
+          :is-drunk="isDrunk"
+          :show-soju-emote="showSojuEmote"
+          :soju-emote-type="sojuEmoteType"
           @item-eaten="removeDroppedItem"
           @border-warning="handleBorderWarning"
         />
@@ -490,6 +812,14 @@ onMounted(() => {
               <div v-if="showBorderWarning" class="border-warning">
                 <div class="warning-icon">⚠️</div>
                 <div class="warning-text">Why are you trying to drag your pet into the VOID</div>
+              </div>
+
+              <!-- Low Stats Alert -->
+              <div v-if="showLowStatsAlert" class="low-stats-alert" :class="{ 'dead-alert': isPetDead }">
+                <div class="alert-content">
+                  {{ lowStatsMessage }}
+                </div>
+                <button @click="showLowStatsAlert = false" class="close-alert">×</button>
               </div>
     </div>
 
@@ -602,12 +932,20 @@ onMounted(() => {
           :class="{ active: manualControlEnabled }"
           @click="toggleManualControl"
         >
-          
+
           <span class="control-text">{{ manualControlEnabled ? 'Manual (WASD)' : 'Auto Roam' }}</span>
         </button>
         <div v-if="manualControlEnabled" class="control-hint">
           Use W/A/S/D keys to move your pet
         </div>
+
+        <!-- Test Deteriorate Button -->
+        <button
+          class="test-deteriorate-btn"
+          @click="testDeteriorate"
+        >
+          ⚠️ Test Deteriorate (-15)
+        </button>
       </div>
     </div>
 
@@ -762,6 +1100,31 @@ onMounted(() => {
   font-size:12px;
   color:var(--primary);
   text-align:center;
+}
+
+/* Test Deteriorate Button */
+.test-deteriorate-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: rgba(255, 59, 48, 0.1);
+  border: 2px solid rgba(255, 59, 48, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #dc2626;
+  transition: all 0.3s ease;
+}
+
+.test-deteriorate-btn:hover {
+  background: rgba(255, 59, 48, 0.2);
+  border-color: #dc2626;
+  transform: translateY(-1px);
+}
+
+.test-deteriorate-btn:active {
+  transform: translateY(0);
 }
 
 /* Inventory Grid */
@@ -1133,6 +1496,68 @@ onMounted(() => {
   0%, 100%{transform:rotate(0deg);}
   25%{transform:rotate(-10deg);}
   75%{transform:rotate(10deg);}
+}
+
+/* Low Stats Alert */
+.low-stats-alert {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 193, 7, 0.95);
+  color: #000;
+  padding: 16px 48px 16px 24px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  animation: alertSlide 0.3s ease-out;
+  font-weight: 600;
+  font-size: 16px;
+  max-width: 500px;
+  text-align: center;
+}
+
+.low-stats-alert.dead-alert {
+  background: rgba(220, 38, 38, 0.95);
+  color: #fff;
+}
+
+.alert-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.close-alert {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.close-alert:hover {
+  opacity: 1;
+}
+
+@keyframes alertSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 /* Pet Name Editing Styles */

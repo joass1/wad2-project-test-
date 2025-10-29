@@ -1,4 +1,4 @@
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { PET_CATALOG, PET_KEYS } from '@/data/petCatalog.js'
 
 // Global pet state
@@ -6,6 +6,14 @@ const selectedPetKey = ref('catBlack') // Default to black cat
 const selectedPet = computed(() => PET_CATALOG[selectedPetKey.value])
 const petName = ref(null) // Pet's custom name
 const isLoading = ref(false)
+
+// Pet status state (shared between petpage and global pet)
+const petStatus = ref({
+  isDead: false,
+  isDrunk: false,
+  happiness: 60,
+  health: 60
+})
 
 // Function to load pet from backend
 async function loadPetFromBackend() {
@@ -71,18 +79,18 @@ async function updatePetName(newName) {
     // Get current user
     const { auth } = await import('@/lib/firebase')
     const { onAuthStateChanged } = await import('firebase/auth')
-    
+
     const currentUser = await new Promise((resolve) => {
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         unsubscribe()
         resolve(user)
       })
     })
-    
+
     if (!currentUser) {
       throw new Error('User not authenticated')
     }
-    
+
     // Update pet name in backend
     const token = await currentUser.getIdToken()
     const response = await fetch(`${process.env.VUE_APP_API_URL}/api/profile/pet-name`, {
@@ -95,16 +103,16 @@ async function updatePetName(newName) {
         pet_name: newName
       })
     })
-    
+
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.message || 'Failed to update pet name')
     }
-    
+
     // Update local state
     petName.value = newName
     console.log(`Pet name updated to: ${newName}`)
-    
+
     return { success: true }
   } catch (error) {
     console.error('Error updating pet name:', error)
@@ -112,10 +120,26 @@ async function updatePetName(newName) {
   }
 }
 
-// Load pet data when composable is first used
-onMounted(() => {
-  loadPetFromBackend()
-})
+// Function to update pet status (dead, drunk, happiness, health)
+function updatePetStatus(status) {
+  petStatus.value = {
+    ...petStatus.value,
+    ...status
+  }
+  console.log('Global pet status updated:', petStatus.value)
+}
+
+// Function to set dead state
+function setPetDead(isDead) {
+  petStatus.value.isDead = isDead
+  console.log(`Global pet dead state: ${isDead}`)
+}
+
+// Function to set drunk state
+function setPetDrunk(isDrunk) {
+  petStatus.value.isDrunk = isDrunk
+  console.log(`Global pet drunk state: ${isDrunk}`)
+}
 
 // Export the composable
 export function useGlobalPet() {
@@ -126,6 +150,11 @@ export function useGlobalPet() {
     setGlobalPet,
     updatePetName,
     loadPetFromBackend,
-    isLoading
+    isLoading,
+    // Pet status
+    petStatus,
+    updatePetStatus,
+    setPetDead,
+    setPetDrunk
   }
 }
