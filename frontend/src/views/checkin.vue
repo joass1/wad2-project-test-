@@ -30,7 +30,12 @@
           <div class="success-icon">✓</div>
           <h3>Already Checked In Today!</h3>
           <p>You've completed your wellness check-in for {{ todayFormatted }}.</p>
-          <p class="next-checkin-text">Come back tomorrow for your next check-in!</p>
+          <p class="next-checkin-text">Come back tomorrow!</p>
+
+          <!-- TEMPORARY: Reset button for testing -->
+          <button @click="resetForTesting" class="reset-btn">
+            🔄 Reset (Testing Only)
+          </button>
         </div>
 
         <!-- Show check-in form if not checked in today -->
@@ -75,8 +80,7 @@
             />
             <p class="slider-feedback">{{ getMoodFeedback }}</p>
           </div>
-
-           Energy Slider 
+  
           <div class="slider-group">
             <div class="slider-header">
               <span class="slider-label">
@@ -114,7 +118,6 @@
             <p class="slider-feedback">{{ getEnergyFeedback }}</p>
           </div>
 
-           Sleep Slider 
           <div class="slider-group">
             <div class="slider-header">
               <span class="slider-label">
@@ -142,7 +145,6 @@
               </div>
             </div>
 
-
             <input 
               type="range" 
               v-model.number="sleep" 
@@ -153,7 +155,6 @@
             <p class="slider-feedback">{{ getSleepFeedback }}</p>
           </div>
 
-           Stress Slider 
           <div class="slider-group">
             <div class="slider-header">
               <span class="slider-label">
@@ -213,9 +214,14 @@
         <!-- Show completion message immediately after submitting -->
         <div v-else class="completion-message">
           <div class="success-icon">✓</div>
-          <h3>Check-in Complete!</h3>
+          <h3>Check-in completed!</h3>
           <p>Great job tracking your wellness today.</p>
           <p class="next-checkin-text">See you tomorrow!</p>
+
+          <!-- TEMPORARY: Reset button for testing -->
+          <button @click="resetForTesting" class="reset-btn">
+            🔄 Reset (Testing Only)
+          </button>
         </div>
       </div>
     </div>
@@ -799,6 +805,19 @@ const selectDate = (date) => {
       date.day
     )
   }
+}
+
+// TEMPORARY: Reset for testing purposes
+const resetForTesting = () => {
+  isCompleted.value = false
+  hasCheckedInToday.value = false
+  mood.value = 7
+  energy.value = 7
+  sleep.value = 7
+  stress.value = 3
+  notes.value = ''
+  
+  console.log('✅ Reset for testing - you can check in again!')
 }
 
 // Load data when component mounts 
