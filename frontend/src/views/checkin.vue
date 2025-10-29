@@ -252,8 +252,33 @@
                 'selected': date.isSelected,
                 'has-checkin': date.hasCheckIn
                 }]"
+                :style="getDateStyle(date)"
             >
-                {{ date.day }}
+            <span class="date-number">{{ date.day }}</span>
+    
+            <!-- Mood indicator dot -->
+            <div v-if="date.hasCheckIn && date.checkInData" 
+                class="mood-indicator"
+                :style="{ background: getMoodColor(date.checkInData.mood) }">
+            </div>
+            
+            <!-- Hover tooltip -->
+            <div v-if="date.hasCheckIn && date.checkInData" class="date-tooltip">
+              <div class="tooltip-emoji">{{ getDateEmoji(date.checkInData) }}</div>
+              <div class="tooltip-stats">
+                <div class="tooltip-row">
+                  <span>Mood:</span>
+                  <span>{{ date.checkInData.mood }}/10</span>
+                </div>
+                <div class="tooltip-row">
+                  <span>Energy:</span>
+                  <span>{{ date.checkInData.energy }}/10</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ripple effect container -->
+            <span class="ripple"></span>
             </div>
           </div>
         </div>
@@ -640,6 +665,7 @@ const calendarDates = computed(() => {
         isToday: false,
         isSelected: false,
         hasCheckIn: false,
+        checkInData: null,
         key: `prev-${prevLastDate - i}`
     })
   }
@@ -650,6 +676,8 @@ const calendarDates = computed(() => {
     const isToday = i === today.getDate() && 
                     month === today.getMonth() && 
                     year === today.getFullYear()
+
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}` 
     
     dates.push({
         day: i,
@@ -659,7 +687,8 @@ const calendarDates = computed(() => {
                     month === selectedDate.value.getMonth() &&
                     year === selectedDate.value.getFullYear(),
         // Check if there's a check-in for that specific date 
-        hasCheckIn: checkInHistory.value[`${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`] !== undefined,
+        hasCheckIn: checkInHistory.value[dateStr] !== undefined,
+        checkInData: checkInHistory.value[dateStr] || null,
         key: `current-${i}`
     })
   }
@@ -807,6 +836,46 @@ const selectDate = (date) => {
   }
 }
 
+// Get heat map background color based on overall wellness score
+const getDateStyle = (date) => {
+  if (!date.hasCheckIn || date.isOtherMonth) return {}
+  
+  const dateStr = `${currentDate.value.getFullYear()}-${String(currentDate.value.getMonth() + 1).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`
+  const data = checkInHistory.value[dateStr]
+  
+  if (!data) return {}
+  
+  const average = (data.mood + data.energy + data.sleep + (10 - data.stress)) / 4
+  
+  let color
+  if (average >= 8) color = 'rgba(74, 222, 128, 0.3)' // Green
+  else if (average >= 6) color = 'rgba(96, 165, 250, 0.3)' // Blue
+  else if (average >= 4) color = 'rgba(251, 191, 36, 0.3)' // Yellow
+  else color = 'rgba(248, 113, 113, 0.3)' // Red
+  
+  return { 
+    background: color,
+    transform: 'scale(1)'
+  }
+}
+
+// Get mood color for the indicator dot
+const getMoodColor = (mood) => {
+  if (mood >= 8) return '#10b981' // Green
+  if (mood >= 6) return '#3b82f6' // Blue
+  if (mood >= 4) return '#f59e0b' // Orange
+  return '#ef4444' // Red
+}
+
+// Get emoji for date based on overall wellness
+const getDateEmoji = (data) => {
+  const average = (data.mood + data.energy + data.sleep + (10 - data.stress)) / 4
+  if (average >= 8) return '🌟'
+  if (average >= 6) return '😊'
+  if (average >= 4) return '😐'
+  return '😔'
+}
+
 // TEMPORARY: Reset for testing purposes
 const resetForTesting = () => {
   isCompleted.value = false
@@ -820,10 +889,68 @@ const resetForTesting = () => {
   console.log('✅ Reset for testing - you can check in again!')
 }
 
+// TEMPORARY: Add test data
+const addTestData = async () => {
+  const user = auth.currentUser
+  if (!user) {
+    console.log('No user logged in')
+    return
+  }
+
+  const testDays = 20 // Add 20 days of test data
+  const promises = []
+
+  for (let i = 0; i < testDays; i++) {
+    const testDate = new Date()
+    testDate.setDate(testDate.getDate() - i)
+    
+    const dayOfWeek = testDate.getDay()
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+    
+    // Better moods on weekends, lower stress
+    const moodBoost = isWeekend ? 2 : 0
+    const stressReduction = isWeekend ? 3 : 0
+
+    const checkInData = {
+      userId: user.uid,
+      date: testDate,
+      mood: Math.min(10, Math.floor(Math.random() * 5) + 5 + moodBoost), // 5-10, higher on weekends
+      energy: Math.floor(Math.random() * 6) + 4, // 4-9
+      sleep: Math.floor(Math.random() * 5) + 5, // 5-9
+      stress: Math.max(0, Math.floor(Math.random() * 7) - stressReduction), // 0-6, lower on weekends
+      notes: isWeekend ? '🎉 Weekend vibes!' : `Check-in for ${testDate.toLocaleDateString()}`,
+      createdAt: new Date()
+    }
+
+    promises.push(addDoc(collection(db, 'wellnessCheckIns'), checkInData))
+  }
+
+  try {
+    await Promise.all(promises)
+    console.log(`✅ Added ${testDays} realistic test check-ins!`)
+    
+    // Reload data
+    await loadCheckIns()
+  } catch (error) {
+    console.error('Error adding test data:', error)
+  }
+}
+
 // Load data when component mounts 
 onMounted(async () => {
   await checkTodayCheckIn()
   await loadCheckIns()
+
+  // TEMPORARY: Auto-add test data if calendar is empty
+  if (totalCheckIns.value < 5) {
+    console.log('Adding test data to visualize calendar...')
+    await addTestData()
+  }
+
+  // DEBUG: Check if data loaded
+  console.log('Check-in history:', checkInHistory.value)
+  console.log('Total check-ins:', totalCheckIns.value)
+  console.log('Sample date check (2025-10-29):', checkInHistory.value['2025-10-29'])
 })
 
 
@@ -1195,47 +1322,192 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  font-weight: 500;
+}
+.date-number {
+  position: relative;
+  z-index: 2;
 }
 
-.calendar-date:hover {
-  background: #f5f5f5;
-}
-
-.calendar-date.other-month {
-  color: #ccc;
-}
-
-.calendar-date.today {
-  background: #1a1a1a;
-  color: white;
+/* Heat map effect for check-in dates */
+.calendar-date.has-checkin {
   font-weight: 600;
+  border: 2px solid rgba(90, 138, 122, 0.3);
 }
 
+.calendar-date.has-checkin:hover {
+  transform: scale(1.15) translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  border-color: var(--primary);
+  z-index: 10;
+}
+
+/* Mood indicator dot */
+.mood-indicator {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  z-index: 2;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* Hover tooltip */
+.date-tooltip {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 120px;
+}
+
+.date-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+.calendar-date:hover .date-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tooltip-emoji {
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.tooltip-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tooltip-row span:first-child {
+  opacity: 0.7;
+}
+
+.tooltip-row span:last-child {
+  font-weight: 600;
+  color: #4ade80;
+}
+
+/* Ripple effect on click */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(90, 138, 122, 0.5);
+  width: 100%;
+  height: 100%;
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.calendar-date:active .ripple {
+  animation: ripple-animation 0.6s ease-out;
+}
+
+@keyframes ripple-animation {
+  to {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* Today highlighting */
+.calendar-date.today {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  border: none;
+}
+
+.calendar-date.today:hover {
+  transform: scale(1.15) translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+}
+
+/* Selected date */
 .calendar-date.selected {
   background: var(--primary);
   color: white;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(90, 138, 122, 0.5);
 }
 
-.calendar-date.has-checkin {
-  position: relative;
-}
-
+/* Remove old dot indicator */
 .calendar-date.has-checkin::after {
-  content: '';
-  position: absolute;
-  bottom: 4px;
-  width: 4px;
-  height: 4px;
-  background: var(--primary);
-  border-radius: 50%;
+  display: none;
 }
 
-.calendar-date.has-checkin.today::after {
-  background: var(--surface);
+/* Month transition animation */
+.calendar-grid {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover effect for all dates */
+.calendar-date:not(.other-month):hover {
+  background: rgba(90, 138, 122, 0.1);
+  transform: scale(1.1);
+}
+
+.calendar-date.other-month {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.calendar-date.other-month:hover {
+  transform: none;
+  background: none;
 }
 
 /* Wellness Tips */
