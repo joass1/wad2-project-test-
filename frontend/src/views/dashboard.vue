@@ -22,7 +22,7 @@
           <div class="d-flex align-center ga-3">
             <div style="font-size: 28px">😊</div>
             <div>
-              <div class="text-subtitle-1 font-weight-semibold">Buddy</div>
+              <div class="text-subtitle-1 font-weight-semibold">{{ displayPetName }}</div>
               <div class="text-body-2 text-muted">Doing well</div>
             </div>
           </div>
@@ -167,14 +167,20 @@
 <script setup>
 import { computed } from "vue";
 import { useAuth } from "@/composables/useAuth";
+import { useGlobalPet } from "@/composables/useGlobalPet";
 import { useRouter } from "vue-router";
 
 const { userProfile, loading } = useAuth();
+const { petName, selectedPet } = useGlobalPet();
 const router = useRouter();
 
 const navigateToPetPage = () => {
   router.push({ name: 'PetPage' });
 };
+
+const displayPetName = computed(() => {
+  return petName.value || selectedPet.value?.label || "Buddy";
+});
 
 const gradient = computed(() => ({
   background:
