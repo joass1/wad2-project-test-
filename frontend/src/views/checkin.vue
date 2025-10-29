@@ -881,6 +881,22 @@ onMounted(async () => {
   text-align: center;
 }
 
+/* Pulsing streak animation when active */
+.stat-card:first-child .stat-value {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.6), 0 0 25px rgba(255, 215, 0, 0.4);
+  }
+}
+
 .stat-label {
   font-size: 0.8rem;
   color: var(--text-muted);
