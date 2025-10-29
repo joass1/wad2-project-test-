@@ -13,7 +13,11 @@ const props = defineProps({
   },
   droppedItems: { type: Array, default: () => [] },  // Items dropped on the background
   manualControl: { type: Boolean, default: false },  // Enable WASD keyboard controls
-  collisionObjects: { type: Array, default: () => [] }  // Collision rectangles from TMX
+  collisionObjects: { type: Array, default: () => [] },  // Collision rectangles from TMX
+  isDead: { type: Boolean, default: false },  // Pet death state
+  isDrunk: { type: Boolean, default: false },  // Pet drunk state (3rd+ soju)
+  showSojuEmote: { type: Boolean, default: false },  // Show soju emote
+  sojuEmoteType: { type: String, default: 'happy' }  // 'happy' or 'drunk'
 })
 
 const emit = defineEmits(['item-eaten', 'border-warning'])
@@ -452,6 +456,18 @@ function handleMouseUp(event) {
   const distance = Math.sqrt(dx * dx + dy * dy)
 
   if (holdDuration < 200 && distance < 5) {
+    // Don't do anything if pet is dead
+    if (props.isDead) {
+      console.log('Pet is dead. Feed it to revive!')
+      return
+    }
+
+    // Don't do anything if pet is drunk
+    if (props.isDrunk) {
+      console.log('Pet is drunk! Wait for it to sober up...')
+      return
+    }
+
     // Quick click - wake up pet if sleeping
     if (sleeping) {
       wakeUpPet()
@@ -493,7 +509,9 @@ function handleMouseUp(event) {
     }
   } else if (isDragging.value) {
     isDragging.value = false
-    setAnim('idle')
+    if (!props.isDead) {
+      setAnim('idle')
+    }
     idleUntil = performance.now() + (1000 + Math.random() * 2000)
   }
 
@@ -508,6 +526,27 @@ function loop(t) {
   const dt = (t - last) / 1000
   last = t
   acc += dt
+
+  // If pet is dead, display death sprite and stop all movement
+  if (props.isDead) {
+    // Set death sprite to row 7, column 1 (fixed frame, no animation)
+    frame = 1  // Column 1
+    anim = { row: 7, fps: 1, loop: false, frames: 1, colStart: 1 }
+    animKey = 'dead'
+    drawFrame()
+    return  // Stop processing movement
+  }
+
+  // If pet is drunk, display drunk sprite (row 6, last column) and stop movement
+  if (props.isDrunk) {
+    // Set drunk sprite to row 6, last column (fixed frame, no animation)
+    const lastCol = sheetCols - 1  // Last column index
+    frame = 0  // Reset frame
+    anim = { row: 6, fps: 1, loop: false, frames: 1, colStart: lastCol }
+    animKey = 'drunk'
+    drawFrame()
+    return  // Stop processing movement
+  }
 
   // Check for item collision
   checkItemCollision()
@@ -818,7 +857,13 @@ onBeforeUnmount(() => {
   <!-- parent stage must be position:relative -->
   <div ref="actor" class="pet-actor">
     <canvas ref="canvasRef" class="pet-canvas" />
-    <img v-if="showHeart" src="/heart.png" class="heart-icon" />
+    <img v-if="showHeart && !isDead && !isDrunk" src="/heart.png" class="heart-icon" />
+    <img v-if="isDead" src="/dead.png" class="dead-icon" />
+    <img
+      v-if="showSojuEmote && !isDead"
+      :src="`/soju ${sojuEmoteType}.png`"
+      :class="['soju-emote', { 'soju-drunk-pulse': isDrunk && sojuEmoteType === 'drunk' }]"
+    />
   </div>
 </template>
 
@@ -853,6 +898,18 @@ onBeforeUnmount(() => {
   z-index: 10;
 }
 
+.dead-icon {
+  position: absolute;
+  top: -10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: auto;
+  pointer-events: none;
+  z-index: 10;
+  animation: dead-pulse 2s ease-in-out infinite;
+}
+
 @keyframes heart-float {
   0% {
     opacity: 0;
@@ -867,6 +924,64 @@ onBeforeUnmount(() => {
   100% {
     opacity: 0;
     transform: translateX(-50%) translateY(-20px);
+  }
+}
+
+@keyframes dead-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.05);
+  }
+}
+
+.soju-emote {
+  position: absolute;
+  top: 0%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 55%;
+  height: auto;
+  pointer-events: none;
+  animation: soju-float 2.5s ease-out;
+  z-index: 10;
+}
+
+@keyframes soju-float {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0px) scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-5px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-25px) scale(0.9);
+  }
+}
+
+/* Drunk pulse animation - stays visible for 5 seconds like dead.png */
+.soju-drunk-pulse {
+  animation: soju-drunk-pulse 2s ease-in-out infinite !important;
+}
+
+@keyframes soju-drunk-pulse {
+  0%, 100% {
+    opacity: 0.85;
+    transform: translateX(-50%) translateY(-5px) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-8px) scale(1.08);
   }
 }
 </style>

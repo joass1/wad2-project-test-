@@ -38,6 +38,15 @@ DEFAULT_PET_SETTINGS = {
     "pet_name": None,
 }
 
+DEFAULT_PET_STATUS = {
+    "happiness": 60,
+    "health": 60,
+    "last_updated": None,  # Timestamp for daily deterioration
+    "is_dead": False,
+    "soju_count": 0,  # Daily soju consumption counter
+    "soju_last_reset": None,  # Last date soju counter was reset
+}
+
 
 class TimerSettings(BaseModel):
     focus_duration: int = 25
@@ -652,17 +661,17 @@ def update_pet_name(payload: dict, user: dict = Depends(require_user)):
     """Update user's pet name"""
     uid = user["uid"]
     pet_name = payload.get("pet_name")
-    
+
     if not pet_name:
         return {"ok": False, "message": "Missing 'pet_name' field"}
-    
+
     # Validate pet name (basic validation)
     if len(pet_name.strip()) == 0:
         return {"ok": False, "message": "Pet name cannot be empty"}
-    
+
     if len(pet_name) > 20:
         return {"ok": False, "message": "Pet name must be 20 characters or less"}
-    
+
     # Update user's pet settings
     db.collection("users").document(uid).set(
         {
@@ -672,9 +681,154 @@ def update_pet_name(payload: dict, user: dict = Depends(require_user)):
         },
         merge=True,
     )
-    
+
     return {
-        "ok": True, 
+        "ok": True,
         "message": "Pet name updated successfully",
         "pet_name": pet_name.strip()
+    }
+
+
+def calculate_daily_deterioration(last_updated, current_time):
+    """Calculate how much stats should deteriorate based on days passed"""
+    if not last_updated:
+        return 0
+
+    # Calculate days passed
+    time_diff = current_time - last_updated
+    days_passed = time_diff.total_seconds() / (24 * 60 * 60)
+
+    # Deteriorate 15 points per day (requires feeding daily)
+    deterioration = int(days_passed * 15)
+
+    return deterioration
+
+
+@router.get("/pet-status")
+def get_pet_status(user: dict = Depends(require_user)):
+    """Get pet status with automatic daily deterioration"""
+    uid = user["uid"]
+    doc_snapshot = db.collection("users").document(uid).get()
+
+    if not doc_snapshot.exists:
+        # Initialize with default status
+        now = datetime.now(timezone.utc)
+        db.collection("users").document(uid).set(
+            {
+                "pet_status": {
+                    **DEFAULT_PET_STATUS,
+                    "last_updated": now
+                }
+            },
+            merge=True,
+        )
+        return DEFAULT_PET_STATUS
+
+    user_data = doc_snapshot.to_dict() or {}
+    pet_status = user_data.get("pet_status", DEFAULT_PET_STATUS)
+
+    # Apply daily deterioration
+    now = datetime.now(timezone.utc)
+    last_updated = pet_status.get("last_updated")
+
+    # Check if soju counter needs to be reset (new day)
+    soju_last_reset = pet_status.get("soju_last_reset")
+    today_date = now.date()
+    needs_soju_reset = False
+
+    if soju_last_reset:
+        last_reset_date = soju_last_reset.date() if hasattr(soju_last_reset, 'date') else datetime.fromisoformat(str(soju_last_reset)).date()
+        if last_reset_date < today_date:
+            needs_soju_reset = True
+    else:
+        needs_soju_reset = True
+
+    if last_updated and not pet_status.get("is_dead", False):
+        deterioration = calculate_daily_deterioration(last_updated, now)
+
+        if deterioration > 0 or needs_soju_reset:
+            # Apply deterioration
+            new_happiness = max(0, pet_status.get("happiness", 100) - deterioration)
+            new_health = max(0, pet_status.get("health", 100) - deterioration)
+
+            # Check if pet died
+            is_dead = new_happiness == 0 or new_health == 0
+
+            # Update database with new values
+            updated_status = {
+                "happiness": new_happiness,
+                "health": new_health,
+                "last_updated": now,
+                "is_dead": is_dead,
+                "soju_count": 0 if needs_soju_reset else pet_status.get("soju_count", 0),
+                "soju_last_reset": now if needs_soju_reset else pet_status.get("soju_last_reset")
+            }
+
+            db.collection("users").document(uid).set(
+                {"pet_status": updated_status},
+                merge=True,
+            )
+
+            return updated_status
+    elif needs_soju_reset:
+        # Reset soju counter even if no deterioration
+        updated_status = {
+            **pet_status,
+            "soju_count": 0,
+            "soju_last_reset": now
+        }
+
+        db.collection("users").document(uid).set(
+            {"pet_status": updated_status},
+            merge=True,
+        )
+
+        return updated_status
+
+    return pet_status
+
+
+@router.put("/pet-status")
+def update_pet_status(payload: dict, user: dict = Depends(require_user)):
+    """Update pet status (happiness/health/soju_count)"""
+    uid = user["uid"]
+    happiness = payload.get("happiness")
+    health = payload.get("health")
+    soju_count = payload.get("soju_count")
+
+    if happiness is None or health is None:
+        return {"ok": False, "message": "Missing 'happiness' or 'health' field"}
+
+    # Validate values
+    if not isinstance(happiness, (int, float)) or not isinstance(health, (int, float)):
+        return {"ok": False, "message": "Health and happiness must be numbers"}
+
+    happiness = max(0, min(100, int(happiness)))
+    health = max(0, min(100, int(health)))
+
+    # Check if pet is revived
+    is_dead = happiness == 0 or health == 0
+
+    now = datetime.now(timezone.utc)
+    updated_status = {
+        "happiness": happiness,
+        "health": health,
+        "last_updated": now,
+        "is_dead": is_dead
+    }
+
+    # Include soju_count if provided
+    if soju_count is not None:
+        updated_status["soju_count"] = int(soju_count)
+        updated_status["soju_last_reset"] = now
+
+    db.collection("users").document(uid).set(
+        {"pet_status": updated_status},
+        merge=True,
+    )
+
+    return {
+        "ok": True,
+        "message": "Pet status updated successfully",
+        "pet_status": updated_status
     }
