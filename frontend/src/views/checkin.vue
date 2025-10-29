@@ -77,6 +77,7 @@
               min="0" 
               max="10" 
               class="slider"
+              :style="{ '--fill-percent': (mood / 10 * 100) + '%' }"
             />
             <p class="slider-feedback">{{ getMoodFeedback }}</p>
           </div>
@@ -114,6 +115,7 @@
               min="0" 
               max="10" 
               class="slider"
+              :style="{ '--fill-percent': (energy / 10 * 100) + '%' }"
             />
             <p class="slider-feedback">{{ getEnergyFeedback }}</p>
           </div>
@@ -151,6 +153,7 @@
               min="0" 
               max="10" 
               class="slider"
+              :style="{ '--fill-percent': (sleep / 10 * 100) + '%' }"
             />
             <p class="slider-feedback">{{ getSleepFeedback }}</p>
           </div>
@@ -188,6 +191,7 @@
               min="0" 
               max="10" 
               class="slider"
+              :style="{ '--fill-percent': (stress / 10 * 100) + '%' }"
             />
             <p class="slider-feedback">{{ getStressFeedback }}</p>
           </div>
@@ -1152,34 +1156,61 @@ onMounted(async () => {
 
 .slider {
   width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(to right, #e5e5e5 0%, #5a8a7a 100%);
+  height: 12px;
+  border-radius: 20px;
+  background: #e5e5e5;
   outline: none;
   -webkit-appearance: none;
   margin-bottom: 0.5rem;
+  position: relative;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--primary);
+  background: white;
   cursor: pointer;
-  border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 3px solid var(--primary);
+  box-shadow: 0 2px 8px rgba(90, 138, 122, 0.4);
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 2;
 }
 
 .slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--primary);
+  background: white;
   cursor: pointer;
-  border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 3px solid var(--primary);
+  box-shadow: 0 2px 8px rgba(90, 138, 122, 0.4);
+  transition: all 0.2s ease;
+}
+
+/* Filled track (green fill) for Webkit browsers */
+.slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 12px;
+  background: linear-gradient(to right, 
+    var(--primary) 0%, 
+    var(--primary) var(--fill-percent, 70%), 
+     #e5e5e5 var(--fill-percent, 70%)
+  );
+  border-radius: 20px;
+} 
+
+/* Filled track for Firefox */
+.slider::-moz-range-progress {
+  height: 12px;
+  background: linear-gradient(90deg, #5a8a7a 0%, #6fa88e 100%);
+  border-radius: 20px;
+  box-shadow: 0 2px 4px rgba(90, 138, 122, 0.3);
 }
 
 .slider-feedback {
@@ -1684,72 +1715,6 @@ onMounted(async () => {
     transform: translateY(-60px) scale(0.5) rotate(360deg);
     opacity: 0;
   }
-}
-
-/* Glowing slider effects */
-.slider {
-  width: 100%;
-  height: 8px;
-  border-radius: 4px;
-  background: linear-gradient(to right, #e5e5e5 0%, var(--primary) 100%);
-  outline: none;
-  -webkit-appearance: none;
-  margin-bottom: 0.5rem;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.slider:hover {
-  height: 10px;
-  box-shadow: 0 0 15px rgba(90, 138, 122, 0.4);
-}
-
-.slider:active {
-  box-shadow: 0 0 25px rgba(90, 138, 122, 0.6);
-}
-
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--primary);
-  cursor: pointer;
-  border: 3px solid white;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-  transition: all 0.2s ease;
-}
-
-.slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 4px 12px rgba(90, 138, 122, 0.5);
-}
-
-.slider::-webkit-slider-thumb:active {
-  transform: scale(1.3);
-  box-shadow: 0 0 20px rgba(90, 138, 122, 0.8);
-}
-
-.slider::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--primary);
-  cursor: pointer;
-  border: 3px solid white;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-  transition: all 0.2s ease;
-}
-
-.slider::-moz-range-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 4px 12px rgba(90, 138, 122, 0.5);
-}
-
-.slider::-moz-range-thumb:active {
-  transform: scale(1.3);
-  box-shadow: 0 0 20px rgba(90, 138, 122, 0.8);
 }
 
 /* Pulsing animation for slider feedback */
