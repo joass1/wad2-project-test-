@@ -552,7 +552,7 @@ onUnmounted(() => { clearInterval(t) })
             <v-tabs v-model="activeTab" bg-color="transparent" color="primary" class="mb-4" show-arrows="false">
               <v-tab value="session">Session</v-tab>
               <v-tab value="subjects">Subjects</v-tab>
-              <v-tab value="topics">Topics</v-tab>
+              <v-tab value="topics">Type</v-tab>
             </v-tabs>
 
             <v-window v-model="activeTab">
@@ -743,9 +743,9 @@ onUnmounted(() => { clearInterval(t) })
               <v-window-item value="topics">
                 <div class="d-flex justify-space-between align-center mb-4">
                   <div>
-                    <div class="text-subtitle-1 font-weight-medium session-title">Recurring Topics</div>
+                    <div class="text-subtitle-1 font-weight-medium session-title">Type of Work</div>
                     <p class="text-caption text-medium-emphasis">
-                      {{ selectedSubject ? 'Topics for selected subject' : 'All topics' }}
+                      {{ selectedSubject ? 'Topics for selected subject' : 'Recurring work' }}
                     </p>
                   </div>
                   <v-btn 
@@ -937,7 +937,7 @@ onUnmounted(() => { clearInterval(t) })
     <v-dialog v-model="topicDialog" max-width="500px" persistent>
       <v-card rounded="xl">
         <v-card-title class="pa-6">
-          <span class="text-h6">{{ editingTopic ? 'Edit Topic' : 'New Recurring Topic' }}</span>
+          <span class="text-h6">{{ editingTopic ? 'Edit Topic' : 'New Recurring Work' }}</span>
         </v-card-title>
         
         <v-card-text class="pa-6 pt-0">

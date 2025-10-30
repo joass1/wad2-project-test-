@@ -801,7 +801,7 @@ const fetchTasks = async () => {
 
     // make api call
     const query = params.toString();
-    const response = await api.get(`/api/tasks${query ? `?${query}` : ""}`);
+    const response = await api.get(`/api/tasks/${query ? `?${query}` : ""}`);
 
     // handle race condition
     if (token !== fetchToken) return;
