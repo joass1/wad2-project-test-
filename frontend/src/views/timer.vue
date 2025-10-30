@@ -969,7 +969,7 @@ onUnmounted(() => { clearInterval(t) })
             
             <v-text-field
               v-model="topicForm.title"
-              label="Topic Title"
+              label="Type of work e.g. Paper"
               variant="outlined"
               rounded="lg"
               class="mb-4"
