@@ -396,3 +396,19 @@ a {
     }
   }
 }
+
+/* Global dropdown opacity/text visibility fix */
+.dropdown-opaque {
+  background: var(--surface) !important;
+}
+.dropdown-opaque .v-list,
+.dropdown-opaque .v-card,
+.dropdown-opaque .v-sheet {
+  background: var(--surface) !important;
+  opacity: 1 !important;
+}
+.dropdown-opaque .v-list-item,
+.dropdown-opaque .v-list-item-title,
+.dropdown-opaque .v-list-item-subtitle {
+  opacity: 1 !important;
+}

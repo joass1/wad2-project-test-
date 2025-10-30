@@ -4,7 +4,7 @@
       <v-avatar size="56" class="mb-2" color="primary" variant="tonal"
         >🐱</v-avatar
       >
-      <h2 class="text-h5 font-weight-bold mb-1 text-primary">StudyBuddy</h2>
+      <h2 class="text-h5 font-weight-bold mb-1 text-primary">Pomogotchi</h2>
       <p class="text-body-2 mb-6" style="color: var(--text-muted)">
         Your wellness companion for academic success
       </p>
@@ -60,9 +60,42 @@
               size="large"
               class="text-white"
             >
-              {{ tab === 'login' ? 'Sign In' : 'Create Account' }}
+              {{ tab === "login" ? "Sign In" : "Create Account" }}
             </v-btn>
           </v-form>
+          <!-- google login button -->
+          <div class="my-4 d-flex align-center justify-center">
+            <v-divider class="mx-2" vertical></v-divider>
+            <span class="mx-2 text-caption font-weight-bold">or</span>
+            <v-divider class="mx-2" vertical></v-divider>
+          </div>
+          <v-btn
+            block
+            color="white"
+            class="mb-2 google-signin text-primary font-weight-bold"
+            @click="onGoogleLogin"
+            style="
+              border: 1px solid var(--surface-lighter);
+              align-items: center;
+            "
+          >
+            <span
+              style="
+                display: inline-flex;
+                align-items: center;
+                margin-right: 4px;
+              "
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Google_Favicon_2025.svg"
+                alt="Google Logo"
+                width="16"
+                height="16"
+                style="vertical-align: middle; margin-right: 6px"
+              />
+            </span>
+            Sign in with Google
+          </v-btn>
         </v-window-item>
 
         <!-- SIGN UP -->
@@ -126,23 +159,23 @@
       >
         {{ errorMsg }}
       </v-alert>
-
-      <p class="text-caption mt-4 text-disabled">
+      <!-- <p class="text-caption mt-4 text-disabled">
         Demo App — Use any email/password combination
-      </p>
+      </p> -->
     </v-card>
   </v-container>
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { useRouter } from "vue-router";
-import { auth } from "@/lib/firebase";
-import { api } from "@/lib/api";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from "firebase/auth";
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { signInWithGoogle } from "@/composables/useGoogleSignIn";
+import { api } from "@/lib/api";
+import { auth } from "@/lib/firebase";
 
 const router = useRouter();
 const tab = ref("login");
@@ -238,6 +271,39 @@ async function submit(mode) {
     else {
       errorMsg.value = "An unexpected error occurred. Please try again.";
     }
+  }
+}
+
+async function onGoogleLogin() {
+  errorMsg.value = "";
+  try {
+    const result = await signInWithGoogle();
+    const firebaseUser = result.user || auth.currentUser;
+    if (firebaseUser) {
+      try {
+        await api.get("/api/profile");
+        router.push("/dashboard");
+      } catch (err) {
+        // If 404, create a new profile
+        if (err.response && err.response.status === 404) {
+          try {
+            await api.post("/api/profile", {
+              name: firebaseUser.displayName,
+              email: firebaseUser.email,
+            });
+
+            router.push("/dashboard");
+          } catch (err) {
+            console.error("Failed to create profile after Google login", err);
+            errorMsg.value =
+              err?.message || "Profile creation failed. Please try again.";
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Google sign-in failed", e);
+    errorMsg.value = e?.message || "Google sign-in failed. Please try again.";
   }
 }
 </script>
