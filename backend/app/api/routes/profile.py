@@ -1,6 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -61,21 +61,14 @@ class UserPreferences(BaseModel):
     timer_settings: TimerSettings = Field(default_factory=TimerSettings)
 
 
-@router.get("/")
-def get_my_profile(user: dict = Depends(require_user)):
-    uid = user["uid"]
-    doc_snapshot = db.collection("users").document(uid).get()
-    if not doc_snapshot.exists:
-        # User doc not found = never created profile
-        return {}, 404
-    user_data = doc_snapshot.to_dict() or {}
-    return user_data
-
-
 @router.post("/")
 # verify user id token before upserting profile
 def upsert_profile(payload: dict, user: dict = Depends(require_user)):
     uid = user["uid"]
+    doc_ref = db.collection("users").document(uid)
+    doc_snapshot = doc_ref.get()
+    if doc_snapshot.exists:
+        return {"ok": True, "uid": uid, "message": "profile already exists"}
     # create document in users collection
     db.collection("users").document(uid).set(
         {

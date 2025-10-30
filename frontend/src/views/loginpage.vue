@@ -209,6 +209,8 @@ function getFirebaseErrorMessage(error) {
       return "This account has been disabled.";
     case "auth/too-many-requests":
       return "Too many failed attempts. Please try again later.";
+    case "auth/user-cancelled":
+      return "Login cancelled. Please try again.";
 
     // general
     case "auth/network-request-failed":
@@ -280,30 +282,15 @@ async function onGoogleLogin() {
     const result = await signInWithGoogle();
     const firebaseUser = result.user || auth.currentUser;
     if (firebaseUser) {
-      try {
-        await api.get("/api/profile");
-        router.push("/dashboard");
-      } catch (err) {
-        // If 404, create a new profile
-        if (err.response && err.response.status === 404) {
-          try {
-            await api.post("/api/profile", {
-              name: firebaseUser.displayName,
-              email: firebaseUser.email,
-            });
-
-            router.push("/dashboard");
-          } catch (err) {
-            console.error("Failed to create profile after Google login", err);
-            errorMsg.value =
-              err?.message || "Profile creation failed. Please try again.";
-          }
-        }
-      }
+      await api.post("/api/profile", {
+        name: firebaseUser.displayName,
+        email: firebaseUser.email,
+      });
+      router.push("/dashboard");
     }
-  } catch (e) {
-    console.error("Google sign-in failed", e);
-    errorMsg.value = e?.message || "Google sign-in failed. Please try again.";
+  } catch (err) {
+    console.error("Google sign-in failed", err);
+    errorMsg.value = err?.message || "Google sign-in failed. Please try again.";
   }
 }
 </script>
