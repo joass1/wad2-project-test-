@@ -4,7 +4,7 @@
       <v-avatar size="56" class="mb-2" color="primary" variant="tonal"
         >🐱</v-avatar
       >
-      <h2 class="text-h5 font-weight-bold mb-1 text-primary">StudyBuddy</h2>
+      <h2 class="text-h5 font-weight-bold mb-1 text-primary">Pomogotchi</h2>
       <p class="text-body-2 mb-6" style="color: var(--text-muted)">
         Your wellness companion for academic success
       </p>
@@ -83,22 +83,16 @@
               style="
                 display: inline-flex;
                 align-items: center;
-                margin-right: 10px;
+                margin-right: 4px;
               "
             >
-              <!-- Google 2025 Favicon SVG logo -->
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 48 48"
-              >
-                <circle cx="24" cy="24" r="20" fill="#fff" />
-                <path
-                  fill="#4285F4"
-                  d="M25.15 16.37V21.42H35.61Q35.8 22.39 35.8 24Q35.8 28.06 33.11 30.39Q31.01 32.24 27.31 32.24Q23.5 32.24 20.88 29.65Q18.26 27.06 18.26 23.21Q18.26 19.11 20.86 16.58Q23.37 14.18 27 14.18Q29.68 14.18 31.29 15.34L35.61 11.46Q32.98 9.39 27 9.39Q20.43 9.39 16.49 13.68Q12.2 18.13 12.2 24Q12.2 29.85 16.67 34.27T27 39.19Q33.24 39.19 37.09 35.61Q40.8 32.03 40.8 24Q40.8 22.91 40.67 21.92Z"
-                />
-              </svg>
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Google_Favicon_2025.svg"
+                alt="Google Logo"
+                width="16"
+                height="16"
+                style="vertical-align: middle; margin-right: 6px"
+              />
             </span>
             Sign in with Google
           </v-btn>
