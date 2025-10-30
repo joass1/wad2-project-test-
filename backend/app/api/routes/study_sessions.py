@@ -749,6 +749,45 @@ def get_daily_metrics(
     )
 
 
+class TodaySummaryResponse(BaseModel):
+    date: str
+    total_minutes: int
+    sessions_completed: int
+    sessions_started: int
+
+
+@router.get("/today-summary", response_model=TodaySummaryResponse)
+def get_today_summary(user: dict = Depends(require_user)):
+    """Return today's total completed study minutes and session counts."""
+    uid = user["uid"]
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+
+    # Sum durations for today's completed sessions
+    sessions_ref = _study_sessions_collection(uid)
+    query = sessions_ref.where("date", "==", today)
+
+    total_minutes = 0
+    completed_count = 0
+    for doc in query.stream():
+        data = doc.to_dict() or {}
+        status = data.get("status")
+        minutes = data.get("actual_duration_minutes") or 0
+        if status == "completed" and isinstance(minutes, (int, float)):
+            total_minutes += int(minutes)
+            completed_count += 1
+
+    # Get sessions_started from daily metrics
+    metrics = get_daily_metrics(date=today, user=user)
+
+    return TodaySummaryResponse(
+        date=today,
+        total_minutes=total_minutes,
+        sessions_completed=completed_count,
+        sessions_started=metrics.sessions_started,
+    )
+
+
 @router.get("/current", response_model=Optional[StudySessionResponse])
 def get_current_session(user: dict = Depends(require_user)):
     """Get the current active or paused session if one exists"""
