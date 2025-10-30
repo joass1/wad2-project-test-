@@ -259,6 +259,11 @@ def list_subjects(user: dict = Depends(require_user)):
         subject_data["id"] = subject.id
         subject_data["created_at"] = subject_data["created_at"].isoformat()
         subject_data["updated_at"] = subject_data["updated_at"].isoformat()
+        
+        # Ensure icon field exists with default value
+        if "icon" not in subject_data:
+            subject_data["icon"] = "📚"
+        
         result.append(SubjectResponse(**subject_data))
     
     return result

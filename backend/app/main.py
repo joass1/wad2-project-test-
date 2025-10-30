@@ -20,8 +20,6 @@ app = FastAPI()
 #     allow_headers=["*"],
 # )
 
-app = FastAPI()
-
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -44,8 +42,9 @@ app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 # Socket.IO setup for real-time pet updates
 sio = socketio.AsyncServer(
-    async_mode="asgi", cors_allowed_origins=["http://localhost:8080", "*"]
+    async_mode="asgi", cors_allowed_origins=["http://localhost:8081","http://localhost:8080", "*"]
 )
+
 socket_app = socketio.ASGIApp(sio, app)
 app.include_router(auth.router, prefix="/api")
 app.include_router(profile.router, prefix="/api")
