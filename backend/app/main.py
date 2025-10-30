@@ -6,7 +6,17 @@ import socketio
 import asyncio
 import os
 
-from app.api.routes import auth, profile, pet, notifications, wellness, tasks, study_sessions, achievements
+from app.api.routes import (
+    auth,
+    profile,
+    pet,
+    notifications,
+    wellness,
+    tasks,
+    study_sessions,
+    achievements,
+    google_oauth,
+)
 from app.core.firebase import db
 
 app = FastAPI()
@@ -30,7 +40,14 @@ app.add_middleware(
         "http://127.0.0.1:8080",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Explicitly allow OPTIONS
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS",
+        "PATCH",
+    ],  # Explicitly allow OPTIONS
     allow_headers=["*"],  # Allows all headers
     expose_headers=["*"],  # Expose all headers
 )
@@ -42,7 +59,8 @@ app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 # Socket.IO setup for real-time pet updates
 sio = socketio.AsyncServer(
-    async_mode="asgi", cors_allowed_origins=["http://localhost:8081","http://localhost:8080", "*"]
+    async_mode="asgi",
+    cors_allowed_origins=["http://localhost:8081", "http://localhost:8080", "*"],
 )
 
 socket_app = socketio.ASGIApp(sio, app)
@@ -54,6 +72,7 @@ app.include_router(tasks.router, prefix="/api")
 app.include_router(study_sessions.router, prefix="/api")
 app.include_router(achievements.router, prefix="/api")
 app.include_router(pet.router)
+app.include_router(google_oauth.router, prefix="/api")
 
 # Pet update loop
 pet_update_task = None

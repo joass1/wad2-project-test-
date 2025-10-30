@@ -61,6 +61,17 @@ class UserPreferences(BaseModel):
     timer_settings: TimerSettings = Field(default_factory=TimerSettings)
 
 
+@router.get("/")
+def get_my_profile(user: dict = Depends(require_user)):
+    uid = user["uid"]
+    doc_snapshot = db.collection("users").document(uid).get()
+    if not doc_snapshot.exists:
+        # User doc not found = never created profile
+        return {}, 404
+    user_data = doc_snapshot.to_dict() or {}
+    return user_data
+
+
 @router.post("/")
 # verify user id token before upserting profile
 def upsert_profile(payload: dict, user: dict = Depends(require_user)):
@@ -189,7 +200,11 @@ def update_user_inventory(payload: dict, user: dict = Depends(require_user)):
         merge=True,
     )
 
-    return {"ok": True, "inventory": inventory, "message": "Inventory updated successfully"}
+    return {
+        "ok": True,
+        "inventory": inventory,
+        "message": "Inventory updated successfully",
+    }
 
 
 @router.delete("/account")
@@ -200,68 +215,81 @@ def delete_user_account(user: dict = Depends(require_user)):
         # List of collections to clean up
         collections_to_clean = [
             "wellness_checkins",
-            "study_sessions", 
+            "study_sessions",
             "tasks",
             "achievements",
             "notifications",
         ]
-        
+
         # Delete documents from root collections
         for collection_name in collections_to_clean:
             try:
                 # Delete documents where user_id matches
-                docs = db.collection(collection_name).where("user_id", "==", uid).stream()
+                docs = (
+                    db.collection(collection_name).where("user_id", "==", uid).stream()
+                )
                 for doc in docs:
                     doc.reference.delete()
-                
+
                 # Delete documents where uid matches (alternative field name)
                 docs = db.collection(collection_name).where("uid", "==", uid).stream()
                 for doc in docs:
                     doc.reference.delete()
-                    
+
                 print(f"Cleaned up {collection_name} collection for user {uid}")
             except Exception as e:
                 print(f"Error deleting from {collection_name}: {str(e)}")
-        
+
         # Delete user's subcollections (Firestore doesn't auto-delete these)
         try:
             # Delete notifications subcollection
-            notifications_ref = db.collection("users").document(uid).collection("notifications")
+            notifications_ref = (
+                db.collection("users").document(uid).collection("notifications")
+            )
             notifications = notifications_ref.stream()
             for notification in notifications:
                 notification.reference.delete()
             print(f"Deleted notifications subcollection for user {uid}")
-            
+
             # Delete study sessions subcollection
-            study_sessions_ref = db.collection("users").document(uid).collection("studySessions")
+            study_sessions_ref = (
+                db.collection("users").document(uid).collection("studySessions")
+            )
             study_sessions = study_sessions_ref.stream()
             for session in study_sessions:
                 session.reference.delete()
             print(f"Deleted studySessions subcollection for user {uid}")
-            
+
             # Delete wellness checkins subcollection
-            wellness_ref = db.collection("users").document(uid).collection("wellness_checkins")
+            wellness_ref = (
+                db.collection("users").document(uid).collection("wellness_checkins")
+            )
             wellness_checkins = wellness_ref.stream()
             for checkin in wellness_checkins:
                 checkin.reference.delete()
             print(f"Deleted wellness_checkins subcollection for user {uid}")
-            
+
             # Delete achievements subcollection
-            achievements_ref = db.collection("users").document(uid).collection("achievements")
+            achievements_ref = (
+                db.collection("users").document(uid).collection("achievements")
+            )
             achievements = achievements_ref.stream()
             for achievement in achievements:
                 achievement.reference.delete()
             print(f"Deleted achievements subcollection for user {uid}")
-            
+
         except Exception as e:
             print(f"Error deleting subcollections: {str(e)}")
-        
+
         # Finally, delete the main user document
         db.collection("users").document(uid).delete()
         print(f"Deleted main user document for user {uid}")
-        
-        return {"ok": True, "message": "All user data has been successfully deleted from the database"}
-        
+
+        return {
+            "ok": True,
+            "message": "All user data has been successfully deleted from the database",
+        }
+
     except Exception as e:
         print(f"Error deleting user account: {str(e)}")
         return {"ok": False, "message": f"Failed to delete user data: {str(e)}"}
@@ -272,55 +300,63 @@ def seed_test_data(user: dict = Depends(require_user)):
     """Add test data for development/testing (FOR TESTING ONLY)"""
     uid = user["uid"]
     now = datetime.now(timezone.utc)
-    
+
     try:
         # Add test study session to subcollection
         from datetime import timedelta
+
         study_time = now - timedelta(hours=2)  # 2 hours ago
-        db.collection("users").document(uid).collection("studySessions").add({
-            "duration_minutes": 75,
-            "subject": "Mathematics",
-            "task": "Calculus problems",
-            "notes": "Completed chapter 5",
-            "session_type": "focus",
-            "created_at": study_time,
-            "date": study_time.strftime("%Y-%m-%d"),
-            "year": study_time.year,
-            "month": study_time.month
-        })
-        
+        db.collection("users").document(uid).collection("studySessions").add(
+            {
+                "duration_minutes": 75,
+                "subject": "Mathematics",
+                "task": "Calculus problems",
+                "notes": "Completed chapter 5",
+                "session_type": "focus",
+                "created_at": study_time,
+                "date": study_time.strftime("%Y-%m-%d"),
+                "year": study_time.year,
+                "month": study_time.month,
+            }
+        )
+
         # Add test wellness check-in to subcollection
         from datetime import timedelta
+
         yesterday = now - timedelta(days=1)
-        db.collection("users").document(uid).collection("wellness_checkins").add({
-            "date": yesterday.strftime("%Y-%m-%d"),
-            "mood": 8,  # Excellent mood
-            "energy": 7,
-            "sleep": 8,
-            "stress": 2,
-            "notes": "Feeling great today!"
-        })
-        
+        db.collection("users").document(uid).collection("wellness_checkins").add(
+            {
+                "date": yesterday.strftime("%Y-%m-%d"),
+                "mood": 8,  # Excellent mood
+                "energy": 7,
+                "sleep": 8,
+                "stress": 2,
+                "notes": "Feeling great today!",
+            }
+        )
+
         # Add test achievement to subcollection
-        db.collection("users").document(uid).collection("achievements").add({
-            "achievement_id": "test_achievement",
-            "title": "Test Achievement",
-            "description": "This is a test achievement",
-            "icon": "🎯",
-            "earned": True,
-            "claimed": True,
-            "claimed_at": now - timedelta(days=3),
-            "unlocked_at": now - timedelta(days=3),
-            "progress": 1,
-            "required": 1,
-            "category": "test"
-        })
-        
+        db.collection("users").document(uid).collection("achievements").add(
+            {
+                "achievement_id": "test_achievement",
+                "title": "Test Achievement",
+                "description": "This is a test achievement",
+                "icon": "🎯",
+                "earned": True,
+                "claimed": True,
+                "claimed_at": now - timedelta(days=3),
+                "unlocked_at": now - timedelta(days=3),
+                "progress": 1,
+                "required": 1,
+                "category": "test",
+            }
+        )
+
         return {
             "ok": True,
-            "message": "Test data created successfully! Refresh your recent activity."
+            "message": "Test data created successfully! Refresh your recent activity.",
         }
-        
+
     except Exception as e:
         print(f"Error seeding test data: {e}")
         return {"ok": False, "message": f"Failed to seed test data: {str(e)}"}
@@ -331,23 +367,26 @@ def create_test_wellness_checkin(user: dict = Depends(require_user)):
     """Create a test wellness check-in for testing recent activity"""
     uid = user["uid"]
     now = datetime.now(timezone.utc)
-    
+
     try:
         from datetime import timedelta
+
         # Create check-in for yesterday
         yesterday = now - timedelta(days=1)
-        db.collection("users").document(uid).collection("wellness_checkins").add({
-            "date": yesterday.strftime("%Y-%m-%d"),
-            "mood": 9,  # Excellent mood
-            "energy": 8,
-            "sleep": 9,
-            "stress": 1,
-            "notes": "Test wellness check-in for recent activity!"
-        })
-        
+        db.collection("users").document(uid).collection("wellness_checkins").add(
+            {
+                "date": yesterday.strftime("%Y-%m-%d"),
+                "mood": 9,  # Excellent mood
+                "energy": 8,
+                "sleep": 9,
+                "stress": 1,
+                "notes": "Test wellness check-in for recent activity!",
+            }
+        )
+
         return {
             "ok": True,
-            "message": "Test wellness check-in created! Check recent activity."
+            "message": "Test wellness check-in created! Check recent activity.",
         }
     except Exception as e:
         return {"ok": False, "message": f"Failed to create wellness check-in: {str(e)}"}
@@ -358,96 +397,114 @@ def create_test_achievement(user: dict = Depends(require_user)):
     """Create a test achievement for testing recent activity"""
     uid = user["uid"]
     now = datetime.now(timezone.utc)
-    
+
     try:
         from datetime import timedelta
+
         # Create achievement from 2 days ago
         achievement_time = now - timedelta(days=2)
-        db.collection("users").document(uid).collection("achievements").add({
-            "achievement_id": f"test_achievement_{int(now.timestamp())}",
-            "title": "Test Achievement",
-            "description": "This is a test achievement for recent activity",
-            "icon": "🎯",
-            "earned": True,
-            "claimed": True,
-            "claimed_at": achievement_time,
-            "unlocked_at": achievement_time,
-            "progress": 1,
-            "required": 1,
-            "category": "test"
-        })
-        
+        db.collection("users").document(uid).collection("achievements").add(
+            {
+                "achievement_id": f"test_achievement_{int(now.timestamp())}",
+                "title": "Test Achievement",
+                "description": "This is a test achievement for recent activity",
+                "icon": "🎯",
+                "earned": True,
+                "claimed": True,
+                "claimed_at": achievement_time,
+                "unlocked_at": achievement_time,
+                "progress": 1,
+                "required": 1,
+                "category": "test",
+            }
+        )
+
         return {
             "ok": True,
-            "message": "Test achievement created! Check recent activity."
+            "message": "Test achievement created! Check recent activity.",
         }
     except Exception as e:
         return {"ok": False, "message": f"Failed to create achievement: {str(e)}"}
+
 
 @router.post("/earn-and-claim-achievement")
 def earn_and_claim_real_achievement(user: dict = Depends(require_user)):
     """Earn and claim a real achievement for testing recent activity"""
     uid = user["uid"]
     now = datetime.now(timezone.utc)
-    
+
     try:
         from datetime import timedelta
-        
+
         # Create the "early_bird" achievement (easiest to earn)
         achievement_time = now - timedelta(hours=1)  # 1 hour ago
-        
+
         # First, create the achievement as earned
-        doc_ref = db.collection("users").document(uid).collection("achievements").document("early_bird")
-        doc_ref.set({
-            "earned": True,
-            "claimed": False,
-            "progress": 1,
-            "unlocked_at": achievement_time,
-            "created_at": achievement_time,
-            "updated_at": achievement_time,
-        })
-        
+        doc_ref = (
+            db.collection("users")
+            .document(uid)
+            .collection("achievements")
+            .document("early_bird")
+        )
+        doc_ref.set(
+            {
+                "earned": True,
+                "claimed": False,
+                "progress": 1,
+                "unlocked_at": achievement_time,
+                "created_at": achievement_time,
+                "updated_at": achievement_time,
+            }
+        )
+
         # Then claim it (this sets claimed_at)
         claim_time = now - timedelta(minutes=30)  # 30 minutes ago
-        doc_ref.update({
-            "claimed": True,
-            "claimed_at": claim_time,
-            "updated_at": claim_time,
-        })
-        
+        doc_ref.update(
+            {
+                "claimed": True,
+                "claimed_at": claim_time,
+                "updated_at": claim_time,
+            }
+        )
+
         return {
             "ok": True,
-            "message": "Real achievement earned and claimed! Check recent activity."
+            "message": "Real achievement earned and claimed! Check recent activity.",
         }
     except Exception as e:
         return {"ok": False, "message": f"Failed to create real achievement: {str(e)}"}
+
 
 @router.get("/debug-achievements")
 def debug_achievements(user: dict = Depends(require_user)):
     """Debug endpoint to see what achievements exist in the database"""
     uid = user["uid"]
-    
+
     try:
         # Get all achievements for this user
-        achievements_ref = db.collection("users").document(uid).collection("achievements")
+        achievements_ref = (
+            db.collection("users").document(uid).collection("achievements")
+        )
         achievements = achievements_ref.stream()
-        
+
         achievement_list = []
         for achievement in achievements:
             data = achievement.to_dict()
-            achievement_list.append({
-                "id": achievement.id,
-                "earned": data.get("earned", False),
-                "claimed": data.get("claimed", False),
-                "claimed_at": data.get("claimed_at"),
-                "unlocked_at": data.get("unlocked_at"),
-                "progress": data.get("progress", 0),
-            })
-        
+            achievement_list.append(
+                {
+                    "id": achievement.id,
+                    "earned": data.get("earned", False),
+                    "claimed": data.get("claimed", False),
+                    "claimed_at": data.get("claimed_at"),
+                    "unlocked_at": data.get("unlocked_at"),
+                    "progress": data.get("progress", 0),
+                }
+            )
+
         return {
             "ok": True,
             "achievements": achievement_list,
-            "count": len(achievement_list)
+            "count": len(achievement_list),
         }
     except Exception as e:
         return {"ok": False, "message": f"Failed to fetch achievements: {str(e)}"}
@@ -458,7 +515,7 @@ def get_recent_activity(user: dict = Depends(require_user)):
     """Get user's recent activity from various collections"""
     uid = user["uid"]
     activities = []
-    
+
     try:
         # Fetch recent study sessions from subcollection
         try:
@@ -470,28 +527,30 @@ def get_recent_activity(user: dict = Depends(require_user)):
                 .limit(5)
                 .stream()
             )
-            
+
             for session in study_sessions:
                 data = session.to_dict()
                 created_at = data.get("created_at")
                 duration = data.get("duration_minutes", 0)
                 subject = data.get("subject", "")
-                
+
                 # Build title with subject if available
                 title = f"Completed study session ({duration} min)"
                 if subject:
                     title = f"Studied {subject} ({duration} min)"
-                
-                activities.append({
-                    "type": "study_session",
-                    "icon": "🕐",
-                    "color": "blue",
-                    "title": title,
-                    "timestamp": created_at,
-                })
+
+                activities.append(
+                    {
+                        "type": "study_session",
+                        "icon": "🕐",
+                        "color": "blue",
+                        "title": title,
+                        "timestamp": created_at,
+                    }
+                )
         except Exception as e:
             print(f"Error fetching study sessions: {e}")
-        
+
         # Fetch recent wellness check-ins from subcollection
         try:
             wellness_checkins = (
@@ -502,12 +561,12 @@ def get_recent_activity(user: dict = Depends(require_user)):
                 .limit(5)
                 .stream()
             )
-            
+
             for checkin in wellness_checkins:
                 data = checkin.to_dict()
                 date = data.get("date")
                 mood = data.get("mood", 5)  # Default to 5 if not set
-                
+
                 # Convert mood number to text
                 mood_text = ""
                 if mood >= 8:
@@ -518,24 +577,28 @@ def get_recent_activity(user: dict = Depends(require_user)):
                     mood_text = "okay"
                 else:
                     mood_text = "low"
-                
+
                 timestamp = None
                 if date:
                     try:
-                        timestamp = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                        timestamp = datetime.strptime(date, "%Y-%m-%d").replace(
+                            tzinfo=timezone.utc
+                        )
                     except Exception as date_error:
                         print(f"Error converting date {date}: {date_error}")
-                
-                activities.append({
-                    "type": "wellness_checkin",
-                    "icon": "❤️",
-                    "color": "green",
-                    "title": f"Daily wellness check-in - {mood_text} mood",
-                    "timestamp": timestamp,
-                })
+
+                activities.append(
+                    {
+                        "type": "wellness_checkin",
+                        "icon": "❤️",
+                        "color": "green",
+                        "title": f"Daily wellness check-in - {mood_text} mood",
+                        "timestamp": timestamp,
+                    }
+                )
         except Exception as e:
             print(f"Error fetching wellness check-ins: {e}")
-        
+
         # Fetch recent achievements from subcollection
         try:
             # First get all claimed achievements (without ordering to avoid index requirement)
@@ -546,48 +609,54 @@ def get_recent_activity(user: dict = Depends(require_user)):
                 .where("claimed", "==", True)
                 .stream()
             )
-            
+
             achievement_count = 0
             achievement_activities = []
-            
+
             for achievement in achievements:
                 data = achievement.to_dict()
                 claimed_at = data.get("claimed_at")
                 achievement_id = achievement.id
-                
+
                 # Get title and icon from achievements config
                 from ...api.routes.achievements import ACHIEVEMENTS_CONFIG
+
                 config = ACHIEVEMENTS_CONFIG.get(achievement_id, {})
                 title = config.get("title", "Achievement")
                 icon = config.get("icon", "🏆")
-                
-                
-                achievement_activities.append({
-                    "type": "achievement",
-                    "icon": icon,
-                    "color": "purple",
-                    "title": f'Unlocked "{title}" achievement',
-                    "timestamp": claimed_at,
-                })
+
+                achievement_activities.append(
+                    {
+                        "type": "achievement",
+                        "icon": icon,
+                        "color": "purple",
+                        "title": f'Unlocked "{title}" achievement',
+                        "timestamp": claimed_at,
+                    }
+                )
                 achievement_count += 1
-            
+
             # Sort achievements by claimed_at and limit to 5 most recent
-            achievement_activities.sort(key=lambda x: x["timestamp"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+            achievement_activities.sort(
+                key=lambda x: x["timestamp"]
+                or datetime.min.replace(tzinfo=timezone.utc),
+                reverse=True,
+            )
             achievement_activities = achievement_activities[:5]
-            
+
             # Add to main activities list
             activities.extend(achievement_activities)
-            
+
         except Exception as e:
             print(f"Error fetching achievements: {e}")
-        
+
         # Sort all activities by timestamp (most recent first)
         activities = [a for a in activities if a.get("timestamp")]
         activities.sort(key=lambda x: x["timestamp"], reverse=True)
-        
+
         # Limit to most recent 5 activities
         activities = activities[:5]
-        
+
         # Convert timestamps to ISO format
         for activity in activities:
             timestamp = activity.get("timestamp")
@@ -596,9 +665,9 @@ def get_recent_activity(user: dict = Depends(require_user)):
                 if timestamp.tzinfo is None:
                     timestamp = timestamp.replace(tzinfo=timezone.utc)
                 activity["timestamp"] = timestamp.isoformat()
-        
+
         return {"activities": activities}
-        
+
     except Exception as e:
         print(f"Error fetching recent activity: {e}")
         return {"activities": []}
@@ -609,17 +678,17 @@ def get_pet_selection_status(user: dict = Depends(require_user)):
     """Check if user has selected a pet (for first-time user detection)"""
     uid = user["uid"]
     doc_snapshot = db.collection("users").document(uid).get()
-    
+
     if not doc_snapshot.exists:
         return {"has_selected_pet": False, "selected_pet": None, "pet_name": None}
-    
+
     user_data = doc_snapshot.to_dict() or {}
     pet_settings = user_data.get("pet_settings", {})
-    
+
     return {
         "has_selected_pet": pet_settings.get("has_selected_pet", False),
         "selected_pet": pet_settings.get("selected_pet", None),
-        "pet_name": pet_settings.get("pet_name", None)
+        "pet_name": pet_settings.get("pet_name", None),
     }
 
 
@@ -628,32 +697,28 @@ def select_pet(payload: dict, user: dict = Depends(require_user)):
     """Set user's selected pet"""
     uid = user["uid"]
     pet_key = payload.get("pet_key")
-    
+
     if not pet_key:
         return {"ok": False, "message": "Missing 'pet_key' field"}
-    
+
     # Validate pet key (you can add validation against your pet catalog here)
     valid_pets = ["catBlack", "catGrey", "catNew", "dogBlonde", "dogGrey", "dogLight"]
     if pet_key not in valid_pets:
         return {"ok": False, "message": "Invalid pet selection"}
-    
+
     # Update user's pet settings
     db.collection("users").document(uid).set(
         {
             "pet_settings": {
                 "selected_pet": pet_key,
                 "has_selected_pet": True,
-                "selected_at": datetime.now(timezone.utc)
+                "selected_at": datetime.now(timezone.utc),
             }
         },
         merge=True,
     )
-    
-    return {
-        "ok": True, 
-        "message": "Pet selected successfully",
-        "selected_pet": pet_key
-    }
+
+    return {"ok": True, "message": "Pet selected successfully", "selected_pet": pet_key}
 
 
 @router.put("/pet-name")
@@ -674,18 +739,14 @@ def update_pet_name(payload: dict, user: dict = Depends(require_user)):
 
     # Update user's pet settings
     db.collection("users").document(uid).set(
-        {
-            "pet_settings": {
-                "pet_name": pet_name.strip()
-            }
-        },
+        {"pet_settings": {"pet_name": pet_name.strip()}},
         merge=True,
     )
 
     return {
         "ok": True,
         "message": "Pet name updated successfully",
-        "pet_name": pet_name.strip()
+        "pet_name": pet_name.strip(),
     }
 
 
@@ -714,12 +775,7 @@ def get_pet_status(user: dict = Depends(require_user)):
         # Initialize with default status
         now = datetime.now(timezone.utc)
         db.collection("users").document(uid).set(
-            {
-                "pet_status": {
-                    **DEFAULT_PET_STATUS,
-                    "last_updated": now
-                }
-            },
+            {"pet_status": {**DEFAULT_PET_STATUS, "last_updated": now}},
             merge=True,
         )
         return DEFAULT_PET_STATUS
@@ -737,7 +793,11 @@ def get_pet_status(user: dict = Depends(require_user)):
     needs_soju_reset = False
 
     if soju_last_reset:
-        last_reset_date = soju_last_reset.date() if hasattr(soju_last_reset, 'date') else datetime.fromisoformat(str(soju_last_reset)).date()
+        last_reset_date = (
+            soju_last_reset.date()
+            if hasattr(soju_last_reset, "date")
+            else datetime.fromisoformat(str(soju_last_reset)).date()
+        )
         if last_reset_date < today_date:
             needs_soju_reset = True
     else:
@@ -760,8 +820,12 @@ def get_pet_status(user: dict = Depends(require_user)):
                 "health": new_health,
                 "last_updated": now,
                 "is_dead": is_dead,
-                "soju_count": 0 if needs_soju_reset else pet_status.get("soju_count", 0),
-                "soju_last_reset": now if needs_soju_reset else pet_status.get("soju_last_reset")
+                "soju_count": 0
+                if needs_soju_reset
+                else pet_status.get("soju_count", 0),
+                "soju_last_reset": now
+                if needs_soju_reset
+                else pet_status.get("soju_last_reset"),
             }
 
             db.collection("users").document(uid).set(
@@ -772,11 +836,7 @@ def get_pet_status(user: dict = Depends(require_user)):
             return updated_status
     elif needs_soju_reset:
         # Reset soju counter even if no deterioration
-        updated_status = {
-            **pet_status,
-            "soju_count": 0,
-            "soju_last_reset": now
-        }
+        updated_status = {**pet_status, "soju_count": 0, "soju_last_reset": now}
 
         db.collection("users").document(uid).set(
             {"pet_status": updated_status},
@@ -814,7 +874,7 @@ def update_pet_status(payload: dict, user: dict = Depends(require_user)):
         "happiness": happiness,
         "health": health,
         "last_updated": now,
-        "is_dead": is_dead
+        "is_dead": is_dead,
     }
 
     # Include soju_count if provided
@@ -830,5 +890,5 @@ def update_pet_status(payload: dict, user: dict = Depends(require_user)):
     return {
         "ok": True,
         "message": "Pet status updated successfully",
-        "pet_status": updated_status
+        "pet_status": updated_status,
     }
