@@ -964,11 +964,11 @@ onMounted(async () => {
   await checkTodayCheckIn()
   await loadCheckIns()
 
-  // TEMPORARY: Auto-add test data if calendar is empty
-  if (totalCheckIns.value < 100) {
-    console.log('Adding test data to visualize calendar...')
-    await addTestData()
-  }
+  // // TEMPORARY: Auto-add test data if calendar is empty
+  // if (totalCheckIns.value < 100) {
+  //   console.log('Adding test data to visualize calendar...')
+  //   await addTestData()
+  // }
 
   // DEBUG: Check if data loaded
   console.log('Check-in history:', checkInHistory.value)
