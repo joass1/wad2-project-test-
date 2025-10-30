@@ -10,7 +10,11 @@
       <v-col cols="12" sm="6" md="3">
         <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
           <v-card-text class="text-center">
-            <v-icon icon="mdi-clock-time-four-outline" size="26" class="mb-2 text-primary" />
+            <v-icon
+              icon="mdi-clock-time-four-outline"
+              size="26"
+              class="mb-2 text-primary"
+            />
             <div class="text-subtitle-2">Study Hours</div>
             <div class="text-h6 font-weight-bold mt-1">
               {{ studyStats.studyHours }} Hours
@@ -77,8 +81,13 @@
             <v-card class="pa-4">
               <v-card-title>Daily Study Time (Last 7 Days)</v-card-title>
               <v-card-subtitle>Hours spent studying each day</v-card-subtitle>
-              <apexchart ref="dailyStudyChart" type="bar" height="250" :options="dailyStudyOptions"
-                :series="dailyStudySeries" />
+              <apexchart
+                ref="dailyStudyChart"
+                type="bar"
+                height="250"
+                :options="dailyStudyOptions"
+                :series="dailyStudySeries"
+              />
             </v-card>
           </v-col>
 
@@ -87,20 +96,13 @@
             <v-card class="pa-4">
               <v-card-title>Study Time by Subject</v-card-title>
               <v-card-subtitle>Distribution of study hours</v-card-subtitle>
-              <apexchart ref="subjectChart" type="donut" height="250" :options="subjectOptions"
-                :series="subjectSeries" />
-            </v-card>
-          </v-col>
-        </v-row>
-
-        <v-row>
-          <!-- Productivity Trend Chart -->
-          <v-col cols="12">
-            <v-card class="pa-4">
-              <v-card-title>Productivity Trend</v-card-title>
-              <v-card-subtitle>Your self-rated productivity over time</v-card-subtitle>
-              <apexchart ref="productivityChart" type="line" height="250" :options="productivityOptions"
-                :series="productivitySeries" />
+              <apexchart
+                ref="subjectChart"
+                type="donut"
+                height="250"
+                :options="subjectOptions"
+                :series="subjectSeries"
+              />
             </v-card>
           </v-col>
         </v-row>
@@ -112,9 +114,16 @@
           <v-col cols="12">
             <v-card class="pa-4">
               <v-card-title>Task Completion Trends</v-card-title>
-              <v-card-subtitle>Tasks created vs completed over the last 7 days</v-card-subtitle>
-              <apexchart ref="taskChart" type="bar" height="250" :options="taskCompletionOptions"
-                :series="taskCompletionSeries" />
+              <v-card-subtitle
+                >Tasks created vs completed over the last 7 days</v-card-subtitle
+              >
+              <apexchart
+                ref="taskChart"
+                type="bar"
+                height="250"
+                :options="taskCompletionOptions"
+                :series="taskCompletionSeries"
+              />
             </v-card>
           </v-col>
         </v-row>
@@ -124,7 +133,11 @@
             <v-col>
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center">
-                  <v-icon icon="mdi-format-list-checks" size="26" class="mb-2 text-primary" />
+                  <v-icon
+                    icon="mdi-format-list-checks"
+                    size="26"
+                    class="mb-2 text-primary"
+                  />
                   <div class="text-subtitle-2">Total Tasks</div>
                   <div class="text-h6 font-weight-bold mt-1">{{ totalTasks }}</div>
                 </v-card-text>
@@ -134,7 +147,11 @@
             <v-col cols="12" sm="4">
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center">
-                  <v-icon icon="mdi-check-circle-outline" size="26" class="mb-2 text-primary" />
+                  <v-icon
+                    icon="mdi-check-circle-outline"
+                    size="26"
+                    class="mb-2 text-primary"
+                  />
                   <div class="text-subtitle-2">Completed</div>
                   <div class="text-h6 font-weight-bold mt-1">{{ completedTasks }}</div>
                 </v-card-text>
@@ -160,9 +177,16 @@
           <v-col cols="12">
             <v-card class="pa-4">
               <v-card-title>Wellness Trends (Last 7 Days)</v-card-title>
-              <v-card-subtitle>Track your mood, energy, sleep, and stress levels</v-card-subtitle>
-              <apexchart ref="wellnessChart" type="line" height="250" :options="wellnessOptions"
-                :series="wellnessSeries" />
+              <v-card-subtitle
+                >Track your mood, energy, sleep, and stress levels</v-card-subtitle
+              >
+              <apexchart
+                ref="wellnessChart"
+                type="line"
+                height="250"
+                :options="wellnessOptions"
+                :series="wellnessSeries"
+              />
             </v-card>
           </v-col>
         </v-row>
@@ -520,19 +544,19 @@ function hashStringToColor(str) {
   return `hsl(${hue}, 70%, 60%)`; // you can adjust saturation/lightness
 }
 
-// Line chart (Productivity Trend)
-const productivitySeries = ref([{ name: "Productivity", data: [0, 2, 4, 3, 5, 6, 4] }]);
-const productivityOptions = ref({
-  ...getApexThemeOptions(isDark.value),
-  chart: { toolbar: { show: false } },
-  xaxis: {
-    categories: ["Oct 02", "Oct 03", "Oct 04", "Oct 05", "Oct 06", "Oct 07", "Oct 08"],
-  },
-  yaxis: { min: 0, max: 10 },
-  colors: ["#8DAF9B"],
-  stroke: { curve: "smooth" },
-  markers: { size: 4 },
-});
+// // Line chart (Productivity Trend)
+// const productivitySeries = ref([{ name: "Productivity", data: [0, 2, 4, 3, 5, 6, 4] }]);
+// const productivityOptions = ref({
+//   ...getApexThemeOptions(isDark.value),
+//   chart: { toolbar: { show: false } },
+//   xaxis: {
+//     categories: ["Oct 02", "Oct 03", "Oct 04", "Oct 05", "Oct 06", "Oct 07", "Oct 08"],
+//   },
+//   yaxis: { min: 0, max: 10 },
+//   colors: ["#8DAF9B"],
+//   stroke: { curve: "smooth" },
+//   markers: { size: 4 },
+// });
 
 // task progress
 const totalTasks = computed(() => taskStat.total);
@@ -599,9 +623,9 @@ async function loadWellnessData() {
       const dateStr = d.date.toDate
         ? d.date.toDate().toLocaleDateString("en-US", { month: "short", day: "2-digit" })
         : new Date(d.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "2-digit",
-        });
+            month: "short",
+            day: "2-digit",
+          });
       dataMap[dateStr] = d;
     });
 
@@ -611,6 +635,7 @@ async function loadWellnessData() {
     const energyData = [];
     const sleepData = [];
     const stressData = [];
+    const notesData = [];
 
     // Loop over last 7 days and fill in data or zero if missing
     for (let i = 0; i < 7; i++) {
@@ -629,6 +654,7 @@ async function loadWellnessData() {
       energyData.push(dayData.energy !== undefined ? dayData.energy : 0);
       sleepData.push(dayData.sleep !== undefined ? dayData.sleep : 0);
       stressData.push(dayData.stress !== undefined ? dayData.stress : 0);
+      notesData.push(dayData.notes || "");
     }
 
     // Update chart data & x-axis
@@ -649,6 +675,50 @@ async function loadWellnessData() {
       return validData.length > 0
         ? (validData.reduce((a, b) => a + b, 0) / validData.length).toFixed(1)
         : 0;
+    };
+
+    wellnessOptions.value.tooltip = {
+      shared: true,
+      custom: function ({ series, dataPointIndex, w }) {
+        const dateLabel = formattedDates[dataPointIndex];
+        const mood = series[0][dataPointIndex];
+        const energy = series[1][dataPointIndex];
+        const sleep = series[2][dataPointIndex];
+        const stress = series[3][dataPointIndex];
+        const note = notesData[dataPointIndex] || "No notes";
+
+        return `
+      <div style="min-width: 150px; padding: 8px;">  <!-- Added min-width and some padding -->
+        <div class="apexcharts-tooltip-title" style="font-weight: 600; padding-bottom: 8px;">${dateLabel}</div>
+        <div class="apexcharts-tooltip-series-group apexcharts-active" style="display: flex; align-items: center; padding: 4px 0;">
+          <span class="apexcharts-tooltip-marker" style="background-color: #FF7043; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
+          <span>Mood: ${mood}</span>
+        </div>
+        <div class="apexcharts-tooltip-series-group" style="display: flex; align-items: center; padding: 4px 0;">
+          <span class="apexcharts-tooltip-marker" style="background-color: #42A5F5; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
+          <span>Energy: ${energy}</span>
+        </div>
+        <div class="apexcharts-tooltip-series-group" style="display: flex; align-items: center; padding: 4px 0;">
+          <span class="apexcharts-tooltip-marker" style="background-color: #80CBC4; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
+          <span>Sleep: ${sleep}</span>
+        </div>
+        <div class="apexcharts-tooltip-series-group" style="display: flex; align-items: center; padding: 4px 0;">
+          <span class="apexcharts-tooltip-marker" style="background-color: #FFD54F; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
+          <span>Stress: ${stress}</span>
+        </div>
+<div style="
+    border-top: 1px solid #eee;
+    margin-top: 10px;
+    padding-top: 8px;
+    font-style: italic;
+    font-size: 13px;
+    white-space: normal;
+    word-break: break-word;
+">
+  Notes: ${note}
+</div>
+    `;
+      },
     };
 
     // Calculate the average for each field (mood, energy, sleep, stress)
@@ -696,8 +766,8 @@ const insights = computed(() => [
       mood.value >= 8
         ? "insight-positive"
         : mood.value >= 5
-          ? "insight-neutral"
-          : "insight-negative",
+        ? "insight-neutral"
+        : "insight-negative",
   },
   {
     title: "Energy",
@@ -707,8 +777,8 @@ const insights = computed(() => [
       energy.value >= 8
         ? "insight-positive"
         : energy.value >= 5
-          ? "insight-neutral"
-          : "insight-negative",
+        ? "insight-neutral"
+        : "insight-negative",
   },
   {
     title: "Sleep",
@@ -718,8 +788,8 @@ const insights = computed(() => [
       sleep.value >= 8
         ? "insight-positive"
         : sleep.value >= 5
-          ? "insight-neutral"
-          : "insight-negative",
+        ? "insight-neutral"
+        : "insight-negative",
   },
   {
     title: "Stress",
@@ -729,8 +799,8 @@ const insights = computed(() => [
       stress.value <= 3
         ? "insight-positive"
         : stress.value <= 6
-          ? "insight-neutral"
-          : "insight-negative",
+        ? "insight-neutral"
+        : "insight-negative",
   },
 ]);
 
@@ -738,13 +808,7 @@ async function updateAllChartsTheme(isDarkMode) {
   const themeOptions = getApexThemeOptions(isDarkMode);
   await nextTick();
 
-  const charts = [
-    dailyStudyChart,
-    subjectChart,
-    productivityChart,
-    taskChart,
-    wellnessChart,
-  ];
+  const charts = [dailyStudyChart, subjectChart, taskChart, wellnessChart];
 
   charts.forEach((chartRef) => {
     if (chartRef.value?.chart?.updateOptions) {
@@ -754,8 +818,8 @@ async function updateAllChartsTheme(isDarkMode) {
       const preservedCategories = currentConfig?.xaxis?.categories?.length
         ? currentConfig.xaxis.categories
         : chartRef.value?.options?.xaxis?.categories ||
-        wellnessOptions.value?.xaxis?.categories ||
-        [];
+          wellnessOptions.value?.xaxis?.categories ||
+          [];
 
       chartRef.value.chart.updateOptions(
         {
