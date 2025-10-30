@@ -78,8 +78,8 @@
               class="mb-2 text-primary"
             />
             <div class="text-subtitle-2">Study Time Today</div>
-            <div class="text-h6 font-weight-bold mt-1">1h 25m</div>
-            <div class="text-caption text-disabled">3 sessions completed</div>
+            <div class="text-h6 font-weight-bold mt-1">{{ studyTimeFormatted }}</div>
+            <div class="text-caption text-disabled">{{ sessionsCompletedToday }} sessions completed</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -89,8 +89,8 @@
           <v-card-text class="text-center">
             <v-icon icon="mdi-target" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Task Completion</div>
-            <div class="text-h6 font-weight-bold mt-1">67%</div>
-            <div class="text-caption text-disabled">4 of 6 tasks done</div>
+            <div class="text-h6 font-weight-bold mt-1">{{ taskCompletionPct }}%</div>
+            <div class="text-caption text-disabled">{{ tasksCompleted }} of {{ tasksTotal }} tasks done</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -100,7 +100,7 @@
           <v-card-text class="text-center">
             <v-icon icon="mdi-fire" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Study Streak</div>
-            <div class="text-h6 font-weight-bold mt-1">5 days</div>
+            <div class="text-h6 font-weight-bold mt-1">{{ wellnessStreak }} days</div>
             <div class="text-caption text-disabled">Keep it up 🔥</div>
           </v-card-text>
         </v-card>
@@ -115,8 +115,8 @@
               class="mb-2 text-primary"
             />
             <div class="text-subtitle-2">Wellness Check</div>
-            <div class="text-h6 font-weight-bold mt-1">✅ Done</div>
-            <div class="text-caption text-disabled">Checked in today</div>
+            <div class="text-h6 font-weight-bold mt-1">{{ wellnessDoneToday ? '✅ Done' : '—' }}</div>
+            <div class="text-caption text-disabled">{{ wellnessDoneToday ? 'Checked in today' : 'Not yet' }}</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -165,10 +165,11 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useAuth } from "@/composables/useAuth";
 import { useGlobalPet } from "@/composables/useGlobalPet";
 import { useRouter } from "vue-router";
+import { api } from "@/lib/api";
 
 const { userProfile, loading } = useAuth();
 const { petName, selectedPet } = useGlobalPet();
@@ -187,6 +188,62 @@ const gradient = computed(() => ({
     "linear-gradient(135deg, rgba(170,196,188,.25), rgba(215,203,178,.15))",
   border: "1px solid var(--opal)",
 }));
+
+// Dashboard data
+const totalMinutesToday = ref(0)
+const sessionsCompletedToday = ref(0)
+const tasksTotal = ref(0)
+const tasksCompleted = ref(0)
+const wellnessStreak = ref(0)
+const wellnessDoneToday = ref(false)
+
+const studyTimeFormatted = computed(() => {
+  const h = Math.floor(totalMinutesToday.value / 60)
+  const m = totalMinutesToday.value % 60
+  if (h <= 0) return `${m}m`
+  return `${h}h ${String(m).padStart(2, '0')}m`
+})
+
+const taskCompletionPct = computed(() => {
+  if (tasksTotal.value === 0) return 0
+  return Math.round((tasksCompleted.value / tasksTotal.value) * 100)
+})
+
+async function loadDashboardData() {
+  try {
+    // Study: today's total minutes and sessions
+    const today = await api.get('/api/study-sessions/today-summary')
+    totalMinutesToday.value = today.total_minutes || 0
+    sessionsCompletedToday.value = today.sessions_completed || 0
+
+    // Tasks: totals
+    const stats = await api.get('/api/tasks/stats')
+    tasksTotal.value = stats.total || 0
+    tasksCompleted.value = stats.completed || 0
+
+    // Wellness: streak and today status
+    const wellness = await api.get('/api/wellness/overview')
+    wellnessStreak.value = wellness.streak || 0
+
+    // Robust today check: query month check-ins and look for today's date
+    const now = new Date()
+    const yyyy = now.getFullYear()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    const todayStr = `${yyyy}-${mm}-${String(now.getDate()).padStart(2,'0')}`
+    try {
+      const monthData = await api.get(`/api/wellness/checkins?month=${mm}&year=${yyyy}`)
+      const dates = monthData?.checkInDates || []
+      wellnessDoneToday.value = dates.includes(todayStr)
+    } catch (e) {
+      // Fallback to overview field if monthly query fails
+      wellnessDoneToday.value = (wellness.lastCheckInDate === todayStr)
+    }
+  } catch (e) {
+    console.error('Failed to load dashboard data:', e)
+  }
+}
+
+onMounted(loadDashboardData)
 </script>
 
 <script>
