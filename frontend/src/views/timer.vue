@@ -9,7 +9,7 @@ import { useCoins } from '@/composables/useCoins.js'
 const { subjects, loading: subjectsLoading, fetchSubjects, createSubject, updateSubject, deleteSubject } = useSubjects()
 const { topics: recurringTopics, loading: topicsLoading, fetchTopics, createTopic, updateTopic, deleteTopic } = useRecurringTopics()
 // NEW: Use Background composable
-const { getCurrentBackground } = useBackground()
+const { selectedBackgroundId, getCurrentBackground } = useBackground()
 const { coins, updateCoins } = useCoins()
 
 const presets = { 'Focus': 25, 'Short Break': 5, 'Long Break': 15 }
@@ -96,6 +96,9 @@ const label = computed(() => {
 
 // FIX: Added a safe default return to prevent 'Cannot read properties of undefined' errors on mount
 const blurredBackgroundStyle = computed(() => {
+  // Depend on selectedBackgroundId to react to changes made in the gallery
+  // eslint-disable-next-line no-unused-expressions
+  selectedBackgroundId.value
   // Use getCurrentBackground() and provide a safe fallback object {} if undefined
   const bg = getCurrentBackground() || {}; 
   

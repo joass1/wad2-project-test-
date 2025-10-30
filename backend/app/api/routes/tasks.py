@@ -51,6 +51,8 @@ def _serialize_task_doc(doc) -> Dict[str, Any]:
     data.setdefault("category", "General")
     data.setdefault("dueDate", None)
     data.setdefault("totalStudyMinutes", 0)
+    data.setdefault("subjectId", None)
+    data.setdefault("topic", None)
 
     return data
 
@@ -181,6 +183,16 @@ class TaskBase(BaseModel):
     totalStudyMinutes: int | None = Field(
         default=0,
         description="Total study time logged for this task in minutes"
+    )
+    # Optional links to study context
+    subjectId: str | None = Field(
+        default=None,
+        description="Optional subject identifier to tag this task with a subject",
+    )
+    topic: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Optional recurring topic/area label (e.g., 'Practice Paper')",
     )
 
 

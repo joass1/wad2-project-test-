@@ -25,10 +25,12 @@ export const BACKGROUNDS = [
     { id: 'none', name: 'None (Falling Leaves)', thumbnail: null, path: null } 
 ]
 
+// Module-scoped refs so every component gets the same reactive instance
+const selectedBackgroundId = ref('none')
+const loading = ref(false)
+
 export function useBackground() {
     const { user } = useAuth()
-    const selectedBackgroundId = ref('none') 
-    const loading = ref(false)
 
     // Load background preference from the new endpoint
     async function loadPreferences() {

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/firebase";
 
-const API_BASE_URL = process.env.VUE_APP_API_URL;
+// Support both Vite (import.meta.env) and Vue CLI (process.env.VUE_APP_API_URL)
+const API_BASE_URL = (import.meta?.env?.VITE_API_URL || process.env?.VUE_APP_API_URL || "http://localhost:8000");
 
 async function authorizedFetch(path, options = {}) {
   const user = auth.currentUser;
@@ -12,7 +13,8 @@ async function authorizedFetch(path, options = {}) {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const base = API_BASE_URL.replace(/\/$/, "");
+  const response = await fetch(`${base}${path}`, {
     ...options,
     headers,
   });

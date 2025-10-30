@@ -673,6 +673,24 @@
             density="compact"
             hide-details
           ></v-text-field>
+          <v-select
+            v-model="newTask.subjectId"
+            :items="subjects.map(s => ({ title: s.name, value: s.id }))"
+            label="Subject (optional)"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+            hide-details
+            :disabled="!subjects || subjects.length === 0"
+          />
+          <v-text-field
+            v-model="newTask.topic"
+            label="Topic/Area (optional)"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+            hide-details
+          />
           <v-alert
             v-if="addTaskError"
             type="error"
@@ -716,6 +734,7 @@
 <script setup>
 import { onMounted, ref, watch } from "vue";
 import { api } from "@/lib/api.js";
+import { useSubjects } from "@/composables/useSubjects";
 
 const view = ref("board");
 const showAddTask = ref(false);
@@ -743,6 +762,7 @@ const prioritySelectItems = [
 ];
 
 const tasks = ref([]);
+const { subjects, fetchSubjects } = useSubjects();
 const stats = ref({ total: 0, completed: 0, dueToday: 0, overdue: 0 });
 const loading = ref(false);
 const errorMessage = ref("");
@@ -756,6 +776,8 @@ const newTaskDefaults = {
   priority: "medium",
   dueDate: "",
   category: "General",
+  subjectId: null,
+  topic: "",
 };
 const newTask = ref({ ...newTaskDefaults });
 
@@ -805,7 +827,9 @@ const fetchTasks = async () => {
   }
 };
 
-onMounted(fetchTasks);
+onMounted(async () => {
+  await Promise.all([fetchTasks(), fetchSubjects()]);
+});
 
 watch([filterStatus, filterPriority, sortBy], () => {
   fetchTasks();
@@ -870,6 +894,8 @@ const startEditTask = (task) => {
     priority: task.priority ?? "medium",
     dueDate: task.dueDate ?? "",
     category: task.category ?? "General",
+    subjectId: task.subjectId ?? null,
+    topic: task.topic ?? "",
   };
   showAddTask.value = true;
 };
@@ -896,6 +922,8 @@ const handleSubmitTask = async () => {
     priority: newTask.value.priority,
     dueDate: newTask.value.dueDate || null,
     category: newTask.value.category || "General",
+    subjectId: newTask.value.subjectId || null,
+    topic: newTask.value.topic?.trim() || null,
   };
 
   try {
