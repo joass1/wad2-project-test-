@@ -647,6 +647,7 @@
             density="compact"
             class="mb-3"
             hide-details
+            :menu-props="{ contentClass: 'dropdown-opaque' }"
           ></v-select>
           <v-select
             v-model="newTask.priority"
@@ -656,6 +657,7 @@
             density="compact"
             class="mb-3"
             hide-details
+            :menu-props="{ contentClass: 'dropdown-opaque' }"
           ></v-select>
           <v-text-field
             v-model="newTask.dueDate"
@@ -664,13 +666,6 @@
             variant="outlined"
             density="compact"
             class="mb-3"
-            hide-details
-          ></v-text-field>
-          <v-text-field
-            v-model="newTask.category"
-            label="Category"
-            variant="outlined"
-            density="compact"
             hide-details
           ></v-text-field>
           <v-select
@@ -682,14 +677,18 @@
             class="mb-3"
             hide-details
             :disabled="!subjects || subjects.length === 0"
+            :menu-props="{ contentClass: 'dropdown-opaque' }"
           />
-          <v-text-field
-            v-model="newTask.topic"
-            label="Topic/Area (optional)"
+          <v-select
+            v-model="newTask.typeId"
+            :items="typeSelectItems"
+            label="Type (optional)"
             variant="outlined"
             density="compact"
             class="mb-3"
             hide-details
+            :disabled="typeSelectItems.length === 0"
+            :menu-props="{ contentClass: 'dropdown-opaque' }"
           />
           <v-alert
             v-if="addTaskError"
@@ -735,6 +734,7 @@
 import { onMounted, ref, watch } from "vue";
 import { api } from "@/lib/api.js";
 import { useSubjects } from "@/composables/useSubjects";
+import { useRecurringTopics } from "@/composables/useSubjects";
 
 const view = ref("board");
 const showAddTask = ref(false);
@@ -763,6 +763,7 @@ const prioritySelectItems = [
 
 const tasks = ref([]);
 const { subjects, fetchSubjects } = useSubjects();
+const { topics: recurringTypes, fetchTopics } = useRecurringTopics();
 const stats = ref({ total: 0, completed: 0, dueToday: 0, overdue: 0 });
 const loading = ref(false);
 const errorMessage = ref("");
@@ -775,11 +776,13 @@ const newTaskDefaults = {
   status: "todo",
   priority: "medium",
   dueDate: "",
-  category: "General",
   subjectId: null,
-  topic: "",
+  typeId: null,
 };
 const newTask = ref({ ...newTaskDefaults });
+
+// Derive type dropdown items from recurring topics
+const typeSelectItems = ref([]);
 
 // handle race condition
 let fetchToken = 0;
@@ -801,7 +804,7 @@ const fetchTasks = async () => {
 
     // make api call
     const query = params.toString();
-    const response = await api.get(`/api/tasks${query ? `?${query}` : ""}`);
+    const response = await api.get(`/api/tasks/${query ? `?${query}` : ""}`);
 
     // handle race condition
     if (token !== fetchToken) return;
@@ -828,7 +831,8 @@ const fetchTasks = async () => {
 };
 
 onMounted(async () => {
-  await Promise.all([fetchTasks(), fetchSubjects()]);
+  await Promise.all([fetchTasks(), fetchSubjects(), fetchTopics()]);
+  typeSelectItems.value = (recurringTypes.value || []).map(t => ({ title: t.title, value: t.id }));
 });
 
 watch([filterStatus, filterPriority, sortBy], () => {
@@ -842,6 +846,11 @@ watch(showAddTask, (value) => {
     editingTaskId.value = null;
     newTask.value = { ...newTaskDefaults };
   }
+});
+
+// When recurring types list changes, refresh items
+watch(recurringTypes, () => {
+  typeSelectItems.value = (recurringTypes.value || []).map(t => ({ title: t.title, value: t.id }));
 });
 
 const getFilteredTasks = () => tasks.value;
@@ -893,9 +902,8 @@ const startEditTask = (task) => {
     status: task.status ?? "todo",
     priority: task.priority ?? "medium",
     dueDate: task.dueDate ?? "",
-    category: task.category ?? "General",
     subjectId: task.subjectId ?? null,
-    topic: task.topic ?? "",
+    typeId: null,
   };
   showAddTask.value = true;
 };
@@ -916,14 +924,15 @@ const handleSubmitTask = async () => {
     return;
   }
 
+  // Map selected typeId to a human-readable type title to store as topic string on backend
+  const selectedType = (typeSelectItems.value || []).find(i => i.value === newTask.value.typeId);
   const payload = {
     title: trimmedTitle,
     status: newTask.value.status,
     priority: newTask.value.priority,
     dueDate: newTask.value.dueDate || null,
-    category: newTask.value.category || "General",
     subjectId: newTask.value.subjectId || null,
-    topic: newTask.value.topic?.trim() || null,
+    topic: selectedType ? selectedType.title : null,
   };
 
   try {

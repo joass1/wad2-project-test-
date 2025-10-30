@@ -5,6 +5,7 @@ import { useSubjects, useRecurringTopics } from '@/composables/useSubjects'
 import { useBackground } from '@/composables/useBackgrounds'
 import BackgroundsGallery from '@/components/BackgroundsGallery.vue'
 import { useCoins } from '@/composables/useCoins.js' 
+import { api } from '@/lib/api.js'
 
 const { subjects, loading: subjectsLoading, fetchSubjects, createSubject, updateSubject, deleteSubject } = useSubjects()
 const { topics: recurringTopics, loading: topicsLoading, fetchTopics, createTopic, updateTopic, deleteTopic } = useRecurringTopics()
@@ -56,8 +57,7 @@ const topicDialog = ref(false)
 // Fetch tasks from tracker
 async function fetchTasksFromTracker() {
   try {
-    const response = await fetch('/api/tasks')
-    const data = await response.json()
+    const data = await api.get('/api/tasks')
     tasksFromTracker.value = data.tasks || []
   } catch (error) {
     console.error('Error fetching tasks:', error)
@@ -249,10 +249,8 @@ async function markTaskAsComplete() {
   if (!selectedTask.value) return
   
   try {
-    await fetch(`/api/tasks/${selectedTask.value}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'done' })
+    await api.patch(`/api/tasks/${selectedTask.value}`, {
+      status: 'done'
     })
     taskCompletionDialog.value = false
   } catch (error) {
@@ -552,7 +550,7 @@ onUnmounted(() => { clearInterval(t) })
             <v-tabs v-model="activeTab" bg-color="transparent" color="primary" class="mb-4" show-arrows="false">
               <v-tab value="session">Session</v-tab>
               <v-tab value="subjects">Subjects</v-tab>
-              <v-tab value="topics">Topics</v-tab>
+              <v-tab value="topics">Type</v-tab>
             </v-tabs>
 
             <v-window v-model="activeTab">
@@ -611,7 +609,7 @@ onUnmounted(() => { clearInterval(t) })
                 </div>
 
                 <div class="mb-4">
-                  <label class="text-body-2 font-weight-medium mb-2 d-block">Topic (Recurring)</label>
+                  <label class="text-body-2 font-weight-medium mb-2 d-block">Type (Recurring)</label>
                   <v-combobox
                     v-model="selectedTopic"
                     :items="topicDropdownItems"
@@ -619,7 +617,7 @@ onUnmounted(() => { clearInterval(t) })
                     item-value="value"
                     variant="outlined"
                     rounded="lg"
-                    placeholder="Type or select a recurring topic"
+                    placeholder="Type or select a recurring type"
                     hide-details
                     density="comfortable"
                     :menu-props="{ contentClass: 'dropdown-opaque' }"
@@ -743,9 +741,9 @@ onUnmounted(() => { clearInterval(t) })
               <v-window-item value="topics">
                 <div class="d-flex justify-space-between align-center mb-4">
                   <div>
-                    <div class="text-subtitle-1 font-weight-medium session-title">Recurring Topics</div>
+                    <div class="text-subtitle-1 font-weight-medium session-title">Type of Work</div>
                     <p class="text-caption text-medium-emphasis">
-                      {{ selectedSubject ? 'Topics for selected subject' : 'All topics' }}
+                      {{ selectedSubject ? 'Types for selected subject' : 'Recurring types' }}
                     </p>
                   </div>
                   <v-btn 
@@ -763,10 +761,10 @@ onUnmounted(() => { clearInterval(t) })
                 <div v-if="filteredTopics.length === 0 && !loading" class="text-center pa-4">
                   <v-icon size="48" color="medium-emphasis" class="mb-2">mdi-clipboard-list-outline</v-icon>
                   <p class="text-caption text-medium-emphasis">
-                    {{ selectedSubject ? 'No topics for this subject yet' : 'No recurring topics yet. Create one!' }}
+                    {{ selectedSubject ? 'No types for this subject yet' : 'No recurring types yet. Create one!' }}
                   </p>
                   <v-btn size="small" variant="text" color="primary" @click="openTopicDialog()">
-                    Add a recurring topic
+                    Add a recurring type
                   </v-btn>
                 </div>
 
@@ -937,7 +935,7 @@ onUnmounted(() => { clearInterval(t) })
     <v-dialog v-model="topicDialog" max-width="500px" persistent>
       <v-card rounded="xl">
         <v-card-title class="pa-6">
-          <span class="text-h6">{{ editingTopic ? 'Edit Topic' : 'New Recurring Topic' }}</span>
+          <span class="text-h6">{{ editingTopic ? 'Edit Topic' : 'New Recurring Work' }}</span>
         </v-card-title>
         
         <v-card-text class="pa-6 pt-0">
@@ -969,7 +967,7 @@ onUnmounted(() => { clearInterval(t) })
             
             <v-text-field
               v-model="topicForm.title"
-              label="Topic Title"
+              label="Type of work e.g. Paper"
               variant="outlined"
               rounded="lg"
               class="mb-4"
