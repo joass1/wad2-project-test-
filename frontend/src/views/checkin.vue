@@ -582,7 +582,7 @@ const calculateStreak = () => {
 
 // Computed properties
 const selectedCheckInData = computed(() => {
-  const key = selectedDate.value.toISOString().split('T')[0]
+  const key = getDateString(selectedDate.value) 
   return checkInHistory.value[key] || null
 })
 
