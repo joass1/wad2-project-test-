@@ -10,11 +10,7 @@
       <v-col cols="12" sm="6" md="3">
         <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
           <v-card-text class="text-center">
-            <v-icon
-              icon="mdi-clock-time-four-outline"
-              size="26"
-              class="mb-2 text-primary"
-            />
+            <v-icon icon="mdi-clock-time-four-outline" size="26" class="mb-2 text-primary" />
             <div class="text-subtitle-2">Study Hours</div>
             <div class="text-h6 font-weight-bold mt-1">
               {{ studyStats.studyHours }} Hours
@@ -76,33 +72,45 @@
     <v-window v-model="tab" :transition="false" :touch="false">
       <v-window-item :value="0">
         <v-row>
-          <!-- Daily Study Time Chart -->
           <v-col cols="12" md="6">
             <v-card class="pa-4">
               <v-card-title>Daily Study Time (Last 7 Days)</v-card-title>
               <v-card-subtitle>Hours spent studying each day</v-card-subtitle>
-              <apexchart
-                ref="dailyStudyChart"
-                type="bar"
-                height="250"
-                :options="dailyStudyOptions"
-                :series="dailyStudySeries"
-              />
+
+              <div v-if="hasDailyStudyData">
+                <apexchart ref="dailyStudyChart" type="bar" height="250" :options="dailyStudyOptions"
+                  :series="dailyStudySeries" />
+              </div>
+              <v-alert v-else color="info" icon="mdi-chart-line-variant" density="compact" border="start" class="mt-4">
+                <div class="text-subtitle-1 font-weight-bold">
+                  No Study Data Yet
+                </div>
+                <div class="text-body-2">
+                  Log your first study session to see your daily progress here.
+                </div>
+                <v-btn size="small" variant="text" color="info" class="mt-2">Start Session Now</v-btn>
+              </v-alert>
             </v-card>
           </v-col>
 
-          <!-- Study Time by Subject Chart -->
           <v-col cols="12" md="6">
             <v-card class="pa-4">
               <v-card-title>Study Time by Subject</v-card-title>
               <v-card-subtitle>Distribution of study hours</v-card-subtitle>
-              <apexchart
-                ref="subjectChart"
-                type="donut"
-                height="250"
-                :options="subjectOptions"
-                :series="subjectSeries"
-              />
+
+              <div v-if="hasSubjectData">
+                <apexchart ref="subjectChart" type="donut" height="250" :options="subjectOptions"
+                  :series="subjectSeries" />
+              </div>
+              <v-alert v-else color="warning" icon="mdi-book-open-page-variant" density="compact" border="start"
+                class="mt-4">
+                <div class="text-subtitle-1 font-weight-bold">
+                  No Subject Data
+                </div>
+                <div class="text-body-2">
+                  Assign subjects to your study sessions to see a breakdown.
+                </div>
+              </v-alert>
             </v-card>
           </v-col>
         </v-row>
@@ -114,16 +122,23 @@
           <v-col cols="12">
             <v-card class="pa-4">
               <v-card-title>Task Completion Trends</v-card-title>
-              <v-card-subtitle
-                >Tasks created vs completed over the last 7 days</v-card-subtitle
-              >
-              <apexchart
-                ref="taskChart"
-                type="bar"
-                height="250"
-                :options="taskCompletionOptions"
-                :series="taskCompletionSeries"
-              />
+              <v-card-subtitle>Tasks created vs completed over the last 7 days</v-card-subtitle>
+
+              <div v-if="hasTaskData">
+                <apexchart ref="taskChart" type="bar" height="250" :options="taskCompletionOptions"
+                  :series="taskCompletionSeries" />
+              </div>
+              <v-alert v-else color="success" icon="mdi-check-circle-outline" density="compact" border="start"
+                class="mt-4">
+                <div class="text-subtitle-1 font-weight-bold">
+                  No Task Activity
+                </div>
+                <div class="text-body-2">
+                  Create and complete tasks throughout the week to visualize your
+                  productivity.
+                </div>
+                <v-btn size="small" variant="text" color="success" class="mt-2">Add New Task</v-btn>
+              </v-alert>
             </v-card>
           </v-col>
         </v-row>
@@ -133,11 +148,7 @@
             <v-col>
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center">
-                  <v-icon
-                    icon="mdi-format-list-checks"
-                    size="26"
-                    class="mb-2 text-primary"
-                  />
+                  <v-icon icon="mdi-format-list-checks" size="26" class="mb-2 text-primary" />
                   <div class="text-subtitle-2">Total Tasks</div>
                   <div class="text-h6 font-weight-bold mt-1">{{ totalTasks }}</div>
                 </v-card-text>
@@ -147,11 +158,7 @@
             <v-col cols="12" sm="4">
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center">
-                  <v-icon
-                    icon="mdi-check-circle-outline"
-                    size="26"
-                    class="mb-2 text-primary"
-                  />
+                  <v-icon icon="mdi-check-circle-outline" size="26" class="mb-2 text-primary" />
                   <div class="text-subtitle-2">Completed</div>
                   <div class="text-h6 font-weight-bold mt-1">{{ completedTasks }}</div>
                 </v-card-text>
@@ -177,16 +184,23 @@
           <v-col cols="12">
             <v-card class="pa-4">
               <v-card-title>Wellness Trends (Last 7 Days)</v-card-title>
-              <v-card-subtitle
-                >Track your mood, energy, sleep, and stress levels</v-card-subtitle
-              >
-              <apexchart
-                ref="wellnessChart"
-                type="line"
-                height="250"
-                :options="wellnessOptions"
-                :series="wellnessSeries"
-              />
+              <v-card-subtitle>Track your mood, energy, sleep, and stress levels</v-card-subtitle>
+
+              <div v-if="hasWellnessData">
+                <apexchart ref="wellnessChart" type="line" height="250" :options="wellnessOptions"
+                  :series="wellnessSeries" />
+              </div>
+              <v-alert v-else color="deep-purple-accent-1" icon="mdi-heart-pulse" density="compact" border="start"
+                class="mt-4">
+                <div class="text-subtitle-1 font-weight-bold">
+                  No Wellness Check-ins
+                </div>
+                <div class="text-body-2">
+                  Log your daily wellness check-ins to start tracking your mood,
+                  energy, and sleep trends.
+                </div>
+                <v-btn size="small" variant="text" color="deep-purple-accent-1" class="mt-2">Add Check-in</v-btn>
+              </v-alert>
             </v-card>
           </v-col>
         </v-row>
@@ -277,7 +291,7 @@
 <script setup>
 import { ref, computed, onMounted, reactive, watch, nextTick } from "vue";
 import ApexCharts from "vue3-apexcharts";
-import { db } from "@/lib/firebase"; // or wherever your Firebase is initialized
+import { db } from "@/lib/firebase";
 import {
   collection,
   query,
@@ -287,7 +301,7 @@ import {
   getDocs,
   Timestamp,
 } from "firebase/firestore";
-import { auth } from "@/lib/firebase"; // if not already imported
+import { auth } from "@/lib/firebase";
 import { api } from "@/lib/api.js";
 import { useTheme } from "vuetify";
 
@@ -295,10 +309,9 @@ onMounted(() => {
   getTaskStats();
   getWellnessOverview();
   loadWellnessData();
-  loadStudyData();
   getTaskGraph();
   loadWeeklyStudyChart();
-  loadStudyStreak();
+  // try1();
 });
 
 const dailyStudyChart = ref(null);
@@ -310,51 +323,29 @@ const wellnessChart = ref(null);
 const theme = useTheme();
 const isDark = computed(() => theme.global.current.value.dark);
 
-function formatToUserTimezone(isoDate, options = {}) {
-  const date = new Date(isoDate);
-  return new Intl.DateTimeFormat(undefined, {
-    timeZone: undefined, // user's local timezone by default
-    ...options,
-  }).format(date);
-}
+const hasDailyStudyData = computed(() => {
+  return (
+    dailyStudySeries.value.length > 0 &&
+    dailyStudySeries.value[0].data.some((d) => d > 0)
+  );
+});
 
-async function loadWeeklyStudyChart() {
-  try {
-    const data = await api.get("/api/study-sessions/weekly-summary");
-    if (!data || !data.daily_hours) {
-      console.error("No daily_hours found in API response");
-      return;
-    }
+const hasSubjectData = computed(() => {
+  return subjectSeries.value.length > 0 && subjectSeries.value.some((s) => s > 0);
+});
 
-    const dates = Object.keys(data.daily_hours);
-    const hours = Object.values(data.daily_hours);
+const hasTaskData = computed(() => {
+  return (
+    taskCompletionSeries.value.length > 0 &&
+    taskCompletionSeries.value.some((series) => series.data.some((d) => d > 0))
+  );
+});
 
-    dailyStudySeries.value = [{ name: "Study Time (hrs)", data: hours }];
+const hasWellnessData = computed(() => {
+  return wellnessSeries.value.length > 0 &&
+    wellnessSeries.value.some((series) => series.data.some((d) => d > 0));
+});
 
-    dailyStudyOptions.value = {
-      ...dailyStudyOptions.value,
-      xaxis: {
-        ...dailyStudyOptions.value.xaxis,
-        categories: dates.map((date) =>
-          new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })
-        ),
-      },
-    };
-
-    const subjects = Object.keys(data.subject_hours);
-    const subjectHours = Object.values(data.subject_hours);
-
-    subjectSeries.value = subjectHours;
-
-    subjectOptions.value = {
-      ...subjectOptions.value,
-      labels: subjects,
-    };
-    subjectOptions.value.colors = subjects.map(hashStringToColor);
-  } catch (error) {
-    console.error("Failed to load weekly study chart:", error);
-  }
-}
 
 const taskStat = reactive({
   completed: 0,
@@ -373,6 +364,148 @@ const studyStats = reactive({
   studyHours: 0,
   studyStreak: 0,
 });
+
+const tab = ref(0);
+
+// Bar chart (Daily Study Time)
+const dailyStudySeries = ref([]);
+const dailyStudyOptions = ref({
+  ...getApexThemeOptions(isDark.value),
+  chart: { toolbar: { show: false } },
+  xaxis: { categories: [] },
+  colors: ["#6A7A5A"],
+  dataLabels: { enabled: false },
+});
+
+// Donut chart (Study Time by Subject)
+const subjectSeries = ref([]);
+const subjectOptions = ref({
+  labels: [],
+  colors: [],
+  legend: { position: "bottom" },
+});
+
+// task progress
+const totalTasks = computed(() => taskStat.total);
+const completedTasks = computed(() => taskStat.completed);
+const completionRate = computed(() =>
+  totalTasks.value > 0 ? ((completedTasks.value / totalTasks.value) * 100).toFixed(1) : 0
+);
+
+const taskCompletionSeries = ref([
+  { name: "Created Tasks", data: [] },
+  { name: "Completed Tasks", data: [] },
+]);
+
+const taskCompletionOptions = ref({
+  ...getApexThemeOptions(isDark.value),
+  chart: { type: "bar", toolbar: { show: false } },
+  xaxis: { categories: [] },
+  yaxis: { min: 0 },
+  colors: ["#4CAF50", "#FF7043"],
+  dataLabels: { enabled: false },
+});
+
+const wellnessSeries = ref([]);
+
+const wellnessOptions = ref({
+  ...getApexThemeOptions(isDark.value),
+  chart: {
+    ...getApexThemeOptions(isDark.value).chart,
+    type: "line",
+    toolbar: { show: false },
+  },
+  xaxis: { categories: [] },
+  yaxis: { min: 0, max: 10 },
+  stroke: { width: 2, curve: "smooth" },
+  markers: { size: 4 },
+  colors: ["#FF7043", "#42A5F5", "#8DAF9B", "#FFD54F"],
+});
+
+//Data for Wellness Stats (Mood, Energy, Sleep, Stress)
+const mood = ref(0);
+const energy = ref(0);
+const sleep = ref(0);
+const stress = ref(0);
+
+function formatToUserTimezone(isoDate, options = {}) {
+  const date = new Date(isoDate);
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: undefined,
+    ...options,
+  }).format(date);
+}
+
+async function try1() {
+  try {
+    const mockSession = {
+      duration_minutes: 50,
+      subject: 'Computer Science',
+      task: 'Implement linked list in Python',
+      task_id: 'task_abc123',
+      notes: 'Practiced building and traversing linked lists; review time complexity later.',
+      session_type: 'focus'
+    }
+
+    // Make sure your Axios instance points to the correct backend base URL
+    const response = await api.post("/api/study-sessions/", mockSession)
+
+    console.log("✅ Session created:", response.data)
+    return response.data
+
+  } catch (error) {
+    console.error("❌ Failed to create session:", error)
+  }
+}
+
+async function loadWeeklyStudyChart() {
+  try {
+    const data = await api.get("/api/study-sessions/stats/summary");
+    console.log(data);
+    const dailyData = data.daily_hours_past_week;
+    studyStats.studyHours = data.total_hours || 0;
+    studyStats.studyStreak = data.study_streak || 0;
+    if (!dailyData || dailyData.length === 0) {
+      console.error("No daily study hours data found in API response");
+      return;
+    }
+
+    const dates = dailyData.map(item => item.date);
+    const hours = dailyData.map(item => item.hours);
+
+    dailyStudySeries.value = [{ name: "Study Time (hrs)", data: hours }];
+
+    dailyStudyOptions.value = {
+      ...dailyStudyOptions.value,
+      xaxis: {
+        ...dailyStudyOptions.value.xaxis,
+        categories: dates.map((date) =>
+          new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        ),
+      },
+    };
+
+    const subjectData = data.subject_hours_past_week;
+
+    if (!subjectData || subjectData.length === 0) {
+      console.warn("No subject study hours data found for pie chart");
+    }
+
+    const subjects = subjectData.map(item => item.subject);
+    const subjectHours = subjectData.map(item => item.hours);
+
+    subjectSeries.value = subjectHours;
+
+    subjectOptions.value = {
+      ...subjectOptions.value,
+      labels: subjects,
+    };
+    subjectOptions.value.colors = subjects.map(hashStringToColor);
+
+  } catch (error) {
+    console.error("Failed to load weekly study chart:", error);
+  }
+}
 
 function getApexThemeOptions(isDark) {
   return {
@@ -419,31 +552,31 @@ async function getTaskGraph() {
   }
 }
 
-async function loadStudyData() {
-  const user = auth.currentUser;
-  if (!user) return;
-  try {
-    const response = await api.get("/api/study-sessions/stats");
-    studyStats.studyHours = response.total_hours || 0;
-    studyStats.studyStreak = response.sessions_this_month || 0;
-  } catch (error) {
-    console.error("Error loading study data:", error);
-    studyStats.studyHours = 0;
-    studyStats.studyStreak = 0;
-  }
-}
+// async function loadStudyData() {
+//   const user = auth.currentUser;
+//   if (!user) return;
+//   try {
+//     const response = await api.get("/api/study-sessions/stats/summary");
+//     studyStats.studyHours = response.total_hours || 0;
+//     studyStats.studyStreak = response.sessions_this_month || 0;
+//   } catch (error) {
+//     console.error("Error loading study data:", error);
+//     studyStats.studyHours = 0;
+//     studyStats.studyStreak = 0;
+//   }
+// }
 
-async function loadStudyStreak() {
-  const user = auth.currentUser;
-  if (!user) return;
-  try {
-    const response = await api.get("/api/study-sessions/streak");
-    studyStats.studyStreak = response.current_streak || 0;
-  } catch (error) {
-    console.error("Error loading study data:", error);
-    studyStats.studyStreak = 0;
-  }
-}
+// async function loadStudyStreak() {
+//   const user = auth.currentUser;
+//   if (!user) return;
+//   try {
+//     const response = await api.get("/api/study-sessions/streak");
+//     studyStats.studyStreak = response.current_streak || 0;
+//   } catch (error) {
+//     console.error("Error loading study data:", error);
+//     studyStats.studyStreak = 0;
+//   }
+// }
 
 async function getTaskStats() {
   try {
@@ -515,26 +648,6 @@ function calculateStreak(checkIns) {
   return streak;
 }
 
-const tab = ref(0);
-
-// Bar chart (Daily Study Time)
-const dailyStudySeries = ref([]);
-const dailyStudyOptions = ref({
-  ...getApexThemeOptions(isDark.value),
-  chart: { toolbar: { show: false } },
-  xaxis: { categories: [] },
-  colors: ["#6A7A5A"],
-  dataLabels: { enabled: false },
-});
-
-// Donut chart (Study Time by Subject)
-const subjectSeries = ref([]);
-const subjectOptions = ref({
-  labels: [],
-  colors: [],
-  legend: { position: "bottom" },
-});
-
 function hashStringToColor(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -543,63 +656,6 @@ function hashStringToColor(str) {
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue}, 70%, 60%)`; // you can adjust saturation/lightness
 }
-
-// // Line chart (Productivity Trend)
-// const productivitySeries = ref([{ name: "Productivity", data: [0, 2, 4, 3, 5, 6, 4] }]);
-// const productivityOptions = ref({
-//   ...getApexThemeOptions(isDark.value),
-//   chart: { toolbar: { show: false } },
-//   xaxis: {
-//     categories: ["Oct 02", "Oct 03", "Oct 04", "Oct 05", "Oct 06", "Oct 07", "Oct 08"],
-//   },
-//   yaxis: { min: 0, max: 10 },
-//   colors: ["#8DAF9B"],
-//   stroke: { curve: "smooth" },
-//   markers: { size: 4 },
-// });
-
-// task progress
-const totalTasks = computed(() => taskStat.total);
-const completedTasks = computed(() => taskStat.completed);
-const completionRate = computed(() =>
-  totalTasks.value > 0 ? ((completedTasks.value / totalTasks.value) * 100).toFixed(1) : 0
-);
-
-const taskCompletionSeries = ref([
-  { name: "Created Tasks", data: [] }, // Data for tasks created
-  { name: "Completed Tasks", data: [] }, // Data for tasks completed
-]);
-
-const taskCompletionOptions = ref({
-  ...getApexThemeOptions(isDark.value),
-  chart: { type: "bar", toolbar: { show: false } },
-  xaxis: { categories: [] },
-  yaxis: { min: 0 },
-  colors: ["#4CAF50", "#FF7043"],
-  dataLabels: { enabled: false },
-});
-
-const wellnessSeries = ref([]);
-
-const wellnessOptions = ref({
-  ...getApexThemeOptions(isDark.value),
-  chart: {
-    ...getApexThemeOptions(isDark.value).chart,
-    type: "line",
-    toolbar: { show: false },
-  },
-  xaxis: { categories: [] },
-  yaxis: { min: 0, max: 10 },
-  stroke: { width: 2, curve: "smooth" },
-  markers: { size: 4 },
-  colors: ["#FF7043", "#42A5F5", "#8DAF9B", "#FFD54F"],
-});
-
-//Data for Wellness Stats (Mood, Energy, Sleep, Stress)
-const mood = ref(0);
-const energy = ref(0);
-const sleep = ref(0);
-const stress = ref(0);
 
 async function loadWellnessData() {
   try {
@@ -610,7 +666,6 @@ async function loadWellnessData() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(now.getDate() - 6); // last 7 days
 
-    // Query Firestore for wellness check-ins from the last 7 days
     const q = query(
       collection(db, "wellnessCheckIns"),
       where("userId", "==", user.uid),
@@ -628,13 +683,12 @@ async function loadWellnessData() {
       const dateStr = d.date.toDate
         ? d.date.toDate().toLocaleDateString("en-US", { month: "short", day: "2-digit" })
         : new Date(d.date).toLocaleDateString("en-US", {
-            month: "short",
-            day: "2-digit",
-          });
+          month: "short",
+          day: "2-digit",
+        });
       dataMap[dateStr] = d;
     });
 
-    // Prepare arrays for chart data and dates
     const formattedDates = [];
     const moodData = [];
     const energyData = [];
@@ -642,7 +696,6 @@ async function loadWellnessData() {
     const stressData = [];
     const notesData = [];
 
-    // Loop over last 7 days and fill in data or zero if missing
     for (let i = 0; i < 7; i++) {
       const date = new Date(sevenDaysAgo);
       date.setDate(sevenDaysAgo.getDate() + i);
@@ -652,9 +705,8 @@ async function loadWellnessData() {
       });
       formattedDates.push(dateStr);
 
-      const dayData = dataMap[dateStr] || {}; // If no data, return an empty object
+      const dayData = dataMap[dateStr] || {};
 
-      // If the data is missing, treat it as 0; if data exists, use the actual value
       moodData.push(dayData.mood !== undefined ? dayData.mood : 0);
       energyData.push(dayData.energy !== undefined ? dayData.energy : 0);
       sleepData.push(dayData.sleep !== undefined ? dayData.sleep : 0);
@@ -671,9 +723,7 @@ async function loadWellnessData() {
     ];
     wellnessOptions.value.xaxis.categories = formattedDates;
 
-    // Compute 7-day averages safely (excluding zeroes that represent missing data)
     const avg = (arr) => {
-      // Filter out zeroes only if they are missing data (not explicitly entered 0)
       const validData = arr.filter(
         (value) => value !== 0 || arr.indexOf(value) === arr.lastIndexOf(value)
       );
@@ -736,79 +786,6 @@ async function loadWellnessData() {
   }
 }
 
-// Insights
-const moodInsight = computed(() => {
-  if (mood.value >= 8) return "You're feeling great! Keep up the positive vibes.";
-  if (mood.value >= 5) return "Your mood is stable, but there's room to improve.";
-  return "Consider some self-care to boost your mood.";
-});
-
-const energyInsight = computed(() => {
-  if (energy.value >= 8) return "Energy levels are high! Great job maintaining that.";
-  if (energy.value >= 5) return "Your energy is decent but try to rest more.";
-  return "Low energy detected—make sure you're getting enough rest.";
-});
-
-const sleepInsight = computed(() => {
-  if (sleep.value >= 8) return "You're sleeping well. Keep it consistent!";
-  if (sleep.value >= 5)
-    return "Sleep quality is average, consider improving your bedtime routine.";
-  return "Poor sleep can affect your productivity; prioritize rest.";
-});
-
-const stressInsight = computed(() => {
-  if (stress.value <= 3) return "Stress levels are low—nice work managing it.";
-  if (stress.value <= 6) return "Moderate stress detected, try to relax when you can.";
-  return "High stress! Consider mindfulness or breaks.";
-});
-
-const insights = computed(() => [
-  {
-    title: "Mood",
-    text: moodInsight.value,
-    icon: "mdi-emoticon-happy-outline",
-    colorClass:
-      mood.value >= 8
-        ? "insight-positive"
-        : mood.value >= 5
-        ? "insight-neutral"
-        : "insight-negative",
-  },
-  {
-    title: "Energy",
-    text: energyInsight.value,
-    icon: "mdi-battery-charging",
-    colorClass:
-      energy.value >= 8
-        ? "insight-positive"
-        : energy.value >= 5
-        ? "insight-neutral"
-        : "insight-negative",
-  },
-  {
-    title: "Sleep",
-    text: sleepInsight.value,
-    icon: "mdi-sleep",
-    colorClass:
-      sleep.value >= 8
-        ? "insight-positive"
-        : sleep.value >= 5
-        ? "insight-neutral"
-        : "insight-negative",
-  },
-  {
-    title: "Stress",
-    text: stressInsight.value,
-    icon: "mdi-alert-circle-outline",
-    colorClass:
-      stress.value <= 3
-        ? "insight-positive"
-        : stress.value <= 6
-        ? "insight-neutral"
-        : "insight-negative",
-  },
-]);
-
 async function updateAllChartsTheme(isDarkMode) {
   const themeOptions = getApexThemeOptions(isDarkMode);
   await nextTick();
@@ -823,8 +800,8 @@ async function updateAllChartsTheme(isDarkMode) {
       const preservedCategories = currentConfig?.xaxis?.categories?.length
         ? currentConfig.xaxis.categories
         : chartRef.value?.options?.xaxis?.categories ||
-          wellnessOptions.value?.xaxis?.categories ||
-          [];
+        wellnessOptions.value?.xaxis?.categories ||
+        [];
 
       chartRef.value.chart.updateOptions(
         {
@@ -833,7 +810,7 @@ async function updateAllChartsTheme(isDarkMode) {
           xaxis: {
             ...currentConfig.xaxis,
             ...themeOptions.xaxis,
-            categories: preservedCategories, // ✅ keep labels safe
+            categories: preservedCategories,
           },
           yaxis: {
             ...currentConfig.yaxis,
@@ -867,6 +844,7 @@ watch(isDark, (newVal) => {
     padding: 20px 12px;
     border-radius: 12px;
   }
+
   .tab-navigation {
     display: flex;
     overflow-x: auto;
@@ -874,15 +852,18 @@ watch(isDark, (newVal) => {
     white-space: nowrap;
     padding: 4px 8px;
     gap: 4px;
-    scrollbar-width: none; /* Firefox */
+    scrollbar-width: none;
+    /* Firefox */
   }
 
   .tab-navigation::-webkit-scrollbar {
-    display: none; /* Chrome, Safari */
+    display: none;
+    /* Chrome, Safari */
   }
 
   .tab-item {
-    flex: 0 0 auto; /* Prevent stretching, make each tab its own width */
+    flex: 0 0 auto;
+    /* Prevent stretching, make each tab its own width */
     min-width: fit-content;
     padding: 10px 16px;
     font-size: 0.9rem;
@@ -890,7 +871,8 @@ watch(isDark, (newVal) => {
   }
 
   .tab-item.active::after {
-    bottom: -3px; /* keeps underline visible */
+    bottom: -3px;
+    /* keeps underline visible */
   }
 }
 
