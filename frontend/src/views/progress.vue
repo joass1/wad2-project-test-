@@ -583,13 +583,18 @@ const wellnessSeries = ref([]);
 
 const wellnessOptions = ref({
   ...getApexThemeOptions(isDark.value),
-  chart: { type: "line", toolbar: { show: false } },
+  chart: {
+    ...getApexThemeOptions(isDark.value).chart,
+    type: "line",
+    toolbar: { show: false },
+  },
   xaxis: { categories: [] },
   yaxis: { min: 0, max: 10 },
   stroke: { width: 2, curve: "smooth" },
   markers: { size: 4 },
   colors: ["#FF7043", "#42A5F5", "#8DAF9B", "#FFD54F"],
 });
+
 //Data for Wellness Stats (Mood, Energy, Sleep, Stress)
 const mood = ref(0);
 const energy = ref(0);
@@ -850,13 +855,45 @@ async function updateAllChartsTheme(isDarkMode) {
   });
 }
 
-// Then watch like this:
 watch(isDark, (newVal) => {
   updateAllChartsTheme(newVal);
 });
 </script>
 
 <style scoped>
+/* Mobile responsiveness for tab navigation */
+@media (max-width: 768px) {
+  .stat-card {
+    padding: 20px 12px;
+    border-radius: 12px;
+  }
+  .tab-navigation {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    padding: 4px 8px;
+    gap: 4px;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+
+  .tab-item {
+    flex: 0 0 auto; /* Prevent stretching, make each tab its own width */
+    min-width: fit-content;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    border-radius: 8px;
+  }
+
+  .tab-item.active::after {
+    bottom: -3px; /* keeps underline visible */
+  }
+}
+
 .text-muted {
   color: var(--text-muted);
 }
@@ -1008,14 +1045,6 @@ watch(isDark, (newVal) => {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-/* Responsive adjustments */
-@media (max-width: 600px) {
-  .stat-card {
-    padding: 20px 12px;
-    border-radius: 12px;
   }
 }
 </style>
