@@ -1000,8 +1000,6 @@ def get_study_stats(user: dict = Depends(require_user)):
             completed_dates_dt.add(normalized_date)
         except Exception as e:
             print(f"DEBUG: Failed to parse study date '{d}': {e}")
-    for d in sorted(completed_dates_dt):
-        print("   ", d, "(gap from today:", (today_dt.date() - d).days, "days)")
     # Initialize streak counter
     study_streak = 0
     today_date = now_local.date()
