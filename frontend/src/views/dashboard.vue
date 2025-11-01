@@ -128,45 +128,63 @@
       </v-col>
     </v-row>
 
-
-    <!-- Urgent Tasks + Achievements -->
-    <v-row dense class="px-2 px-md-0">
-      <v-col cols="12" md="8">
-        <v-card class="rounded-xl mb-4" elevation="0" variant="outlined">
-          <v-card-title class="pb-0 text-subtitle-1 text-md-h6">Urgent Tasks</v-card-title>
-          <v-card-subtitle class="pt-0 text-caption text-md-body-2"
-            >Tasks due within 3 days</v-card-subtitle
+    <!-- Google Calendar Integration -->
+    <v-card class="rounded-xl mb-2" elevation="0" variant="outlined">
+      <v-card-title class="pb-0 text-subtitle-1 text-md-h6 text-primary">Google Calendar</v-card-title>
+      <v-card-subtitle class="pt-0 pb-0 text-caption text-md-body-2"
+        >View your upcoming events</v-card-subtitle
+      >
+      <v-card-text v-if="!calendarConnected" class="py-2 py-md-3 text-center">
+        <v-btn
+          color="primary"
+          variant="outlined"
+          @click="connectGoogleCalendar"
+          :loading="connectingCalendar"
+        >
+          Connect Google Calendar
+        </v-btn>
+        <p class="text-caption text-muted mt-1">
+          Securely sync your calendar events
+        </p>
+      </v-card-text>
+      <v-card-text v-else class="py-2 py-md-3">
+        <div v-if="calendarEvents.length === 0" class="text-center text-muted">
+          No upcoming events
+        </div>
+        <v-list v-else lines="two" density="compact">
+          <v-list-item
+            v-for="event in calendarEvents.slice(0, 5)"
+            :key="event.id"
+            :title="event.summary"
+            :subtitle="formatEventTime(event.start, event.end)"
           >
-          <v-card-text class="py-6 py-md-8 text-muted text-body-2">
-            No urgent tasks – you're on top of things! 🎉
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" md="4">
-        <v-card class="rounded-xl mb-4" elevation="0" variant="outlined">
-          <v-card-title class="pb-0 text-subtitle-1 text-md-h6">Achievements</v-card-title>
-          <v-card-subtitle class="pt-0 text-caption text-md-body-2"
-            >Your progress milestones</v-card-subtitle
+            <template #prepend>
+              <v-icon icon="mdi-calendar" color="primary" />
+            </template>
+          </v-list-item>
+        </v-list>
+        <div class="mt-1 d-flex justify-space-between align-center">
+          <v-btn
+            color="error"
+            variant="text"
+            size="small"
+            @click="disconnectGoogleCalendar"
+            :loading="disconnectingCalendar"
           >
-          <v-list lines="two" density="compact">
-            <LockedAchievement
-              title="First Steps"
-              sub="Complete your first study session"
-            />
-            <LockedAchievement title="Task Master" sub="Complete 10 tasks" />
-            <LockedAchievement
-              title="Consistent Learner"
-              sub="Study 5 days in a row"
-            />
-            <LockedAchievement
-              title="Wellness Warrior"
-              sub="Check in for 7 days straight"
-            />
-          </v-list>
-        </v-card>
-      </v-col>
-    </v-row>
+            Disconnect
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="text"
+            size="small"
+            @click="loadCalendarEvents"
+            :loading="loadingCalendar"
+          >
+            Refresh
+          </v-btn>
+        </div>
+      </v-card-text>
+    </v-card>
   </v-container>
 </template>
 
@@ -202,6 +220,13 @@ const tasksTotal = ref(0)
 const tasksCompleted = ref(0)
 const wellnessStreak = ref(0)
 const wellnessDoneToday = ref(false)
+
+// Google Calendar data
+const calendarConnected = ref(false)
+const calendarEvents = ref([])
+const connectingCalendar = ref(false)
+const disconnectingCalendar = ref(false)
+const loadingCalendar = ref(false)
 
 const studyTimeFormatted = computed(() => {
   const h = Math.floor(totalMinutesToday.value / 60)
@@ -244,34 +269,148 @@ async function loadDashboardData() {
       // Fallback to overview field if monthly query fails
       wellnessDoneToday.value = (wellness.lastCheckInDate === todayStr)
     }
+
+    // Check calendar connection status
+    await checkCalendarStatus()
   } catch (e) {
     console.error('Failed to load dashboard data:', e)
   }
 }
 
-onMounted(loadDashboardData)
+// Note: Calendar connection success is now handled via popup detection
+
+async function checkCalendarStatus() {
+  try {
+    console.log('Checking calendar connection status...')
+    const status = await api.get('/api/google/oauth/calendar/status')
+    console.log('Calendar status response:', status)
+    calendarConnected.value = status.connected || false
+    console.log('Calendar connected:', calendarConnected.value)
+    if (calendarConnected.value) {
+      await loadCalendarEvents()
+    }
+  } catch (e) {
+    console.error('Failed to check calendar status:', e)
+    calendarConnected.value = false
+  }
+}
+
+async function connectGoogleCalendar() {
+  connectingCalendar.value = true
+  try {
+    const response = await api.get('/api/google/oauth/start')
+
+    // Open OAuth flow in a popup window
+    const popup = window.open(
+      response.authorizeUrl,
+      'google-calendar-oauth',
+      'width=500,height=600,scrollbars=yes,resizable=yes,status=yes,location=yes,toolbar=no,menubar=no'
+    )
+
+    if (!popup) {
+      throw new Error('Popup blocked. Please allow popups for this site.')
+    }
+
+    // Poll for popup completion
+    const checkPopup = setInterval(() => {
+      try {
+        // Check if popup is closed
+        if (popup.closed) {
+          clearInterval(checkPopup)
+          // Refresh calendar status after popup closes
+          setTimeout(() => {
+            checkCalendarStatus()
+          }, 1000)
+          return
+        }
+
+        // Check if popup navigated to our dashboard (success)
+        if (popup.location.href.includes('/dashboard')) {
+          clearInterval(checkPopup)
+          popup.close()
+          // Refresh calendar status
+          setTimeout(() => {
+            checkCalendarStatus()
+          }, 500)
+        }
+      } catch (e) {
+        // Cross-origin error, popup is still on Google domain
+      }
+    }, 1000)
+
+  } catch (e) {
+    console.error('Failed to start calendar connection:', e)
+    // Fallback to new tab if popup fails
+    if (e.message.includes('Popup blocked')) {
+      alert('Popup was blocked. Please allow popups and try again.')
+    }
+  } finally {
+    connectingCalendar.value = false
+  }
+}
+
+async function disconnectGoogleCalendar() {
+  disconnectingCalendar.value = true
+  try {
+    await api.del('/api/google/oauth/disconnect')
+    calendarConnected.value = false
+    calendarEvents.value = []
+  } catch (e) {
+    console.error('Failed to disconnect calendar:', e)
+  } finally {
+    disconnectingCalendar.value = false
+  }
+}
+
+async function loadCalendarEvents() {
+  loadingCalendar.value = true
+  try {
+    const now = new Date()
+    const timeMin = now.toISOString()
+    const timeMax = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() // Next 7 days
+
+    console.log('Fetching calendar events:', { timeMin, timeMax })
+
+    const response = await api.get('/api/google/oauth/calendar/events', {
+      params: {
+        timeMin,
+        timeMax,
+        maxResults: 10
+      }
+    })
+
+    console.log('Calendar API response:', response)
+    calendarEvents.value = response.items || []
+    console.log('Parsed events:', calendarEvents.value)
+  } catch (e) {
+    console.error('Failed to load calendar events:', e)
+    calendarEvents.value = []
+  } finally {
+    loadingCalendar.value = false
+  }
+}
+
+function formatEventTime(start, end) {
+  const startDate = new Date(start.dateTime || start.date)
+  const endDate = new Date(end.dateTime || end.date)
+
+  const options = { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }
+  const startStr = startDate.toLocaleDateString('en-US', options)
+
+  if (start.dateTime && end.dateTime) {
+    const endStr = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    return `${startStr} - ${endStr}`
+  } else {
+    return startStr
+  }
+}
+
+onMounted(() => {
+  loadDashboardData()
+})
 </script>
 
-<script>
-export default {
-  components: {
-    LockedAchievement: {
-      props: ["title", "sub"],
-      template: `
-        <v-list-item>
-          <template #prepend>
-            <v-avatar size="28" color="grey-lighten-3">
-              <v-icon icon="mdi-lock-outline" />
-            </v-avatar>
-          </template>
-          <v-list-item-title>{{ title }}</v-list-item-title>
-          <v-list-item-subtitle>{{ sub }}</v-list-item-subtitle>
-        </v-list-item>
-      `,
-    },
-  },
-};
-</script>
+
 
 <style scoped>
 .dashboard-container {
