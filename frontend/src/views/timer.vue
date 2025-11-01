@@ -458,69 +458,71 @@ onUnmounted(() => { clearInterval(t) })
     
     <div v-if="running && getCurrentBackground().path" class="fullscreen-gif-background"></div>
     
-    <v-container :class="['py-8', { 'fullscreen-container': running }]" :style="running ? 'max-width: 100%;' : 'max-width: 1400px;'">
+    <v-container :class="['timer-container py-4 py-md-8', { 'fullscreen-container': running }]" :style="running ? 'max-width: 100%;' : 'max-width: 1400px;'">
       <v-row>
         <v-col :cols="running ? 12 : 12" :md="running ? 12 : 7" :lg="running ? 12 : 8">
-          <v-card rounded="xl" elevation="0" :class="['timer-card', { 'fullscreen-card': running }]" class="pa-10">
+          <v-card rounded="xl" elevation="0" :class="['timer-card', { 'fullscreen-card': running }]" class="pa-6 pa-md-10 mx-2 mx-md-0">
             <div class="mb-2">
-              <h2 class="text-h5 font-weight-medium mb-1 timer-title">Study Timer</h2>
+              <h2 class="text-h6 text-md-h5 font-weight-medium mb-1 timer-title">Study Timer</h2>
               <p class="text-body-2 text-medium-emphasis">Focus with the Pomodoro Technique</p>
             </div>
 
-            <div class="session-box mt-6 pa-6 rounded-lg">
-              <div class="d-flex justify-space-between align-center mb-6">
+            <div class="session-box mt-4 mt-md-6 pa-4 pa-md-6 rounded-lg">
+              <div class="d-flex justify-space-between align-center mb-4 mb-md-6">
                 <div>
-                  <div class="text-subtitle-2 text-medium-emphasis mb-1">Study Session</div>
+                  <div class="text-subtitle-2 text-md-subtitle-2 text-medium-emphasis mb-1">Study Session</div>
                   <div class="text-caption text-medium-emphasis">Set your timer</div>
                 </div>
-                <v-chip color="primary" size="small" variant="flat" class="px-4">Ready</v-chip>
+                <v-chip color="primary" size="small" variant="flat" class="px-3 px-md-4">Ready</v-chip>
               </div>
 
-              <div class="d-flex ga-2 mb-8 flex-wrap justify-center">
+              <div class="d-flex ga-2 mb-6 mb-md-8 flex-wrap justify-center">
                 <v-chip v-for="m in Object.keys(presets)" :key="m"
                         :color="mode===m?'primary':'secondary'" 
                         :variant="mode===m?'flat':'tonal'"
-                        class="cursor-pointer px-4"
+                        class="cursor-pointer px-3 px-md-4"
+                        size="small"
+                        size-md="default"
                         @click="switchMode(m)">
                   {{ m }} • {{ presets[m] }}m
                 </v-chip>
               </div>
 
-              <div class="text-center mb-8">
+              <div class="text-center mb-6 mb-md-8">
                 <div :class="['timer-display', 'mb-4', { 'timer-display-large': running }]">{{ label }}</div>
-                <v-progress-linear :model-value="pct" height="8" rounded color="primary" 
+                <v-progress-linear :model-value="pct" :height="$vuetify.display.mobile ? 6 : 8" rounded color="primary" 
                                   bg-color="surface-lighter" class="mb-2"/>
               </div>
 
-              <div class="d-flex ga-3 justify-center">
-                <v-btn color="primary" size="large" rounded="lg" @click="start" :disabled="running" 
-                       class="px-8 text-none" elevation="0">
+              <div class="d-flex ga-2 ga-md-3 justify-center flex-wrap">
+                <v-btn color="primary" :size="$vuetify.display.mobile ? 'default' : 'large'" rounded="lg" @click="start" :disabled="running" 
+                       class="px-6 px-md-8 text-none" elevation="0">
                   <v-icon start>mdi-play</v-icon>Start
                 </v-btn>
-                <v-btn color="secondary" size="large" rounded="lg" variant="tonal" @click="stop" 
-                       :disabled="!running" class="px-6 text-none" elevation="0">
+                <v-btn color="secondary" :size="$vuetify.display.mobile ? 'default' : 'large'" rounded="lg" variant="tonal" @click="stop" 
+                       :disabled="!running" class="px-4 px-md-6 text-none" elevation="0">
                   <v-icon start>mdi-pause</v-icon>Pause
                 </v-btn>
-                <v-btn size="large" rounded="lg" variant="text" @click="reset" 
+                <v-btn :size="$vuetify.display.mobile ? 'default' : 'large'" rounded="lg" variant="text" @click="reset" 
                        class="text-none reset-btn">
                   <v-icon start>mdi-restore</v-icon>Reset
                 </v-btn>
               </div>
 
-              <div v-if="!running" class="d-flex justify-space-around mt-8 pt-6 stats-divider">
+              <div v-if="!running" class="d-flex justify-space-around mt-6 mt-md-8 pt-4 pt-md-6 stats-divider">
                 <div class="text-center">
-                  <div class="text-h4 font-weight-medium stat-number">0</div>
+                  <div class="text-h5 text-md-h4 font-weight-medium stat-number">0</div>
                   <div class="text-caption text-medium-emphasis">Sessions Today</div>
                 </div>
                 <div class="text-center">
-                  <div class="text-h4 font-weight-medium stat-number">70%</div>
+                  <div class="text-h5 text-md-h4 font-weight-medium stat-number">70%</div>
                   <div class="text-caption text-medium-emphasis">Focus Score</div>
                 </div>
               </div>
             </div>
 
-            <div v-if="!running" class="tips-section mt-6 pa-6 rounded-lg">
-              <div class="text-subtitle-2 font-weight-medium mb-4 tips-title">Focus Tips</div>
+            <div v-if="!running" class="tips-section mt-4 mt-md-6 pa-4 pa-md-6 rounded-lg">
+              <div class="text-subtitle-2 font-weight-medium mb-3 mb-md-4 tips-title">Focus Tips</div>
               <v-row>
                 <v-col cols="12" md="6">
                   <div class="text-body-2 font-weight-medium mb-2">During Study Sessions:</div>
@@ -546,7 +548,7 @@ onUnmounted(() => { clearInterval(t) })
         </v-col>
 
         <v-col v-if="!running" cols="12" md="5" lg="4">
-          <v-card rounded="xl" elevation="0" class="details-card pa-6 mb-4">
+          <v-card rounded="xl" elevation="0" class="details-card pa-4 pa-md-6 mb-4 mx-2 mx-md-0">
             <v-tabs v-model="activeTab" bg-color="transparent" color="primary" class="mb-4" show-arrows="false">
               <v-tab value="session">Session</v-tab>
               <v-tab value="subjects">Subjects</v-tab>
@@ -555,7 +557,7 @@ onUnmounted(() => { clearInterval(t) })
 
             <v-window v-model="activeTab">
               <v-window-item value="session">
-                <div class="text-subtitle-1 font-weight-medium mb-1 session-title">Session Details</div>
+                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-medium mb-1 session-title">Session Details</div>
                 <p class="text-caption text-medium-emphasis mb-4">Set up your study session</p>
                 
                 <div class="mb-4">
@@ -810,25 +812,7 @@ onUnmounted(() => { clearInterval(t) })
             </v-window>
           </v-card>
 
-          <v-card rounded="xl" elevation="0" class="streaks-card pa-6">
-            <div class="text-subtitle-2 font-weight-medium mb-4 streaks-title">Daily Streaks</div>
-            <v-row dense>
-              <v-col cols="4" class="text-center">
-                <div class="text-h5 font-weight-bold streak-number">0</div>
-                <div class="text-caption text-medium-emphasis">Study</div>
-              </v-col>
-              <v-col cols="4" class="text-center">
-                <div class="text-h5 font-weight-bold streak-number">0</div>
-                <div class="text-caption text-medium-emphasis">Check-in</div>
-              </v-col>
-              <v-col cols="4" class="text-center">
-                <div class="text-h5 font-weight-bold streak-number">0</div>
-                <div class="text-caption text-medium-emphasis">Wellness</div>
-              </v-col>
-            </v-row>
-          </v-card>
-          
-          <backgrounds-gallery class="mt-4" />
+          <backgrounds-gallery class="mt-4 mx-2 mx-md-0" />
         </v-col>
       </v-row>
     </v-container>
@@ -1187,7 +1171,19 @@ onUnmounted(() => { clearInterval(t) })
   margin: 0 auto;
 }
 
-.timer-card, .details-card, .streaks-card {
+.timer-container {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+@media (min-width: 960px) {
+  .timer-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+.timer-card, .details-card {
   /* IMPORTANT: Give cards a slight opacity to see the background through, but maintain readability */
   background-color: rgba(255, 255, 255, 0.9) !important; 
   border: 1px solid var(--surface-lighter);
@@ -1216,8 +1212,7 @@ onUnmounted(() => { clearInterval(t) })
 
 /* Dark mode adjustment for card opacity */
 [data-theme="dark"] .timer-card, 
-[data-theme="dark"] .details-card, 
-[data-theme="dark"] .streaks-card {
+[data-theme="dark"] .details-card {
   background-color: rgba(30, 30, 30, 0.9) !important; 
 }
 
@@ -1227,23 +1222,35 @@ onUnmounted(() => { clearInterval(t) })
   border: 1px solid var(--surface-lighter);
 }
 
-.timer-title, .session-title, .tips-title, .streaks-title {
+.timer-title, .session-title, .tips-title {
   color: var(--primary) !important;
 }
 
 .timer-display {
-  font-size: 72px;
+  font-size: 56px;
   font-weight: 600;
   color: var(--primary) !important;
   letter-spacing: -2px;
   transition: font-size 0.3s ease;
 }
 
-.timer-display-large {
-  font-size: 120px !important;
+@media (min-width: 600px) {
+  .timer-display {
+    font-size: 72px;
+  }
 }
 
-.stat-number, .streak-number {
+.timer-display-large {
+  font-size: 96px !important;
+}
+
+@media (min-width: 600px) {
+  .timer-display-large {
+    font-size: 120px !important;
+  }
+}
+
+.stat-number {
   color: var(--primary) !important;
 }
 

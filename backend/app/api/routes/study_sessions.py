@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta ,time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
@@ -67,6 +67,15 @@ class StudySessionResponse(BaseModel):
     pause_count: int = 0
     reset_count: int = 0
 
+class DailyHours(BaseModel):
+    """Represents study hours for a single day."""
+    date: str
+    hours: float
+
+class SubjectHours(BaseModel):
+    """Represents total study hours for a single subject."""
+    subject: str
+    hours: float
 
 class StudyStatsResponse(BaseModel):
     total_hours: float
@@ -82,7 +91,9 @@ class StudyStatsResponse(BaseModel):
     total_resets_today: int = 0
     sessions_started_today: int = 0
     sessions_completed_today: int = 0
-
+    study_streak: int = 0
+    daily_hours_past_week: List[DailyHours] = []
+    subject_hours_past_week: List[SubjectHours] = []
 
 class DailySessionMetrics(BaseModel):
     """Model for daily session metrics"""
@@ -914,15 +925,33 @@ def delete_study_session(
 
 @router.get("/stats/summary", response_model=StudyStatsResponse)
 def get_study_stats(user: dict = Depends(require_user)):
-    """Get comprehensive study statistics including enhanced metrics"""
     uid = user["uid"]
-    now = datetime.now(timezone.utc)
-    today = now.strftime("%Y-%m-%d")
-    week_ago = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-    month_ago = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+    
+    LOCAL_TZ = timezone(timedelta(hours=8))
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc.astimezone(LOCAL_TZ)
+
+    today = now_local.strftime("%Y-%m-%d")
+    
+    today_dt_local = datetime.combine(now_local.date(), time.min, tzinfo=LOCAL_TZ)
+    today_dt = today_dt_local.astimezone(timezone.utc)
+
+    week_ago_dt = today_dt - timedelta(days=7) 
+    week_ago = week_ago_dt.strftime("%Y-%m-%d")
+    
+    month_ago_dt = today_dt - timedelta(days=30)
+    month_ago = month_ago_dt.strftime("%Y-%m-%d")
     
     sessions_ref = _study_sessions_collection(uid)
     all_sessions = sessions_ref.stream()
+    
+    start_date_local = today_dt_local - timedelta(days=6)
+    daily_minutes = {
+        (start_date_local + timedelta(days=i)).strftime("%Y-%m-%d"): 0 
+        for i in range(7) 
+    }
+    subject_minutes_past_week = defaultdict(int) 
+    completed_study_dates = set() 
     
     total_minutes = 0
     total_sessions = 0
@@ -936,25 +965,66 @@ def get_study_stats(user: dict = Depends(require_user)):
         session_data = session.to_dict()
         total_sessions += 1
         
-        if session_data.get("actual_duration_minutes"):
-            total_minutes += session_data["actual_duration_minutes"]
-        
+        duration = session_data.get("actual_duration_minutes", 0)
+        session_date = session_data.get("date", "").strip() 
         status = session_data.get("status")
-        if status == "completed":
-            completed_sessions += 1
+        if duration:
+            total_minutes += duration 
+            if session_date:
+                completed_study_dates.add(session_date) 
+            if status == "completed":
+                completed_sessions += 1
+                if session_date >= week_ago: 
+                    if session_date in daily_minutes:
+                        daily_minutes[session_date] += duration
+                        
+                    subject = session_data.get("subject", "Uncategorized")
+                    subject_minutes_past_week[subject] += duration
+        
         elif status == "paused":
             paused_sessions += 1
         elif status == "active":
             active_sessions += 1
         
-        session_date = session_data.get("date", "")
         if session_date >= week_ago:
             sessions_this_week += 1
         if session_date >= month_ago:
             sessions_this_month += 1
+
+    completed_dates_dt = set()
+
+    for d in completed_study_dates:
+        try:
+            # Handle datetime or string with time part like "2025-10-31T00:00:00Z"
+            normalized_date = datetime.strptime(str(d)[:10], "%Y-%m-%d").date()
+            completed_dates_dt.add(normalized_date)
+        except Exception as e:
+            print(f"DEBUG: Failed to parse study date '{d}': {e}")
+    for d in sorted(completed_dates_dt):
+        print("   ", d, "(gap from today:", (today_dt.date() - d).days, "days)")
+    # Initialize streak counter
+    study_streak = 0
+    today_date = now_local.date()
+    # If the user didn't study today, start from yesterday
+    current_date_dt = today_date
+    if today_date not in completed_dates_dt:
+        current_date_dt -= timedelta(days=1)
+
+    # Count backward as long as consecutive days exist
+    while current_date_dt in completed_dates_dt:
+        study_streak += 1
+        current_date_dt -= timedelta(days=1)
+    daily_metrics = get_daily_metrics(date=today, user=user) 
     
-    # Get today's metrics
-    daily_metrics = get_daily_metrics(date=today, user=user)
+    daily_hours_list = [
+        {"date": date, "hours": round(minutes / 60, 2)}
+        for date, minutes in sorted(daily_minutes.items()) 
+    ]
+    subject_hours_list = [
+        {"subject": subject, "hours": round(minutes / 60, 2)}
+        for subject, minutes in subject_minutes_past_week.items()
+        if minutes > 0
+    ]
     
     return StudyStatsResponse(
         total_hours=round(total_minutes / 60, 2),
@@ -965,9 +1035,11 @@ def get_study_stats(user: dict = Depends(require_user)):
         completed_sessions=completed_sessions,
         paused_sessions=paused_sessions,
         active_sessions=active_sessions,
+        study_streak=study_streak, 
+        daily_hours_past_week=daily_hours_list, 
+        subject_hours_past_week=subject_hours_list,
         total_pauses_today=daily_metrics.total_pauses,
         total_resets_today=daily_metrics.total_resets,
         sessions_started_today=daily_metrics.sessions_started,
         sessions_completed_today=daily_metrics.sessions_completed,
     )
-

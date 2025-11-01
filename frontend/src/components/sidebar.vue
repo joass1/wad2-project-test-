@@ -2,13 +2,25 @@
   <v-navigation-drawer
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    :rail="!modelValue"
+    :rail="!isMobile && !modelValue"
     app
-    permanent
+    :permanent="!isMobile"
+    :temporary="isMobile"
     :width="287"
     class="sb-drawer"
   >
     <div class="sidebar-container">
+      <!-- Close button for mobile -->
+      <v-btn
+        v-if="isMobile && modelValue"
+        icon
+        variant="text"
+        class="close-btn"
+        @click="$emit('update:modelValue', false)"
+      >
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+
       <!-- Profile header -->
       <div class="profile-header">
         <div class="profile-avatar-container" @click="navigateToProfile">
@@ -17,7 +29,7 @@
             <span v-else class="avatar-text">{{ displayName.charAt(0).toUpperCase() }}</span>
           </div>
           <transition name="slide-fade">
-            <div v-show="modelValue" class="profile-info">
+            <div v-show="!isMobile || modelValue" class="profile-info">
               <div class="profile-name">{{ displayName }}</div>
               <div class="level-badge">Level {{ level }}</div>
             </div>
@@ -28,44 +40,39 @@
       <!-- Nav -->
       <div class="nav-container">
         <v-list nav density="comfortable">
-        <v-list-item to="/dashboard" :prepend-icon="modelValue ? 'mdi-home-outline' : ''" :title="modelValue ? 'Dashboard' : ''" rounded="lg">
-          <v-icon v-if="!modelValue">mdi-home-outline</v-icon>
-          <v-tooltip v-if="!modelValue" activator="parent" location="end">Dashboard</v-tooltip>
+        <v-list-item to="/dashboard" :prepend-icon="(!isMobile || modelValue) ? 'mdi-home-outline' : ''" :title="(!isMobile || modelValue) ? 'Dashboard' : ''" rounded="lg">
+          <v-icon v-if="isMobile && !modelValue">mdi-home-outline</v-icon>
+          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Dashboard</v-tooltip>
         </v-list-item>
         
-        <v-list-item to="/timer" :prepend-icon="modelValue ? 'mdi-timer-outline' : ''" :title="modelValue ? 'Study Timer' : ''" rounded="lg">
-          <v-icon v-if="!modelValue">mdi-timer-outline</v-icon>
-          <v-tooltip v-if="!modelValue" activator="parent" location="end">Study Timer</v-tooltip>
+        <v-list-item to="/timer" :prepend-icon="(!isMobile || modelValue) ? 'mdi-timer-outline' : ''" :title="(!isMobile || modelValue) ? 'Study Timer' : ''" rounded="lg">
+          <v-icon v-if="isMobile && !modelValue">mdi-timer-outline</v-icon>
+          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Study Timer</v-tooltip>
         </v-list-item>
         
-        <v-list-item to="/task-tracker" :prepend-icon="modelValue ? 'mdi-checkbox-marked-outline' : ''" :title="modelValue ? 'Task Tracker' : ''" rounded="lg">
-          <v-icon v-if="!modelValue">mdi-checkbox-marked-outline</v-icon>
-          <v-tooltip v-if="!modelValue" activator="parent" location="end">Task Tracker</v-tooltip>
+        <v-list-item to="/task-tracker" :prepend-icon="(!isMobile || modelValue) ? 'mdi-checkbox-marked-outline' : ''" :title="(!isMobile || modelValue) ? 'Tasks' : ''" rounded="lg">
+          <v-icon v-if="isMobile && !modelValue">mdi-checkbox-marked-outline</v-icon>
+          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Tasks</v-tooltip>
         </v-list-item>
         
-        <v-list-item to="/progress" :prepend-icon="modelValue ? 'mdi-chart-line' : ''" :title="modelValue ? 'Progress' : ''" rounded="lg">
-          <v-icon v-if="!modelValue">mdi-chart-line</v-icon>
-          <v-tooltip v-if="!modelValue" activator="parent" location="end">Progress</v-tooltip>
+        <v-list-item to="/progress" :prepend-icon="(!isMobile || modelValue) ? 'mdi-chart-line' : ''" :title="(!isMobile || modelValue) ? 'Progress' : ''" rounded="lg">
+          <v-icon v-if="isMobile && !modelValue">mdi-chart-line</v-icon>
+          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Progress</v-tooltip>
         </v-list-item>
         
-        <v-list-item to="/checkin" :prepend-icon="modelValue ? 'mdi-heart-outline' : ''" :title="modelValue ? 'Wellness Check-in' : ''" rounded="lg">
-          <v-icon v-if="!modelValue">mdi-heart-outline</v-icon>
-          <v-tooltip v-if="!modelValue" activator="parent" location="end">Wellness Check-in</v-tooltip>
+        <v-list-item to="/checkin" :prepend-icon="(!isMobile || modelValue) ? 'mdi-heart-outline' : ''" :title="(!isMobile || modelValue) ? 'Daily Check-in' : ''" rounded="lg">
+          <v-icon v-if="isMobile && !modelValue">mdi-heart-outline</v-icon>
+          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Daily Check-in</v-tooltip>
         </v-list-item>
         
-        <v-list-item to="/social-hub" :prepend-icon="modelValue ? 'mdi-account-group-outline' : ''" :title="modelValue ? 'Social' : ''" rounded="lg">
-          <v-icon v-if="!modelValue">mdi-account-group-outline</v-icon>
-          <v-tooltip v-if="!modelValue" activator="parent" location="end">Social</v-tooltip>
+        <v-list-item to="/social-hub" :prepend-icon="(!isMobile || modelValue) ? 'mdi-account-group-outline' : ''" :title="(!isMobile || modelValue) ? 'Social' : ''" rounded="lg">
+          <v-icon v-if="isMobile && !modelValue">mdi-account-group-outline</v-icon>
+          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Social</v-tooltip>
         </v-list-item>
         
-        <v-list-item to="/pet" :prepend-icon="modelValue ? 'mdi-paw' : ''" :title="modelValue ? 'Pet' : ''" rounded="lg">
-          <v-icon v-if="!modelValue">mdi-paw</v-icon>
-          <v-tooltip v-if="!modelValue" activator="parent" location="end">Pet</v-tooltip>
-        </v-list-item>
-        
-        <v-list-item to="/profile" :prepend-icon="modelValue ? 'mdi-account-outline' : ''" :title="modelValue ? 'Profile' : ''" rounded="lg">
-          <v-icon v-if="!modelValue">mdi-account-outline</v-icon>
-          <v-tooltip v-if="!modelValue" activator="parent" location="end">Profile</v-tooltip>
+        <v-list-item to="/profile" :prepend-icon="(!isMobile || modelValue) ? 'mdi-account-outline' : ''" :title="(!isMobile || modelValue) ? 'Profile' : ''" rounded="lg">
+          <v-icon v-if="isMobile && !modelValue">mdi-account-outline</v-icon>
+          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Profile</v-tooltip>
         </v-list-item>
         </v-list>
       </div>
@@ -74,7 +81,7 @@
 
       <!-- Coin display -->
       <transition name="slide-fade">
-        <div v-show="modelValue" class="coin-display">
+        <div v-show="!isMobile || modelValue" class="coin-display">
           <template v-if="coinsLoading">
             <div class="coin-loading">Loading coins...</div>
           </template>
@@ -100,8 +107,9 @@
 </template>
 
 <script setup>
-import { watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useDisplay } from 'vuetify'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import { useCoins } from '@/composables/useCoins.js'
@@ -112,10 +120,19 @@ defineProps({
   modelValue: Boolean
 })
 
-defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue'])
 
 // Router for navigation
 const router = useRouter()
+
+// Responsive detection
+const { mobile } = useDisplay()
+const isMobile = ref(mobile.value)
+
+// Watch for screen size changes
+watch(mobile, () => {
+  isMobile.value = mobile.value
+}, { immediate: true })
 
 // Use shared coin state
 const { coins, coinsLoading, coinsError, fetchCoins } = useCoins()
@@ -129,6 +146,10 @@ const { loading: authLoading, isAuthed } = useAuth()
 // Navigate to profile page
 function navigateToProfile() {
   router.push('/profile')
+  // Close drawer on mobile after navigation
+  if (isMobile.value) {
+    emit('update:modelValue', false)
+  }
 }
 
 // Watch for authentication to be ready before fetching coins
@@ -144,6 +165,16 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
 .sb-drawer {
   border-right: 1px solid rgba(0, 0, 0, 0.12);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Close button for mobile */
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
 }
 
 /* Slide fade transition */
