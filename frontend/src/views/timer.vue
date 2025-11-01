@@ -463,7 +463,7 @@ onUnmounted(() => { clearInterval(t) })
         <v-col :cols="running ? 12 : 12" :md="running ? 12 : 7" :lg="running ? 12 : 8">
           <v-card rounded="xl" elevation="0" :class="['timer-card', { 'fullscreen-card': running }]" class="pa-6 pa-md-10 mx-2 mx-md-0">
             <div class="mb-2">
-              <h2 class="text-h6 text-md-h5 font-weight-medium mb-1 timer-title">Study Timer</h2>
+              <h2 class="text-h6 text-md-h5 text-primary font-weight-bold mb-1 px-2 px-md-0">Study Timer</h2>
               <p class="text-body-2 text-medium-emphasis">Focus with the Pomodoro Technique</p>
             </div>
 

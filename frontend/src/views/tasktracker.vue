@@ -14,10 +14,7 @@
       <v-card-text class="pa-4 pa-md-6">
         <div class="d-flex flex-column flex-md-row justify-space-between align-start align-md-center ga-3">
           <div>
-            <h1
-              class="text-h6 text-md-h5 font-weight-medium mb-1"
-              style="color: var(--primary)"
-            >
+            <h1 class="text-h6 text-md-h5 text-primary font-weight-bold mb-1 px-2 px-md-0">
               Task Tracker
             </h1>
             <p class="text-caption text-md-body-2" style="color: var(--text-muted)">

@@ -1,7 +1,7 @@
 <template>
   <div class="check-in-page">
     <div class="header">
-      <h1>Wellness Check-in</h1>
+      <h1 class="text-h6 text-md-h5 text-primary font-weight-bold mb-1 px-2 px-md-0">Wellness Check-in</h1>
       <p class="subtitle">Track your wellness and mood</p>
     </div>
 
