@@ -176,7 +176,7 @@
         <!-- Task Stats (Total Tasks, Completed, Completion Rate) -->
         <div class="px-2 px-md-0">
           <v-row dense>
-            <v-col cols="4">
+            <v-col cols="12" sm="4">
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center py-4 py-md-6">
                   <v-icon icon="mdi-format-list-checks" size="24" size-md="26" class="mb-2 text-primary" />
@@ -186,7 +186,7 @@
               </v-card>
             </v-col>
 
-            <v-col cols="4">
+            <v-col cols="12" sm="4">
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center py-4 py-md-6">
                   <v-icon icon="mdi-check-circle-outline" size="24" size-md="26" class="mb-2 text-primary" />
@@ -196,7 +196,7 @@
               </v-card>
             </v-col>
 
-            <v-col cols="4">
+            <v-col cols="12" sm="4">
               <v-card class="rounded-xl" elevation="0" variant="outlined">
                 <v-card-text class="text-center py-4 py-md-6">
                   <v-icon icon="mdi-percent" size="24" size-md="26" class="mb-2 text-primary" />
