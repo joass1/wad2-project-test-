@@ -129,7 +129,9 @@
     </v-row>
 
     <!-- Google Calendar Integration -->
-    <v-card class="rounded-xl mb-2" elevation="0" variant="outlined">
+    <v-row dense class="px-2 px-md-0">
+      <v-col cols="12">
+        <v-card class="rounded-xl mb-2" elevation="0" variant="outlined">
       <v-card-title class="pb-0 text-subtitle-1 text-md-h6 text-primary">Google Calendar</v-card-title>
       <v-card-subtitle class="pt-0 pb-0 text-caption text-md-body-2"
         >View your upcoming events</v-card-subtitle
@@ -185,6 +187,8 @@
         </div>
       </v-card-text>
     </v-card>
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 
