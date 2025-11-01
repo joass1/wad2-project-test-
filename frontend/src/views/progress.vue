@@ -450,11 +450,11 @@ async function try1() {
     // Make sure your Axios instance points to the correct backend base URL
     const response = await api.post("/api/study-sessions/", mockSession)
 
-    console.log("✅ Session created:", response.data)
+    console.log("Session created:", response.data)
     return response.data
 
   } catch (error) {
-    console.error("❌ Failed to create session:", error)
+    console.error("Failed to create session:", error)
   }
 }
 
