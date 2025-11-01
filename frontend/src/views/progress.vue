@@ -74,42 +74,58 @@
         <v-row class="mx-0">
           <v-col cols="12" md="6">
             <v-card class="pa-4 pa-md-6 rounded-xl mb-4 mb-md-0 mx-2 mx-md-0" elevation="0" variant="outlined">
-              <v-card-title class="text-subtitle-1 text-md-h6 pb-2">Daily Study Time (Last 7 Days)</v-card-title>
-              <v-card-subtitle class="text-caption text-md-body-2 pt-0">Hours spent studying each day</v-card-subtitle>
+              <v-card-title class="d-flex flex-wrap align-center text-h6 font-weight-bold text-primary mb-2 text-wrap">
+                <v-icon color="info" class="mr-2">mdi-chart-bar</v-icon>
+                Daily Study Time (Last 7 Days)
+              </v-card-title>
+              <v-card-subtitle class="text-caption text-md-body-2 pt-0 text-wrap">
+                Hours spent studying each day
+              </v-card-subtitle>
 
               <div v-if="hasDailyStudyData">
-                <apexchart ref="dailyStudyChart" type="bar" :height="$vuetify.display.mobile ? 200 : 250" :options="dailyStudyOptions"
-                  :series="dailyStudySeries" />
+                <apexchart ref="dailyStudyChart" type="bar" :height="$vuetify.display.mobile ? 200 : 250"
+                  :options="dailyStudyOptions" :series="dailyStudySeries" />
               </div>
-              <v-alert v-else color="info" icon="mdi-chart-line-variant" density="compact" border="start" class="mt-4">
-                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-bold">
+              <v-alert v-else variant="tonal" color="info" icon="mdi-chart-bar" density="compact" border="start"
+                class="mt-4 rounded-lg">
+                <div class="text-subtitle-1 font-weight-medium mb-1">
                   No Study Data Yet
                 </div>
-                <div class="text-caption text-md-body-2">
-                  Log your first study session to see your daily progress here.
+                <div class="text-body-2 text-medium-emphasis mb-2">
+                  Start a study session to begin tracking your time and subjects.
                 </div>
-                <v-btn size="small" variant="text" color="info" class="mt-2">Start Session Now</v-btn>
+                <v-btn to="/timer" size="small" color="primary" variant="flat" prepend-icon="mdi-play-circle-outline"
+                  class="text-none">
+                  Start Study Session
+                </v-btn>
               </v-alert>
             </v-card>
           </v-col>
 
           <v-col cols="12" md="6">
             <v-card class="pa-4 pa-md-6 rounded-xl mx-2 mx-md-0" elevation="0" variant="outlined">
-              <v-card-title class="text-subtitle-1 text-md-h6 pb-2">Study Time by Subject</v-card-title>
+              <v-card-title class="d-flex flex-wrap align-center text-h6 font-weight-bold text-primary mb-2 text-wrap">
+                <v-icon color="warning" class="mr-2">mdi-chart-pie</v-icon>
+                Study Time by Subject
+              </v-card-title>
               <v-card-subtitle class="text-caption text-md-body-2 pt-0">Distribution of study hours</v-card-subtitle>
 
               <div v-if="hasSubjectData">
-                <apexchart ref="subjectChart" type="donut" :height="$vuetify.display.mobile ? 200 : 250" :options="subjectOptions"
-                  :series="subjectSeries" />
+                <apexchart ref="subjectChart" type="donut" :height="$vuetify.display.mobile ? 200 : 250"
+                  :options="subjectOptions" :series="subjectSeries" />
               </div>
-              <v-alert v-else color="warning" icon="mdi-book-open-page-variant" density="compact" border="start"
-                class="mt-4">
-                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-bold">
-                  No Subject Data
+              <v-alert v-else variant="tonal" color="warning" icon="mdi-chart-pie" density="compact" border="start"
+                class="mt-4 rounded-lg">
+                <div class="text-subtitle-1 font-weight-medium mb-1">
+                  No Subject Data Yet
                 </div>
-                <div class="text-caption text-md-body-2">
-                  Assign subjects to your study sessions to see a breakdown.
+                <div class="text-body-2 text-medium-emphasis mb-2">
+                  Start a study session to begin tracking your time and subjects.
                 </div>
+                <v-btn to="/timer" size="small" color="primary" variant="flat" prepend-icon="mdi-play-circle-outline"
+                  class="text-none">
+                  Start Study Session
+                </v-btn>
               </v-alert>
             </v-card>
           </v-col>
@@ -120,27 +136,42 @@
         <v-row class="mx-0">
           <!-- Task Completion Trends Chart -->
           <v-col cols="12">
-            <v-card class="pa-4 pa-md-6 rounded-xl mb-4 mx-2 mx-md-0" elevation="0" variant="outlined">
-              <v-card-title class="text-subtitle-1 text-md-h6 pb-2">Task Completion Trends</v-card-title>
-              <v-card-subtitle class="text-caption text-md-body-2 pt-0">Tasks created vs completed over the last 7 days</v-card-subtitle>
+            <v-card class="pa-4 pa-md-6 rounded-xl mb-4 mx-2 mx-md-0 transition-all" elevation="0" variant="outlined">
+              <!-- Header -->
+              <v-card-title class="d-flex flex-wrap align-center text-h6 font-weight-bold text-primary mb-2 text-wrap">
+                <v-icon color="primary" class="mr-2">mdi-clipboard-check-outline</v-icon>
+                Task Completion Trends
+              </v-card-title>
 
+              <v-card-subtitle class="text-caption text-md-body-2 pt-0 text-wrap">
+                Tasks created vs completed over the last 7 days
+              </v-card-subtitle>
+
+              <!-- Chart Section -->
               <div v-if="hasTaskData">
-                <apexchart ref="taskChart" type="bar" :height="$vuetify.display.mobile ? 200 : 250" :options="taskCompletionOptions"
-                  :series="taskCompletionSeries" />
+                <apexchart ref="taskChart" type="bar" :height="$vuetify.display.mobile ? 200 : 250"
+                  :options="taskCompletionOptions" :series="taskCompletionSeries" />
               </div>
-              <v-alert v-else color="success" icon="mdi-check-circle-outline" density="compact" border="start"
-                class="mt-4">
-                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-bold">
+
+              <!-- Empty State -->
+              <v-alert v-else variant="tonal" color="primary" icon="mdi-clipboard-check-outline" density="compact"
+                border="start" class="mt-4 rounded-lg">
+                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-medium mb-1">
                   No Task Activity
                 </div>
-                <div class="text-caption text-md-body-2">
-                  Create and complete tasks throughout the week to visualize your
-                  productivity.
+
+                <div class="text-body-2 text-medium-emphasis mb-2">
+                  Create and complete tasks to visualize your weekly productivity trends.
                 </div>
-                <v-btn size="small" variant="text" color="success" class="mt-2">Add New Task</v-btn>
+
+                <v-btn to="/task-tracker" size="small" color="primary" variant="flat"
+                  prepend-icon="mdi-plus-circle-outline" class="text-none">
+                  Add New Task
+                </v-btn>
               </v-alert>
             </v-card>
           </v-col>
+
         </v-row>
         <!-- Task Stats (Total Tasks, Completed, Completion Rate) -->
         <div class="px-2 px-md-0">
@@ -182,27 +213,46 @@
         <v-row class="mx-0">
           <!-- Wellness Trends Chart -->
           <v-col cols="12">
-            <v-card class="pa-4 pa-md-6 rounded-xl mb-4 mx-2 mx-md-0" elevation="0" variant="outlined">
-              <v-card-title class="text-subtitle-1 text-md-h6 pb-2">Wellness Trends (Last 7 Days)</v-card-title>
-              <v-card-subtitle class="text-caption text-md-body-2 pt-0">Track your mood, energy, sleep, and stress levels</v-card-subtitle>
+            <v-card class="pa-4 pa-md-6 rounded-xl mb-4 mx-2 mx-md-0 transition-all" elevation="0" variant="outlined">
+              <!-- Title -->
+              <v-card-title class="d-flex flex-wrap align-center text-h6 font-weight-bold text-primary mb-2 text-wrap">
+                <v-icon color="success" class="mr-2">mdi-heart-pulse</v-icon>
+                Wellness Trends (Last 7 Days)
+              </v-card-title>
 
+              <!-- Subtitle -->
+              <v-card-subtitle class="text-caption text-md-body-2 pt-0 text-wrap">
+
+                Track your mood, energy, sleep, and stress levels
+              </v-card-subtitle>
+
+              <!-- Chart Section -->
               <div v-if="hasWellnessData">
-                <apexchart ref="wellnessChart" type="line" :height="$vuetify.display.mobile ? 200 : 250" :options="wellnessOptions"
-                  :series="wellnessSeries" />
+                <apexchart ref="wellnessChart" type="line" :height="$vuetify.display.mobile ? 200 : 250"
+                  :options="wellnessOptions" :series="wellnessSeries" />
               </div>
-              <v-alert v-else color="deep-purple-accent-1" icon="mdi-heart-pulse" density="compact" border="start"
-                class="mt-4">
-                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-bold">
+
+              <!-- Empty State (No Data) -->
+              <v-alert v-else variant="tonal" color="success" icon="mdi-heart-pulse" density="compact" border="start"
+                class="mt-4 rounded-lg">
+                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-medium mb-1">
                   No Wellness Check-ins
                 </div>
-                <div class="text-caption text-md-body-2">
+
+                <div class="text-body-2 text-medium-emphasis mb-2">
                   Log your daily wellness check-ins to start tracking your mood,
                   energy, and sleep trends.
                 </div>
-                <v-btn size="small" variant="text" color="deep-purple-accent-1" class="mt-2">Add Check-in</v-btn>
+
+                <v-btn to="/checkin" size="small" color="primary" variant="flat" prepend-icon="mdi-play-circle-outline"
+                  class="text-none">
+                  Check In
+                </v-btn>
               </v-alert>
             </v-card>
           </v-col>
+
+
         </v-row>
 
         <!-- Wellness Stats (Mood, Energy, Sleep, Stress) -->
@@ -899,7 +949,7 @@ watch(isDark, (newVal) => {
     margin-left: -4px;
     margin-right: -4px;
   }
-  
+
   :deep(.v-col) {
     padding-left: 4px;
     padding-right: 4px;
@@ -940,12 +990,6 @@ watch(isDark, (newVal) => {
   white-space: nowrap;
 }
 
-@media (max-width: 960px) {
-  .tab-item {
-    flex: 0 0 auto;
-    min-width: fit-content;
-  }
-}
 
 .tab-item:hover {
   background-color: rgba(255, 255, 255, 0.5);
