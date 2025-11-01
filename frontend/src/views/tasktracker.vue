@@ -1,33 +1,35 @@
 <template>
   <v-container
     fluid
-    class="pa-8"
+    class="task-container py-4 py-md-8 px-2 px-md-8"
     style="min-height: 100vh; background: var(--background)"
   >
     <!-- Header -->
     <v-card
-      class="mb-6"
+      class="mb-4 mb-md-6 mx-0"
       elevation="0"
-      rounded="lg"
+      rounded="xl"
       style="background: var(--surface)"
     >
-      <v-card-text class="pa-6">
-        <div class="d-flex justify-space-between align-center">
+      <v-card-text class="pa-4 pa-md-6">
+        <div class="d-flex flex-column flex-md-row justify-space-between align-start align-md-center ga-3">
           <div>
             <h1
-              class="text-h5 font-weight-regular mb-1"
+              class="text-h6 text-md-h5 font-weight-medium mb-1"
               style="color: var(--primary)"
             >
               Task Tracker
             </h1>
-            <p class="text-body-2" style="color: var(--text-muted)">
+            <p class="text-caption text-md-body-2" style="color: var(--text-muted)">
               Manage your assignments and deadlines
             </p>
           </div>
           <v-btn
             elevation="0"
             rounded="lg"
-            class="text-none"
+            class="text-none add-task-btn"
+            size="default"
+            size-md="default"
             style="
               background: var(--primary);
               color: white;
@@ -60,12 +62,12 @@
     ></v-progress-linear>
 
     <!-- Stats Dashboard -->
-    <v-row class="mb-6">
-      <v-col cols="3">
-        <v-card elevation="0" rounded="lg" style="background: var(--surface)">
-          <v-card-text class="pa-6 text-center">
+    <v-row class="mb-4 mb-md-6" dense>
+      <v-col cols="6" sm="3">
+        <v-card elevation="0" rounded="xl" style="background: var(--surface)" class="stat-card">
+          <v-card-text class="pa-4 pa-md-6 text-center">
             <div
-              class="text-h4 font-weight-regular mb-1"
+              class="text-h5 text-md-h4 font-weight-medium mb-1"
               style="color: var(--text-primary)"
             >
               {{ stats.total }}
@@ -76,15 +78,16 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="3">
+      <v-col cols="6" sm="3">
         <v-card
           elevation="0"
-          rounded="lg"
+          rounded="xl"
           style="background: var(--surface-light)"
+          class="stat-card"
         >
-          <v-card-text class="pa-6 text-center">
+          <v-card-text class="pa-4 pa-md-6 text-center">
             <div
-              class="text-h4 font-weight-regular mb-1"
+              class="text-h5 text-md-h4 font-weight-medium mb-1"
               style="color: var(--primary)"
             >
               {{ stats.completed }}
@@ -95,15 +98,16 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="3">
+      <v-col cols="6" sm="3">
         <v-card
           elevation="0"
-          rounded="lg"
+          rounded="xl"
           style="background: var(--surface-light)"
+          class="stat-card"
         >
-          <v-card-text class="pa-6 text-center">
+          <v-card-text class="pa-4 pa-md-6 text-center">
             <div
-              class="text-h4 font-weight-regular mb-1"
+              class="text-h5 text-md-h4 font-weight-medium mb-1"
               style="color: var(--info)"
             >
               {{ stats.dueToday }}
@@ -114,15 +118,16 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="3">
+      <v-col cols="6" sm="3">
         <v-card
           elevation="0"
-          rounded="lg"
+          rounded="xl"
           style="background: var(--surface-light)"
+          class="stat-card"
         >
-          <v-card-text class="pa-6 text-center">
+          <v-card-text class="pa-4 pa-md-6 text-center">
             <div
-              class="text-h4 font-weight-regular mb-1"
+              class="text-h5 text-md-h4 font-weight-medium mb-1"
               style="color: var(--error)"
             >
               {{ stats.overdue }}
@@ -137,77 +142,84 @@
 
     <!-- View Controls -->
     <v-card
-      class="mb-6"
+      class="mb-4 mb-md-6 mx-0"
       elevation="0"
-      rounded="lg"
+      rounded="xl"
       style="background: var(--surface)"
     >
-      <v-card-text class="pa-4">
-        <v-row align="center" no-gutters>
-          <v-col cols="auto">
-            <v-btn-toggle
-              v-model="view"
-              mandatory
-              variant="text"
-              density="comfortable"
-              style="background: transparent"
+      <v-card-text class="pa-4 pa-md-6">
+        <div class="mb-4 mb-md-0">
+          <v-btn-toggle
+            v-model="view"
+            mandatory
+            variant="text"
+            density="comfortable"
+            class="view-toggle"
+            style="background: transparent"
+          >
+            <v-btn
+              value="board"
+              class="text-none"
+              size="small"
+              size-md="default"
+              style="text-transform: none; color: var(--text-muted)"
+              >Board</v-btn
             >
-              <v-btn
-                value="board"
-                class="text-none"
-                style="text-transform: none; color: var(--text-muted)"
-                >Board</v-btn
-              >
-              <v-btn
-                value="list"
-                class="text-none"
-                style="text-transform: none; color: var(--text-muted)"
-                >List</v-btn
-              >
-              <v-btn
-                value="upcoming"
-                class="text-none"
-                style="text-transform: none; color: var(--text-muted)"
-                >Upcoming</v-btn
-              >
-            </v-btn-toggle>
-          </v-col>
-          <v-spacer></v-spacer>
-          <v-col cols="auto" class="d-flex ga-3">
-            <v-select
-              v-model="filterStatus"
-              :items="statusOptions"
-              label="Status"
-              density="compact"
-              variant="outlined"
-              hide-details
-              style="width: 140px; font-size: 0.875rem"
-            ></v-select>
-            <v-select
-              v-model="filterPriority"
-              :items="priorityOptions"
-              label="Priority"
-              density="compact"
-              variant="outlined"
-              hide-details
-              style="width: 140px; font-size: 0.875rem"
-            ></v-select>
-            <v-select
-              v-model="sortBy"
-              :items="sortOptions"
-              label="Sort by"
-              density="compact"
-              variant="outlined"
-              hide-details
-              style="width: 160px; font-size: 0.875rem"
-            ></v-select>
-          </v-col>
-        </v-row>
+            <v-btn
+              value="list"
+              class="text-none"
+              size="small"
+              size-md="default"
+              style="text-transform: none; color: var(--text-muted)"
+              >List</v-btn
+            >
+            <v-btn
+              value="upcoming"
+              class="text-none"
+              size="small"
+              size-md="default"
+              style="text-transform: none; color: var(--text-muted)"
+              >Upcoming</v-btn
+            >
+          </v-btn-toggle>
+        </div>
+        <div class="d-flex flex-column flex-md-row ga-3">
+          <v-select
+            v-model="filterStatus"
+            :items="statusOptions"
+            label="Status"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="filter-select"
+            style="font-size: 0.875rem"
+          ></v-select>
+          <v-select
+            v-model="filterPriority"
+            :items="priorityOptions"
+            label="Priority"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="filter-select"
+            style="font-size: 0.875rem"
+          ></v-select>
+          <v-select
+            v-model="sortBy"
+            :items="sortOptions"
+            label="Sort by"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="filter-select"
+            style="font-size: 0.875rem"
+          ></v-select>
+        </div>
       </v-card-text>
     </v-card>
 
     <!-- Board View -->
-    <v-row v-if="view === 'board'">
+    <v-row v-if="view === 'board'" class="mx-0">
       <v-col
         v-for="status in ['todo', 'inProgress', 'done']"
         :key="status"
@@ -218,10 +230,11 @@
       >
         <v-card
           elevation="0"
-          rounded="lg"
+          rounded="xl"
           style="background: var(--surface-light)"
+          class="mb-4 mb-md-0"
         >
-          <v-card-text class="pa-5">
+          <v-card-text class="pa-4 pa-md-5">
             <div class="d-flex justify-space-between align-center mb-4">
               <h3
                 class="text-body-1 font-weight-regular"
@@ -235,7 +248,7 @@
                 }}
               </span>
             </div>
-            <div style="min-height: 400px">
+            <div class="board-column">
               <v-card
                 v-for="task in getFilteredTasks().filter(
                   (t) => t.status === status
@@ -243,7 +256,7 @@
                 :key="task.id"
                 class="mb-3"
                 elevation="0"
-                rounded="lg"
+                rounded="xl"
                 :style="
                   isOverdue(task)
                     ? 'background: rgba(220, 38, 38, 0.05); border-left: 4px solid var(--error);'
@@ -361,12 +374,13 @@
     <v-card
       v-if="view === 'list'"
       elevation="0"
-      rounded="lg"
+      rounded="xl"
       style="background: var(--surface)"
+      class="mx-0"
     >
-      <v-card-text class="pa-6">
+      <v-card-text class="pa-4 pa-md-6">
         <h2
-          class="text-body-1 font-weight-regular mb-4"
+          class="text-subtitle-2 text-md-body-1 font-weight-medium mb-4"
           style="color: var(--text-secondary)"
         >
           Your Tasks ({{ getFilteredTasks().length }})
@@ -377,7 +391,7 @@
             :key="task.id"
             class="mb-3"
             elevation="0"
-            rounded="lg"
+            rounded="xl"
             :style="
               isOverdue(task)
                 ? 'background: rgba(220, 38, 38, 0.05); border-left: 4px solid var(--error);'
@@ -475,19 +489,19 @@
           </v-card>
           <div
             v-if="!loading && getFilteredTasks().length === 0"
-            class="text-center py-8 text-body-2"
+            class="text-center py-8 text-caption text-md-body-2"
             style="color: var(--text-muted)"
           >
-            No tasks found. Add your first task!
+            No tasks yet. Add your first task!
           </div>
         </div>
       </v-card-text>
     </v-card>
 
     <!-- Upcoming View -->
-    <div v-if="view === 'upcoming'">
+    <div v-if="view === 'upcoming'" class="mx-0">
       <h2
-        class="text-h5 font-weight-regular mb-6"
+        class="text-h6 text-md-h5 font-weight-medium mb-4 mb-md-6 px-2 px-md-0"
         style="color: var(--text-primary)"
       >
         Upcoming
@@ -497,10 +511,10 @@
         :key="key"
         class="mb-4"
         elevation="0"
-        rounded="lg"
+        rounded="xl"
         style="background: var(--surface)"
       >
-        <v-card-text class="pa-6">
+        <v-card-text class="pa-4 pa-md-6">
           <div class="d-flex align-center ga-2 mb-4">
             <h3
               class="text-body-1 font-weight-regular"
@@ -521,7 +535,7 @@
               :key="task.id"
               class="mb-3"
               elevation="0"
-              rounded="lg"
+              rounded="xl"
               :style="
                 isOverdue(task)
                   ? 'background: rgba(220, 38, 38, 0.05); border-left: 4px solid var(--error);'
@@ -1045,6 +1059,61 @@ const isOverdue = (task) => {
 </script>
 
 <style scoped>
+.task-container {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+@media (min-width: 960px) {
+  .task-container {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+.stat-card {
+  margin-bottom: 8px;
+}
+
+@media (min-width: 600px) {
+  .stat-card {
+    margin-bottom: 0;
+  }
+}
+
+.filter-select {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 960px) {
+  .filter-select {
+    width: 140px;
+    flex: none;
+  }
+}
+
+.view-toggle {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (min-width: 960px) {
+  .view-toggle {
+    width: auto;
+  }
+}
+
+.add-task-btn {
+  width: 100%;
+}
+
+@media (min-width: 960px) {
+  .add-task-btn {
+    width: auto;
+  }
+}
+
 .task-chip {
   display: inline-flex;
   align-items: center;
@@ -1054,5 +1123,28 @@ const isOverdue = (task) => {
 .task-action-icon {
   width: 16px;
   height: 16px;
+}
+
+.board-column {
+  min-height: 200px;
+}
+
+@media (min-width: 960px) {
+  .board-column {
+    min-height: 400px;
+  }
+}
+
+/* Ensure cards have proper spacing on mobile */
+@media (max-width: 960px) {
+  :deep(.v-row) {
+    margin-left: -4px;
+    margin-right: -4px;
+  }
+  
+  :deep(.v-col) {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
 }
 </style>
