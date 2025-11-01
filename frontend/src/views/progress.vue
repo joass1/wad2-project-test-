@@ -1023,6 +1023,15 @@ watch(
   }
 }
 
+@media (min-width: 1280px) {
+  .progress-container {
+    padding-left: 24px;
+    padding-right: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
 .stat-card {
   margin-bottom: 8px;
 }
