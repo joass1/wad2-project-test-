@@ -70,6 +70,11 @@
           <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Social</v-tooltip>
         </v-list-item>
         
+        <v-list-item to="/pet" :prepend-icon="(!isMobile || modelValue) ? 'mdi-paw' : ''" :title="(!isMobile || modelValue) ? 'Pet' : ''" rounded="lg">
+          <v-icon v-if="isMobile && !modelValue">mdi-paw</v-icon>
+          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Pet</v-tooltip>
+        </v-list-item>
+        
         <v-list-item to="/profile" :prepend-icon="(!isMobile || modelValue) ? 'mdi-account-outline' : ''" :title="(!isMobile || modelValue) ? 'Profile' : ''" rounded="lg">
           <v-icon v-if="isMobile && !modelValue">mdi-account-outline</v-icon>
           <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Profile</v-tooltip>
