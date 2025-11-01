@@ -4,7 +4,7 @@
     <div class="main-content">
       <!-- Header -->
       <div class="content-header">
-        <h1 class="page-title">Profile</h1>
+        <h1 class="text-h6 text-md-h5 text-primary font-weight-bold mb-1 px-2 px-md-0">Profile</h1>
         <p class="page-subtitle">Manage your account and preferences</p>
       </div>
 

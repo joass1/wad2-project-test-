@@ -69,13 +69,17 @@ def upsert_profile(payload: dict, user: dict = Depends(require_user)):
     doc_snapshot = doc_ref.get()
     if doc_snapshot.exists:
         return {"ok": True, "uid": uid, "message": "profile already exists"}
+    if payload.get("avatar") is not None:
+        avatar = payload["avatar"]
+    else:
+        avatar = ""
     # create document in users collection
     db.collection("users").document(uid).set(
         {
             "full_name": payload["name"],
             "email": payload["email"],
             "created_at": datetime.now(timezone.utc),
-            "avatar": "",
+            "avatar": avatar,
             "coins": 500,  # Default coins for new users
             "notification_settings": deepcopy(DEFAULT_NOTIFICATION_SETTINGS),
             "user_preferences": deepcopy(DEFAULT_USER_PREFERENCES),
