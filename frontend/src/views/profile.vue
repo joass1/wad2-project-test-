@@ -1212,17 +1212,26 @@ async function confirmDeleteProceed() {
     await api.del("/api/profile/account");
     console.log("User data deleted from backend collections");
     
-    // Step 2: Delete user from Firebase Authentication
+    // Step 2: Try to delete user from Firebase Authentication
+    // If this fails, we'll still log out since backend deletion succeeded
     const { deleteUser } = await import("firebase/auth");
     const currentUser = authUser.value;
     
     if (currentUser) {
-      await deleteUser(currentUser);
-      console.log("User account deleted from Firebase Authentication");
+      try {
+        await deleteUser(currentUser);
+        console.log("User account deleted from Firebase Authentication");
+      } catch (firebaseError) {
+        // If Firebase deletion fails, log it but continue with logout
+        // since backend data is already deleted
+        console.warn("Firebase deletion failed (but backend deletion succeeded):", firebaseError);
+      }
     }
     
-    // Step 3: Clear local state and redirect
-    // The auth state will be automatically cleared when Firebase Auth detects the user deletion
+    // Step 3: Log out the user since backend deletion succeeded
+    // This ensures user is logged out even if Firebase deletion failed
+    await baseLogout();
+    console.log("User logged out after account deletion");
     
     // Show success message and redirect
     showDeleteSuccessModal.value = true;
@@ -1240,14 +1249,9 @@ async function confirmDeleteProceed() {
   } catch (error) {
     console.error("Error deleting account:", error);
     
-    // Check if error is due to requiring recent authentication
-    if (error.code === 'auth/requires-recent-login') {
-      alert("For security reasons, please sign out and sign in again before deleting your account.");
-    } else if (error.code === 'auth/user-token-expired') {
-      alert("Your session has expired. Please sign in again before deleting your account.");
-    } else {
-      alert(`Failed to delete account: ${error.message}`);
-    }
+    // Only show error if backend deletion failed
+    // If backend deletion succeeded but Firebase failed, we already handled it above
+    alert(`Failed to delete account: ${error.message}`);
   }
 }
 
