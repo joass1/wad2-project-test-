@@ -300,43 +300,45 @@
       </v-window-item>
 
       <v-window-item :value="3">
-        <div class="insights-container mx-2 mx-md-0">
-          <div class="card mood">
-            <div class="icon">😊</div>
-            <div class="content">
-              <h3>Mood</h3>
-              <p>{{ moodInsight }}</p>
-            </div>
-          </div>
+        <v-col cols="12">
+          <v-card class="pa-4 pa-md-6 rounded-xl mb-4 mx-2 mx-md-0 transition-all" elevation="0" variant="outlined">
+            <v-card-title class="d-flex flex-wrap align-center text-h6 font-weight-bold text-primary mb-2 text-wrap">
+              <v-icon color="warning" class="mr-2">mdi-lightbulb-on-10</v-icon>
+              Personalized Insights
+            </v-card-title>
+            <v-card-subtitle class="text-caption text-md-body-2 pt-0 text-wrap">
+              Tips and observations based on your recent activity.
+            </v-card-subtitle>
 
-          <div class="card energy">
-            <div class="icon">⚡</div>
-            <div class="content">
-              <h3>Energy</h3>
-              <p>{{ energyInsight }}</p>
-            </div>
-          </div>
+            <v-list density="comfortable" class="mt-4 rounded-lg bg-transparent">
+              <v-list-item v-for="(insight, index) in generatedInsights" :key="index" class="mb-2 pa-2 rounded-lg"
+                variant="tonal" color="primary">
+                <template #prepend>
+                  <v-icon :color="index % 2 === 0 ? 'warning' : 'info'">
+                    {{ index % 3 === 0 ? 'mdi-star-four-points' : 'mdi-chevron-right' }}
+                  </v-icon>
+                </template>
+                <v-list-item-title class="text-body-2 text-md-body-1 font-weight-medium text-wrap" v-html="insight">
+                </v-list-item-title>
+              </v-list-item>
 
-          <div class="card sleep">
-            <div class="icon">🛌</div>
-            <div class="content">
-              <h3>Sleep</h3>
-              <p>{{ sleepInsight }}</p>
-            </div>
-          </div>
-
-          <div class="card stress">
-            <div class="icon">😰</div>
-            <div class="content">
-              <h3>Stress</h3>
-              <p>{{ stressInsight }}</p>
-            </div>
-          </div>
-        </div>
+              <v-list-item v-if="generatedInsights.length === 0" class="mb-2 pa-2 rounded-lg" variant="tonal"
+                color="warning">
+                <template #prepend>
+                  <v-icon color="warning">mdi-alert-circle-outline</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2 text-md-body-1 font-weight-medium text-wrap">
+                  Log your study time, tasks, and wellness check-ins to generate personalized insights!
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-card>
+        </v-col>
       </v-window-item>
     </v-window>
   </v-container>
 </template>
+
 
 <script setup>
 import { ref, computed, onMounted, reactive, watch, nextTick } from "vue";
@@ -364,12 +366,12 @@ onMounted(() => {
   // try1();
 });
 
+const filteredInsights = [""];
+const generatedInsights = ref([]);
 const dailyStudyChart = ref(null);
 const subjectChart = ref(null);
-const productivityChart = ref(null);
 const taskChart = ref(null);
 const wellnessChart = ref(null);
-
 const theme = useTheme();
 const isDark = computed(() => theme.global.current.value.dark);
 
@@ -885,6 +887,124 @@ async function updateAllChartsTheme(isDarkMode) {
 watch(isDark, (newVal) => {
   updateAllChartsTheme(newVal);
 });
+function generateInsights() {
+  const insights = [];
+  const { studyHours, studyStreak, prevStudyHours = 0 } = studyStats;
+  const completionRateValue = Number(completionRate.value);
+  const avgSleep = Number(sleep.value);
+  const avgStress = Number(stress.value);
+  const avgEnergy = Number(energy.value);
+  const avgMood = Number(mood.value);
+
+  if (studyHours > 0) {
+    if (studyHours > 20) {
+      insights.push(`📘 You’ve logged <strong>${studyHours} hours</strong> of study — impressive dedication this week!`);
+    } else if (studyHours > 10) {
+      insights.push(`⏱️ Consistent effort with <strong>${studyHours} hrs</strong> logged. Keep your pace steady!`);
+    } else {
+      insights.push(`📅 Total study time: <strong>${studyHours} hrs</strong>. Try short daily goals to build rhythm.`);
+    }
+  }
+
+  if (prevStudyHours > 0) {
+    const diff = studyHours - prevStudyHours;
+    if (diff > 2) {
+      insights.push(`📈 You studied <strong>${diff} hrs more</strong> than last week — great improvement!`);
+    } else if (diff < -2) {
+      insights.push(`📉 You studied <strong>${Math.abs(diff)} hrs less</strong> than last week. Try reviewing what slowed you down.`);
+    }
+  }
+
+  if (completionRateValue > 0) {
+    if (completionRateValue >= 90) {
+      insights.push(`✅ <strong>Outstanding!</strong> You’ve completed <strong>${completionRateValue}%</strong> of your tasks.`);
+    } else if (completionRateValue >= 70) {
+      insights.push(`🗂️ Solid performance — <strong>${completionRateValue}%</strong> done. Keep the final push strong.`);
+    } else {
+      insights.push(`📋 Only <strong>${completionRateValue}%</strong> tasks done. Try batching similar tasks for efficiency.`);
+    }
+  }
+
+  if (studyStreak > 0) {
+    if (studyStreak > 5) {
+      insights.push(`🔥 You’re on a <strong>${studyStreak}-day streak!</strong> The momentum is strong.`);
+    } else {
+      insights.push(`📆 A <strong>${studyStreak}-day streak</strong> shows progress. Keep building the habit.`);
+    }
+  }
+
+  if (avgSleep > 0) {
+    if (avgSleep < 6) {
+      insights.push(`😴 You’re averaging <strong>${avgSleep} hrs</strong> of sleep — aim for 7–9 to stay sharp.`);
+    } else if (avgSleep >= 7 && avgSleep <= 9) {
+      insights.push(`🌙 <strong>Healthy sleep!</strong> ${avgSleep} hrs on average keeps focus high.`);
+    }
+  }
+
+  if (avgStress > 0) {
+    if (avgStress > 7) {
+      insights.push(`⚠️ High stress (<strong>${avgStress}/10</strong>). Schedule breaks or try breathing exercises.`);
+    } else if (avgStress < 4) {
+      insights.push(`😌 Low stress levels — you’re managing things well.`);
+    }
+  }
+
+  if (avgEnergy > 0) {
+    if (avgEnergy < 4) {
+      insights.push(`📉 Energy seems low (<strong>${avgEnergy}/10</strong>). A quick walk or hydration can help.`);
+    } else if (avgEnergy > 7) {
+      insights.push(`⚡ You’re full of energy! Channel it into your most demanding tasks.`);
+    }
+  }
+
+  if (avgMood > 0) {
+    if (avgMood < 4) {
+      insights.push(`☁️ Mood’s a bit low (<strong>${avgMood}/10</strong>). Try celebrating small wins.`);
+    } else if (avgMood > 7) {
+      insights.push(`😄 Great mood! Perfect time for creative or deep work.`);
+    }
+  }
+
+  // Combined or cross-pattern insights
+  if (avgSleep < 6 && avgEnergy < 5) {
+    insights.push(`🧠 Low energy may stem from lack of sleep. Prioritize rest before long sessions.`);
+  }
+  if (avgStress > 7 && avgMood < 5) {
+    insights.push(`💭 High stress may be affecting mood. Consider a short break or relaxation activity.`);
+  }
+  if (avgEnergy > 7 && studyHours < 8) {
+    insights.push(`⚡ You have high energy but limited study hours — maybe use that drive to push further!`);
+  }
+  if (completionRateValue < 50 && avgStress > 6) {
+    insights.push(`📊 Tasks piling up might be raising stress. Break goals into smaller, quicker wins.`);
+  }
+
+  // If no meaningful data — show general study tips
+  if (insights.length === 0) {
+    insights.push(`💡 Tip: Set a specific study start time — it helps build consistency.`);
+    insights.push(`📖 Try the <strong>Pomodoro Technique</strong>: 25 min study + 5 min break.`);
+    insights.push(`🌱 Remember: consistency beats intensity. Even short focused sessions add up!`);
+  }
+
+  generatedInsights.value = insights;
+}
+
+
+watch(
+  [
+    () => studyStats.studyHours,
+    completionRate,
+    () => studyStats.studyStreak,
+    mood,
+    energy,
+    sleep,
+    stress
+  ],
+  generateInsights,
+  { deep: true, immediate: true }
+);
+
+
 </script>
 
 <style scoped>
@@ -1023,24 +1143,6 @@ watch(isDark, (newVal) => {
 
 .v-icon {
   color: #42a5f5;
-}
-
-.insights-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px 16px 20px 16px;
-  border-radius: 16px;
-  border: 1.5px solid #d1d5db;
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 16px;
-}
-
-@media (min-width: 960px) {
-  .insights-container {
-    padding: 32px 24px 24px 24px;
-  }
 }
 
 .card {
