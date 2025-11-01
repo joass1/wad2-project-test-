@@ -1,52 +1,52 @@
 <template>
-  <v-container class="py-8 main-content">
-    <div>
-      <h1 class="text-h5 text-primary font-weight-bold mb-1">Progress Analytics</h1>
-      <p class="text-body-2 text-muted mb-4">Track your academic and wellness journey</p>
+  <v-container class="progress-container py-4 py-md-8 px-2 px-md-8">
+    <div class="px-2 px-md-0 mb-4 mb-md-6">
+      <h1 class="text-h6 text-md-h5 text-primary font-weight-bold mb-1">Progress Analytics</h1>
+      <p class="text-caption text-md-body-2 text-muted">Track your academic and wellness journey</p>
     </div>
 
     <!-- Stats Section -->
-    <v-row dense class="mb-4">
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
-          <v-card-text class="text-center">
-            <v-icon icon="mdi-clock-time-four-outline" size="26" class="mb-2 text-primary" />
-            <div class="text-subtitle-2">Study Hours</div>
-            <div class="text-h6 font-weight-bold mt-1">
+    <v-row dense class="mb-4 mb-md-6 px-2 px-md-0">
+      <v-col cols="6" sm="6" md="3">
+        <v-card class="rounded-xl animate-fade-up stat-card" variant="outlined" hover>
+          <v-card-text class="text-center py-4 py-md-6">
+            <v-icon icon="mdi-clock-time-four-outline" size="24" size-md="26" class="mb-2 text-primary" />
+            <div class="text-caption text-md-subtitle-2">Study Hours</div>
+            <div class="text-h5 text-md-h6 font-weight-bold mt-1">
               {{ studyStats.studyHours }} Hours
             </div>
           </v-card-text>
         </v-card>
       </v-col>
 
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
-          <v-card-text class="text-center">
-            <v-icon icon="mdi-target" size="26" class="mb-2 text-primary" />
-            <div class="text-subtitle-2">Tasks Completed</div>
-            <div class="text-h6 font-weight-bold mt-1">{{ completionRate }}%</div>
+      <v-col cols="6" sm="6" md="3">
+        <v-card class="rounded-xl animate-fade-up stat-card" variant="outlined" hover>
+          <v-card-text class="text-center py-4 py-md-6">
+            <v-icon icon="mdi-target" size="24" size-md="26" class="mb-2 text-primary" />
+            <div class="text-caption text-md-subtitle-2">Tasks Completed</div>
+            <div class="text-h5 text-md-h6 font-weight-bold mt-1">{{ completionRate }}%</div>
           </v-card-text>
         </v-card>
       </v-col>
 
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
-          <v-card-text class="text-center">
-            <v-icon icon="mdi-fire" size="26" class="mb-2 text-primary" />
-            <div class="text-subtitle-2">Study Streak</div>
-            <div class="text-h6 font-weight-bold mt-1">
+      <v-col cols="6" sm="6" md="3">
+        <v-card class="rounded-xl animate-fade-up stat-card" variant="outlined" hover>
+          <v-card-text class="text-center py-4 py-md-6">
+            <v-icon icon="mdi-fire" size="24" size-md="26" class="mb-2 text-primary" />
+            <div class="text-caption text-md-subtitle-2">Study Streak</div>
+            <div class="text-h5 text-md-h6 font-weight-bold mt-1">
               {{ studyStats.studyStreak }} days
             </div>
           </v-card-text>
         </v-card>
       </v-col>
 
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl animate-fade-up" variant="outlined" hover>
-          <v-card-text class="text-center">
-            <v-icon icon="mdi-heart-outline" size="26" class="mb-2 text-primary" />
-            <div class="text-subtitle-2">Wellness Check-ins</div>
-            <div class="text-h6 font-weight-bold mt-1">
+      <v-col cols="6" sm="6" md="3">
+        <v-card class="rounded-xl animate-fade-up stat-card" variant="outlined" hover>
+          <v-card-text class="text-center py-4 py-md-6">
+            <v-icon icon="mdi-heart-outline" size="24" size-md="26" class="mb-2 text-primary" />
+            <div class="text-caption text-md-subtitle-2">Wellness Check-ins</div>
+            <div class="text-h5 text-md-h6 font-weight-bold mt-1">
               {{ wellnessOverview.totalCheckIns }} check-ins
             </div>
           </v-card-text>
@@ -55,7 +55,7 @@
     </v-row>
 
     <!-- Tabs -->
-    <div class="tab-navigation">
+    <div class="tab-navigation px-2 px-md-0">
       <!-- const tabs = ["Study Analytics", "Task Progress", "Wellness Trends", "Insights"]; -->
       <div class="tab-item" :class="{ active: tab === 0 }" @click="tab = 0">
         Study Analytics
@@ -71,21 +71,21 @@
 
     <v-window v-model="tab" :transition="false" :touch="false">
       <v-window-item :value="0">
-        <v-row>
+        <v-row class="mx-0">
           <v-col cols="12" md="6">
-            <v-card class="pa-4">
-              <v-card-title>Daily Study Time (Last 7 Days)</v-card-title>
-              <v-card-subtitle>Hours spent studying each day</v-card-subtitle>
+            <v-card class="pa-4 pa-md-6 rounded-xl mb-4 mb-md-0 mx-2 mx-md-0" elevation="0" variant="outlined">
+              <v-card-title class="text-subtitle-1 text-md-h6 pb-2">Daily Study Time (Last 7 Days)</v-card-title>
+              <v-card-subtitle class="text-caption text-md-body-2 pt-0">Hours spent studying each day</v-card-subtitle>
 
               <div v-if="hasDailyStudyData">
-                <apexchart ref="dailyStudyChart" type="bar" height="250" :options="dailyStudyOptions"
+                <apexchart ref="dailyStudyChart" type="bar" :height="$vuetify.display.mobile ? 200 : 250" :options="dailyStudyOptions"
                   :series="dailyStudySeries" />
               </div>
               <v-alert v-else color="info" icon="mdi-chart-line-variant" density="compact" border="start" class="mt-4">
-                <div class="text-subtitle-1 font-weight-bold">
+                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-bold">
                   No Study Data Yet
                 </div>
-                <div class="text-body-2">
+                <div class="text-caption text-md-body-2">
                   Log your first study session to see your daily progress here.
                 </div>
                 <v-btn size="small" variant="text" color="info" class="mt-2">Start Session Now</v-btn>
@@ -94,20 +94,20 @@
           </v-col>
 
           <v-col cols="12" md="6">
-            <v-card class="pa-4">
-              <v-card-title>Study Time by Subject</v-card-title>
-              <v-card-subtitle>Distribution of study hours</v-card-subtitle>
+            <v-card class="pa-4 pa-md-6 rounded-xl mx-2 mx-md-0" elevation="0" variant="outlined">
+              <v-card-title class="text-subtitle-1 text-md-h6 pb-2">Study Time by Subject</v-card-title>
+              <v-card-subtitle class="text-caption text-md-body-2 pt-0">Distribution of study hours</v-card-subtitle>
 
               <div v-if="hasSubjectData">
-                <apexchart ref="subjectChart" type="donut" height="250" :options="subjectOptions"
+                <apexchart ref="subjectChart" type="donut" :height="$vuetify.display.mobile ? 200 : 250" :options="subjectOptions"
                   :series="subjectSeries" />
               </div>
               <v-alert v-else color="warning" icon="mdi-book-open-page-variant" density="compact" border="start"
                 class="mt-4">
-                <div class="text-subtitle-1 font-weight-bold">
+                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-bold">
                   No Subject Data
                 </div>
-                <div class="text-body-2">
+                <div class="text-caption text-md-body-2">
                   Assign subjects to your study sessions to see a breakdown.
                 </div>
               </v-alert>
@@ -117,23 +117,23 @@
       </v-window-item>
 
       <v-window-item :value="1">
-        <v-row>
+        <v-row class="mx-0">
           <!-- Task Completion Trends Chart -->
           <v-col cols="12">
-            <v-card class="pa-4">
-              <v-card-title>Task Completion Trends</v-card-title>
-              <v-card-subtitle>Tasks created vs completed over the last 7 days</v-card-subtitle>
+            <v-card class="pa-4 pa-md-6 rounded-xl mb-4 mx-2 mx-md-0" elevation="0" variant="outlined">
+              <v-card-title class="text-subtitle-1 text-md-h6 pb-2">Task Completion Trends</v-card-title>
+              <v-card-subtitle class="text-caption text-md-body-2 pt-0">Tasks created vs completed over the last 7 days</v-card-subtitle>
 
               <div v-if="hasTaskData">
-                <apexchart ref="taskChart" type="bar" height="250" :options="taskCompletionOptions"
+                <apexchart ref="taskChart" type="bar" :height="$vuetify.display.mobile ? 200 : 250" :options="taskCompletionOptions"
                   :series="taskCompletionSeries" />
               </div>
               <v-alert v-else color="success" icon="mdi-check-circle-outline" density="compact" border="start"
                 class="mt-4">
-                <div class="text-subtitle-1 font-weight-bold">
+                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-bold">
                   No Task Activity
                 </div>
-                <div class="text-body-2">
+                <div class="text-caption text-md-body-2">
                   Create and complete tasks throughout the week to visualize your
                   productivity.
                 </div>
@@ -143,34 +143,34 @@
           </v-col>
         </v-row>
         <!-- Task Stats (Total Tasks, Completed, Completion Rate) -->
-        <div>
-          <v-row>
-            <v-col>
+        <div class="px-2 px-md-0">
+          <v-row dense>
+            <v-col cols="4">
               <v-card class="rounded-xl" elevation="0" variant="outlined">
-                <v-card-text class="text-center">
-                  <v-icon icon="mdi-format-list-checks" size="26" class="mb-2 text-primary" />
-                  <div class="text-subtitle-2">Total Tasks</div>
-                  <div class="text-h6 font-weight-bold mt-1">{{ totalTasks }}</div>
+                <v-card-text class="text-center py-4 py-md-6">
+                  <v-icon icon="mdi-format-list-checks" size="24" size-md="26" class="mb-2 text-primary" />
+                  <div class="text-caption text-md-subtitle-2">Total Tasks</div>
+                  <div class="text-h5 text-md-h6 font-weight-bold mt-1">{{ totalTasks }}</div>
                 </v-card-text>
               </v-card>
             </v-col>
 
-            <v-col cols="12" sm="4">
+            <v-col cols="4">
               <v-card class="rounded-xl" elevation="0" variant="outlined">
-                <v-card-text class="text-center">
-                  <v-icon icon="mdi-check-circle-outline" size="26" class="mb-2 text-primary" />
-                  <div class="text-subtitle-2">Completed</div>
-                  <div class="text-h6 font-weight-bold mt-1">{{ completedTasks }}</div>
+                <v-card-text class="text-center py-4 py-md-6">
+                  <v-icon icon="mdi-check-circle-outline" size="24" size-md="26" class="mb-2 text-primary" />
+                  <div class="text-caption text-md-subtitle-2">Completed</div>
+                  <div class="text-h5 text-md-h6 font-weight-bold mt-1">{{ completedTasks }}</div>
                 </v-card-text>
               </v-card>
             </v-col>
 
-            <v-col>
+            <v-col cols="4">
               <v-card class="rounded-xl" elevation="0" variant="outlined">
-                <v-card-text class="text-center">
-                  <v-icon icon="mdi-percent" size="26" class="mb-2 text-primary" />
-                  <div class="text-subtitle-2">Completion Rate</div>
-                  <div class="text-h6 font-weight-bold mt-1">{{ completionRate }}%</div>
+                <v-card-text class="text-center py-4 py-md-6">
+                  <v-icon icon="mdi-percent" size="24" size-md="26" class="mb-2 text-primary" />
+                  <div class="text-caption text-md-subtitle-2">Completion Rate</div>
+                  <div class="text-h5 text-md-h6 font-weight-bold mt-1">{{ completionRate }}%</div>
                 </v-card-text>
               </v-card>
             </v-col>
@@ -179,23 +179,23 @@
       </v-window-item>
 
       <v-window-item :value="2">
-        <v-row>
+        <v-row class="mx-0">
           <!-- Wellness Trends Chart -->
           <v-col cols="12">
-            <v-card class="pa-4">
-              <v-card-title>Wellness Trends (Last 7 Days)</v-card-title>
-              <v-card-subtitle>Track your mood, energy, sleep, and stress levels</v-card-subtitle>
+            <v-card class="pa-4 pa-md-6 rounded-xl mb-4 mx-2 mx-md-0" elevation="0" variant="outlined">
+              <v-card-title class="text-subtitle-1 text-md-h6 pb-2">Wellness Trends (Last 7 Days)</v-card-title>
+              <v-card-subtitle class="text-caption text-md-body-2 pt-0">Track your mood, energy, sleep, and stress levels</v-card-subtitle>
 
               <div v-if="hasWellnessData">
-                <apexchart ref="wellnessChart" type="line" height="250" :options="wellnessOptions"
+                <apexchart ref="wellnessChart" type="line" :height="$vuetify.display.mobile ? 200 : 250" :options="wellnessOptions"
                   :series="wellnessSeries" />
               </div>
               <v-alert v-else color="deep-purple-accent-1" icon="mdi-heart-pulse" density="compact" border="start"
                 class="mt-4">
-                <div class="text-subtitle-1 font-weight-bold">
+                <div class="text-subtitle-2 text-md-subtitle-1 font-weight-bold">
                   No Wellness Check-ins
                 </div>
-                <div class="text-body-2">
+                <div class="text-caption text-md-body-2">
                   Log your daily wellness check-ins to start tracking your mood,
                   energy, and sleep trends.
                 </div>
@@ -206,42 +206,42 @@
         </v-row>
 
         <!-- Wellness Stats (Mood, Energy, Sleep, Stress) -->
-        <v-row>
-          <v-col cols="12" sm="3">
+        <v-row class="px-2 px-md-0" dense>
+          <v-col cols="6" sm="3">
             <v-card class="rounded-xl" elevation="0" variant="outlined">
-              <v-card-text class="text-center">
-                <div class="text-subtitle-2">Mood</div>
-                <div class="text-h6 font-weight-bold mt-1">{{ mood }}/10</div>
+              <v-card-text class="text-center py-4 py-md-6">
+                <div class="text-caption text-md-subtitle-2">Mood</div>
+                <div class="text-h5 text-md-h6 font-weight-bold mt-1">{{ mood }}/10</div>
                 <div class="text-caption text-disabled">7-day avg</div>
               </v-card-text>
             </v-card>
           </v-col>
 
-          <v-col cols="12" sm="3">
+          <v-col cols="6" sm="3">
             <v-card class="rounded-xl" elevation="0" variant="outlined">
-              <v-card-text class="text-center">
-                <div class="text-subtitle-2">Energy</div>
-                <div class="text-h6 font-weight-bold mt-1">{{ energy }}/10</div>
+              <v-card-text class="text-center py-4 py-md-6">
+                <div class="text-caption text-md-subtitle-2">Energy</div>
+                <div class="text-h5 text-md-h6 font-weight-bold mt-1">{{ energy }}/10</div>
                 <div class="text-caption text-disabled">7-day avg</div>
               </v-card-text>
             </v-card>
           </v-col>
 
-          <v-col cols="12" sm="3">
+          <v-col cols="6" sm="3">
             <v-card class="rounded-xl" elevation="0" variant="outlined">
-              <v-card-text class="text-center">
-                <div class="text-subtitle-2">Sleep</div>
-                <div class="text-h6 font-weight-bold mt-1">{{ sleep }}/10</div>
+              <v-card-text class="text-center py-4 py-md-6">
+                <div class="text-caption text-md-subtitle-2">Sleep</div>
+                <div class="text-h5 text-md-h6 font-weight-bold mt-1">{{ sleep }}/10</div>
                 <div class="text-caption text-disabled">7-day avg</div>
               </v-card-text>
             </v-card>
           </v-col>
 
-          <v-col cols="12" sm="3">
+          <v-col cols="6" sm="3">
             <v-card class="rounded-xl" elevation="0" variant="outlined">
-              <v-card-text class="text-center">
-                <div class="text-subtitle-2">Stress</div>
-                <div class="text-h6 font-weight-bold mt-1">{{ stress }}/10</div>
+              <v-card-text class="text-center py-4 py-md-6">
+                <div class="text-caption text-md-subtitle-2">Stress</div>
+                <div class="text-h5 text-md-h6 font-weight-bold mt-1">{{ stress }}/10</div>
                 <div class="text-caption text-disabled">7-day avg</div>
               </v-card-text>
             </v-card>
@@ -250,7 +250,7 @@
       </v-window-item>
 
       <v-window-item :value="3">
-        <div class="insights-container">
+        <div class="insights-container mx-2 mx-md-0">
           <div class="card mood">
             <div class="icon">😊</div>
             <div class="content">
@@ -838,18 +838,34 @@ watch(isDark, (newVal) => {
 </script>
 
 <style scoped>
-/* Mobile responsiveness for tab navigation */
-@media (max-width: 768px) {
-  .stat-card {
-    padding: 20px 12px;
-    border-radius: 12px;
-  }
+.progress-container {
+  max-width: 100%;
+  padding-left: 8px;
+  padding-right: 8px;
+}
 
+@media (min-width: 960px) {
+  .progress-container {
+    padding-left: 24px;
+    padding-right: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}
+
+.stat-card {
+  margin-bottom: 8px;
+}
+
+@media (min-width: 600px) {
+  .stat-card {
+    margin-bottom: 0;
+  }
+}
+
+/* Mobile responsiveness for tab navigation */
+@media (max-width: 960px) {
   .tab-navigation {
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
     padding: 4px 8px;
     gap: 4px;
     scrollbar-width: none;
@@ -862,11 +878,8 @@ watch(isDark, (newVal) => {
   }
 
   .tab-item {
-    flex: 0 0 auto;
-    /* Prevent stretching, make each tab its own width */
-    min-width: fit-content;
-    padding: 10px 16px;
-    font-size: 0.9rem;
+    padding: 10px 14px;
+    font-size: 0.875rem;
     border-radius: 8px;
   }
 
@@ -880,11 +893,17 @@ watch(isDark, (newVal) => {
   color: var(--text-muted);
 }
 
-.main-content {
-  padding: 32px;
-  background-color: var(--background);
-  max-width: 1200px;
-  margin: 0 auto;
+/* Ensure cards have proper spacing on mobile */
+@media (max-width: 960px) {
+  :deep(.v-row) {
+    margin-left: -4px;
+    margin-right: -4px;
+  }
+  
+  :deep(.v-col) {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
 }
 
 /* TAB */
@@ -896,6 +915,15 @@ watch(isDark, (newVal) => {
   border-radius: 12px;
   padding: 4px;
   position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 960px) {
+  .tab-navigation {
+    overflow-x: visible;
+  }
 }
 
 .tab-item {
@@ -909,6 +937,14 @@ watch(isDark, (newVal) => {
   flex: 1;
   text-align: center;
   background: transparent;
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .tab-item {
+    flex: 0 0 auto;
+    min-width: fit-content;
+  }
 }
 
 .tab-item:hover {
@@ -949,14 +985,18 @@ watch(isDark, (newVal) => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 32px 24px 24px 24px;
-  /* padding with extra top */
+  padding: 20px 16px 20px 16px;
   border-radius: 16px;
   border: 1.5px solid #d1d5db;
   width: 100%;
   box-sizing: border-box;
   margin-top: 16px;
-  /* space between tab and container */
+}
+
+@media (min-width: 960px) {
+  .insights-container {
+    padding: 32px 24px 24px 24px;
+  }
 }
 
 .card {
@@ -972,26 +1012,45 @@ watch(isDark, (newVal) => {
 
 /* Icon styling */
 .icon {
-  font-size: 30px;
-  margin-right: 16px;
+  font-size: 24px;
+  margin-right: 12px;
   flex-shrink: 0;
   line-height: 1;
   margin-top: 4px;
 }
 
+@media (min-width: 960px) {
+  .icon {
+    font-size: 30px;
+    margin-right: 16px;
+  }
+}
+
 /* Content inside the card */
 .content h3 {
   margin: 0 0 4px 0;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: #333;
 }
 
+@media (min-width: 960px) {
+  .content h3 {
+    font-size: 17px;
+  }
+}
+
 .content p {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   color: #555;
   line-height: 1.4;
+}
+
+@media (min-width: 960px) {
+  .content p {
+    font-size: 14px;
+  }
 }
 
 /* Specific color styles */

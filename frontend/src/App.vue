@@ -26,19 +26,37 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useDisplay } from 'vuetify'
 import Sidebar from '@/components/sidebar.vue'
 import Header from '@/components/header.vue'
 import GlobalDesktopPet from '@/components/GlobalDesktopPet.vue'
 
 const route = useRoute()
+const { mobile } = useDisplay()
 const isLogin = computed(() => route.name === 'Login')
 const isPetPage = computed(() => route.path === '/pet')
 const isPetSelection = computed(() => route.name === 'PetSelection')
 
-// Sidebar state - starts open
-const sidebarOpen = ref(true)
+// Sidebar state - starts closed on mobile, open on desktop
+const sidebarOpen = ref(!mobile.value)
+
+// Close sidebar on mobile when route changes
+watch(() => route.path, () => {
+  if (mobile.value) {
+    sidebarOpen.value = false
+  }
+})
+
+// Update sidebar initial state when screen size changes
+watch(mobile, (isMobile) => {
+  if (isMobile) {
+    sidebarOpen.value = false
+  } else {
+    sidebarOpen.value = true
+  }
+})
 
 // Fullscreen mode state
 const isFullscreen = ref(false)

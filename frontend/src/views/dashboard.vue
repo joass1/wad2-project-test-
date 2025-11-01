@@ -1,64 +1,68 @@
 <template>
-  <v-container class="py-8">
-    <h1 class="text-h5 text-primary font-weight-bold mb-1">
+  <v-container class="dashboard-container py-4 py-md-8">
+    <h1 class="text-h6 text-md-h5 text-primary font-weight-bold mb-1 px-2 px-md-0">
       <template v-if="loading">Loading...</template>
       <template v-else
         >Welcome back, {{ userProfile?.full_name || "User" }}!</template
       >
     </h1>
-    <p class="text-body-2 text-muted mb-4">
+    <p class="text-body-2 text-muted mb-4 px-2 px-md-0">
       Here's your wellness dashboard for today
     </p>
 
     <!-- Buddy container with gradient -->
     <v-card
-      class="mb-6 rounded-xl"
+      class="mb-4 mb-md-6 rounded-xl mx-2 mx-md-0"
       elevation="0"
       variant="outlined"
       :style="gradient"
     >
-      <v-card-text class="py-6">
+      <v-card-text class="py-4 py-md-6 px-4 px-md-6">
         <div class="d-flex align-center justify-space-between">
           <div class="d-flex align-center ga-3">
-            <div style="font-size: 28px">😊</div>
+            <div style="font-size: 24px" class="pet-emoji">😊</div>
             <div>
-              <div class="text-subtitle-1 font-weight-semibold">{{ displayPetName }}</div>
-              <div class="text-body-2 text-muted">Doing well</div>
+              <div class="text-subtitle-2 text-md-subtitle-1 font-weight-semibold">{{ displayPetName }}</div>
+              <div class="text-caption text-md-body-2 text-muted">Doing well</div>
             </div>
           </div>
-          <v-chip color="primary" variant="tonal">Level 1</v-chip>
+          <v-chip color="primary" variant="tonal" size="small" class="level-chip">Level 1</v-chip>
         </div>
 
         <!-- Progress Bars -->
-        <div class="mt-5">
+        <div class="mt-4 mt-md-5">
           <div class="d-flex align-center justify-space-between mb-1">
-            <div class="text-body-2">Health</div>
-            <div class="text-body-2">80%</div>
+            <div class="text-caption text-md-body-2">Health</div>
+            <div class="text-caption text-md-body-2">80%</div>
           </div>
           <v-progress-linear
             model-value="80"
-            height="8"
+            :height="$vuetify.display.mobile ? 6 : 8"
             rounded
             color="primary"
+            class="progress-bar"
           />
 
-          <div class="d-flex align-center justify-space-between mt-4 mb-1">
-            <div class="text-body-2">Happiness</div>
-            <div class="text-body-2">70%</div>
+          <div class="d-flex align-center justify-space-between mt-3 mt-md-4 mb-1">
+            <div class="text-caption text-md-body-2">Happiness</div>
+            <div class="text-caption text-md-body-2">70%</div>
           </div>
           <v-progress-linear
             model-value="70"
-            height="8"
+            :height="$vuetify.display.mobile ? 6 : 8"
             rounded
             color="primary"
+            class="progress-bar"
           />
         </div>
 
         <div class="mt-4 d-flex justify-end">
           <v-btn
             color="primary"
-            class="text-white"
+            class="text-white feed-btn"
             prepend-icon="mdi-heart-outline"
+            size="small"
+            size-md="default"
             @click="navigateToPetPage"
           >
             Feed Pet
@@ -68,54 +72,56 @@
     </v-card>
 
     <!-- Your Stats Section -->
-    <v-row dense class="mb-4">
+    <v-row dense class="mb-4 px-2 px-md-0">
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl" elevation="0" variant="outlined">
-          <v-card-text class="text-center">
+        <v-card class="rounded-xl stat-card" elevation="0" variant="outlined">
+          <v-card-text class="text-center py-4 py-md-6">
             <v-icon
               icon="mdi-clock-time-four-outline"
-              size="26"
+              size="24"
+              size-md="26"
               class="mb-2 text-primary"
             />
-            <div class="text-subtitle-2">Study Time Today</div>
-            <div class="text-h6 font-weight-bold mt-1">{{ studyTimeFormatted }}</div>
+            <div class="text-caption text-md-subtitle-2">Study Time Today</div>
+            <div class="text-h6 text-md-h6 font-weight-bold mt-1">{{ studyTimeFormatted }}</div>
             <div class="text-caption text-disabled">{{ sessionsCompletedToday }} sessions completed</div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl" elevation="0" variant="outlined">
-          <v-card-text class="text-center">
-            <v-icon icon="mdi-target" size="26" class="mb-2 text-primary" />
-            <div class="text-subtitle-2">Task Completion</div>
-            <div class="text-h6 font-weight-bold mt-1">{{ taskCompletionPct }}%</div>
+        <v-card class="rounded-xl stat-card" elevation="0" variant="outlined">
+          <v-card-text class="text-center py-4 py-md-6">
+            <v-icon icon="mdi-target" size="24" size-md="26" class="mb-2 text-primary" />
+            <div class="text-caption text-md-subtitle-2">Task Completion</div>
+            <div class="text-h6 text-md-h6 font-weight-bold mt-1">{{ taskCompletionPct }}%</div>
             <div class="text-caption text-disabled">{{ tasksCompleted }} of {{ tasksTotal }} tasks done</div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl" elevation="0" variant="outlined">
-          <v-card-text class="text-center">
-            <v-icon icon="mdi-fire" size="26" class="mb-2 text-primary" />
-            <div class="text-subtitle-2">Study Streak</div>
-            <div class="text-h6 font-weight-bold mt-1">{{ wellnessStreak }} days</div>
+        <v-card class="rounded-xl stat-card" elevation="0" variant="outlined">
+          <v-card-text class="text-center py-4 py-md-6">
+            <v-icon icon="mdi-fire" size="24" size-md="26" class="mb-2 text-primary" />
+            <div class="text-caption text-md-subtitle-2">Study Streak</div>
+            <div class="text-h6 text-md-h6 font-weight-bold mt-1">{{ wellnessStreak }} days</div>
             <div class="text-caption text-disabled">Keep it up 🔥</div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl" elevation="0" variant="outlined">
-          <v-card-text class="text-center">
+        <v-card class="rounded-xl stat-card" elevation="0" variant="outlined">
+          <v-card-text class="text-center py-4 py-md-6">
             <v-icon
               icon="mdi-heart-outline"
-              size="26"
+              size="24"
+              size-md="26"
               class="mb-2 text-primary"
             />
-            <div class="text-subtitle-2">Wellness Check</div>
-            <div class="text-h6 font-weight-bold mt-1">{{ wellnessDoneToday ? '✅ Done' : '—' }}</div>
+            <div class="text-caption text-md-subtitle-2">Wellness Check</div>
+            <div class="text-h6 text-md-h6 font-weight-bold mt-1">{{ wellnessDoneToday ? '✅ Done' : '—' }}</div>
             <div class="text-caption text-disabled">{{ wellnessDoneToday ? 'Checked in today' : 'Not yet' }}</div>
           </v-card-text>
         </v-card>
@@ -124,14 +130,14 @@
 
 
     <!-- Urgent Tasks + Achievements -->
-    <v-row dense>
+    <v-row dense class="px-2 px-md-0">
       <v-col cols="12" md="8">
         <v-card class="rounded-xl mb-4" elevation="0" variant="outlined">
-          <v-card-title class="pb-0">Urgent Tasks</v-card-title>
-          <v-card-subtitle class="pt-0"
+          <v-card-title class="pb-0 text-subtitle-1 text-md-h6">Urgent Tasks</v-card-title>
+          <v-card-subtitle class="pt-0 text-caption text-md-body-2"
             >Tasks due within 3 days</v-card-subtitle
           >
-          <v-card-text class="py-8 text-muted">
+          <v-card-text class="py-6 py-md-8 text-muted text-body-2">
             No urgent tasks – you're on top of things! 🎉
           </v-card-text>
         </v-card>
@@ -139,11 +145,11 @@
 
       <v-col cols="12" md="4">
         <v-card class="rounded-xl mb-4" elevation="0" variant="outlined">
-          <v-card-title class="pb-0">Achievements</v-card-title>
-          <v-card-subtitle class="pt-0"
+          <v-card-title class="pb-0 text-subtitle-1 text-md-h6">Achievements</v-card-title>
+          <v-card-subtitle class="pt-0 text-caption text-md-body-2"
             >Your progress milestones</v-card-subtitle
           >
-          <v-list lines="two">
+          <v-list lines="two" density="compact">
             <LockedAchievement
               title="First Steps"
               sub="Complete your first study session"
@@ -268,7 +274,62 @@ export default {
 </script>
 
 <style scoped>
+.dashboard-container {
+  max-width: 100%;
+}
+
 .text-muted {
   color: var(--text-muted);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 960px) {
+  .dashboard-container {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  
+  .pet-emoji {
+    font-size: 24px !important;
+  }
+  
+  .level-chip {
+    font-size: 11px !important;
+    height: 22px !important;
+  }
+  
+  .progress-bar {
+    margin-top: 4px;
+  }
+  
+  .feed-btn {
+    font-size: 12px !important;
+    height: 36px !important;
+  }
+  
+  .stat-card {
+    margin-bottom: 12px;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 600px) {
+  .dashboard-container {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+}
+
+/* Ensure cards have proper spacing on mobile */
+@media (max-width: 960px) {
+  :deep(.v-row) {
+    margin-left: -4px;
+    margin-right: -4px;
+  }
+  
+  :deep(.v-col) {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
 }
 </style>
