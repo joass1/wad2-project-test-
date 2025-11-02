@@ -262,6 +262,14 @@ a {
   color: var(--text-muted) !important;
 }
 
+/* Fix Vuetify label background that covers text in dropdowns */
+.v-field--variant-outlined .v-label,
+.v-field--variant-outlined.v-field--focused .v-label,
+.v-field--variant-outlined.v-field--active .v-label {
+  background: var(--surface) !important;
+  padding: 0 4px !important;
+}
+
 /* ==================== */
 /* Progress Bars */
 /* ==================== */

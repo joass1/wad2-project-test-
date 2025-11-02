@@ -13,7 +13,7 @@ const { topics: recurringTopics, loading: topicsLoading, fetchTopics, createTopi
 const { selectedBackgroundId, getCurrentBackground } = useBackground()
 const { coins, updateCoins } = useCoins()
 
-const presets = { 'Focus': 25, 'Short Break': 5, 'Long Break': 15 }
+const presets = { 'Focus': 25, 'Break': 5 }
 const mode = ref('Focus')
 const minutes = ref(presets[mode.value])
 const timeLeft = ref(presets[mode.value] * 60)
@@ -437,7 +437,7 @@ function saveSettings() {
   customFocusTime.value = parseInt(customFocusTime.value) || 25
   customBreakTime.value = parseInt(customBreakTime.value) || 5
   presets['Focus'] = customFocusTime.value
-  presets['Short Break'] = customBreakTime.value
+  presets['Break'] = customBreakTime.value
   
   if (mode.value === 'Focus') {
     minutes.value = customFocusTime.value
@@ -1442,22 +1442,5 @@ li {
 
 .cursor-pointer {
   cursor: pointer;
-}
-
-/* 3. REMOVE LINE THROUGH LABEL IN V-SELECT */
-.v-field--variant-outlined .v-label {
-  background: transparent !important;
-}
-
-.v-field--variant-outlined.v-field--focused .v-label,
-.v-field--variant-outlined.v-field--active .v-label {
-  background: white !important;
-  padding: 0 4px !important;
-}
-
-[data-theme="dark"] .v-field--variant-outlined.v-field--focused .v-label,
-[data-theme="dark"] .v-field--variant-outlined.v-field--active .v-label {
-  background: #1e1e1e !important;
-  padding: 0 4px !important;
 }
 </style>
