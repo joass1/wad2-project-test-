@@ -66,6 +66,7 @@ class StudySessionResponse(BaseModel):
     # Enhanced tracking fields
     pause_count: int = 0
     reset_count: int = 0
+    total_paused_duration_minutes: float = 0.0  # Cumulative paused time in minutes
 
 class DailyHours(BaseModel):
     """Represents study hours for a single day."""
@@ -507,6 +508,7 @@ def start_study_session(
         # Enhanced tracking fields
         "pause_count": 0,
         "reset_count": 0,
+        "total_paused_duration_minutes": 0.0,
     }
     
     doc_ref = _study_sessions_collection(uid).add(session_data)
@@ -575,8 +577,28 @@ def update_study_session(
             _update_daily_metrics(uid, today, sessions_completed_increment=1)
             
         elif status == "active":
-            # Resuming from pause
-            update_data["paused_at"] = None
+            # Resuming from pause - calculate pause duration and add to total
+            if current_status == "paused":
+                paused_at_time = session_data.get("paused_at")
+                if paused_at_time:
+                    # Calculate how long the session was paused
+                    if isinstance(paused_at_time, datetime):
+                        pause_duration_minutes = (now - paused_at_time).total_seconds() / 60
+                    elif isinstance(paused_at_time, str):
+                        # Parse ISO format string
+                        try:
+                            paused_dt = datetime.fromisoformat(paused_at_time.replace('Z', '+00:00'))
+                            pause_duration_minutes = (now - paused_dt).total_seconds() / 60
+                        except (ValueError, AttributeError):
+                            pause_duration_minutes = 0
+                    else:
+                        pause_duration_minutes = 0
+                    
+                    # Add to cumulative paused duration
+                    current_paused_duration = session_data.get("total_paused_duration_minutes", 0.0)
+                    update_data["total_paused_duration_minutes"] = current_paused_duration + pause_duration_minutes
+                
+                update_data["paused_at"] = None
     
     # If session completed and has task_id, update task's total study time
     if update_data.get("status") == "completed" and session_data.get("task_id"):
@@ -669,6 +691,7 @@ def create_study_session(
         "month": now.month,
         "pause_count": 0,
         "reset_count": 0,
+        "total_paused_duration_minutes": 0.0,
     }
     
     doc_ref = _study_sessions_collection(uid).add(session_data)
@@ -767,6 +790,20 @@ class TodaySummaryResponse(BaseModel):
     sessions_started: int
 
 
+class TimerStatsResponse(BaseModel):
+    """Model for timer page stats - today's session metrics"""
+    date: str
+    sessions_completed: int
+    sessions_paused: int
+    total_pause_count: int
+    total_study_minutes: int
+    total_study_hours: float
+    sessions_started: int
+    total_started_minutes: int  # Total planned minutes for all sessions started today
+    total_paused_minutes: int  # Total minutes spent in paused state today
+    focus_score: float  # 100% - (paused_minutes / started_minutes * 100%)
+
+
 @router.get("/today-summary", response_model=TodaySummaryResponse)
 def get_today_summary(user: dict = Depends(require_user)):
     """Return today's total completed study minutes and session counts."""
@@ -796,6 +833,104 @@ def get_today_summary(user: dict = Depends(require_user)):
         total_minutes=total_minutes,
         sessions_completed=completed_count,
         sessions_started=metrics.sessions_started,
+    )
+
+
+@router.get("/timer-stats", response_model=TimerStatsResponse)
+def get_timer_stats(user: dict = Depends(require_user)):
+    """Get comprehensive stats for the timer page - today's session statistics
+    
+    Calculates:
+    - Total minutes of all sessions started today (planned durations)
+    - Total paused minutes (from completed and paused sessions)
+    - Focus score: 100% - (paused_minutes / started_minutes * 100%)
+    """
+    uid = user["uid"]
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    
+    # Query today's sessions
+    sessions_ref = _study_sessions_collection(uid)
+    sessions_query = sessions_ref.where("date", "==", today)
+    
+    # Initialize counters
+    total_study_minutes = 0  # From completed sessions only
+    total_started_minutes = 0  # Sum of all planned durations
+    total_paused_minutes = 0  # Cumulative paused time
+    completed_count = 0
+    paused_count = 0
+    
+    # Process each session
+    for doc in sessions_query.stream():
+        data = doc.to_dict() or {}
+        status = data.get("status")
+        planned_minutes = data.get("planned_duration_minutes", 0)
+        actual_minutes = data.get("actual_duration_minutes")
+        total_paused_duration = data.get("total_paused_duration_minutes", 0.0)
+        paused_at = data.get("paused_at")
+        
+        # Sum all planned durations for sessions started today
+        if isinstance(planned_minutes, (int, float)) and planned_minutes > 0:
+            total_started_minutes += int(planned_minutes)
+        
+        # Process based on status
+        if status == "completed":
+            # Count completed sessions and their actual study time
+            if isinstance(actual_minutes, (int, float)) and actual_minutes > 0:
+                total_study_minutes += int(actual_minutes)
+            completed_count += 1
+            
+            # Use tracked paused duration for completed sessions
+            if isinstance(total_paused_duration, (int, float)):
+                total_paused_minutes += total_paused_duration
+        
+        elif status == "paused":
+            paused_count += 1
+            
+            # For currently paused sessions: use tracked paused duration + current pause time
+            paused_duration_so_far = total_paused_duration if isinstance(total_paused_duration, (int, float)) else 0.0
+            
+            # Add current pause duration (from paused_at to now)
+            current_pause_minutes = 0.0
+            if paused_at:
+                if isinstance(paused_at, datetime):
+                    current_pause_minutes = (now - paused_at).total_seconds() / 60
+                elif isinstance(paused_at, str):
+                    # Parse ISO format string
+                    try:
+                        paused_dt = datetime.fromisoformat(paused_at.replace('Z', '+00:00'))
+                        current_pause_minutes = (now - paused_dt).total_seconds() / 60
+                    except (ValueError, AttributeError):
+                        current_pause_minutes = 0.0
+            
+            total_paused_minutes += paused_duration_so_far + current_pause_minutes
+        
+        # Note: Active sessions don't contribute to paused time (unless they were paused and resumed, which is already tracked)
+    
+    # Get additional metrics from daily metrics
+    metrics = get_daily_metrics(date=today, user=user)
+    
+    # Calculate focus score: 100% - (paused_minutes / started_minutes * 100%)
+    if total_started_minutes > 0:
+        pause_percentage = (total_paused_minutes / total_started_minutes) * 100
+        focus_score = max(0, round(100 - pause_percentage, 1))
+    else:
+        focus_score = 100.0  # No sessions started, perfect focus!
+    
+    # Calculate hours from minutes
+    total_study_hours = round(total_study_minutes / 60, 2)
+    
+    return TimerStatsResponse(
+        date=today,
+        sessions_completed=completed_count,
+        sessions_paused=paused_count,
+        total_pause_count=metrics.total_pauses,
+        total_study_minutes=total_study_minutes,
+        total_study_hours=total_study_hours,
+        sessions_started=metrics.sessions_started,
+        total_started_minutes=total_started_minutes,
+        total_paused_minutes=int(total_paused_minutes),
+        focus_score=focus_score,
     )
 
 
@@ -847,6 +982,8 @@ def _format_session_response(session_data: dict, session_id: str) -> StudySessio
         session_data["pause_count"] = 0
     if "reset_count" not in session_data:
         session_data["reset_count"] = 0
+    if "total_paused_duration_minutes" not in session_data:
+        session_data["total_paused_duration_minutes"] = 0.0
     
     return StudySessionResponse(**session_data)
 
