@@ -459,9 +459,9 @@ onUnmounted(() => { clearInterval(t) })
     <div v-if="running && getCurrentBackground().path" class="fullscreen-gif-background"></div>
     
     <v-container :class="['timer-container py-4 py-md-8', { 'fullscreen-container': running }]" :style="running ? 'max-width: 100%;' : 'max-width: 1400px;'">
-      <v-row>
-        <v-col :cols="running ? 12 : 12" :md="running ? 12 : 7" :lg="running ? 12 : 8">
-          <v-card rounded="xl" elevation="0" :class="['timer-card', { 'fullscreen-card': running }]" class="pa-6 pa-md-10 mx-2 mx-md-0">
+      <v-row justify="center" class="ma-0">
+        <v-col cols="12" :md="running ? 12 : 8" :lg="running ? 12 : 8" class="pa-0">
+          <v-card rounded="xl" elevation="0" :class="['timer-card', { 'fullscreen-card': running }]" class="pa-6 pa-md-10">
             <div class="mb-2">
               <h2 class="text-h6 text-md-h5 text-primary font-weight-bold mb-1 px-2 px-md-0">Study Timer</h2>
               <p class="text-body-2 text-medium-emphasis">Focus with the Pomodoro Technique</p>
@@ -547,8 +547,8 @@ onUnmounted(() => { clearInterval(t) })
           </v-card>
         </v-col>
 
-        <v-col v-if="!running" cols="12" md="5" lg="4">
-          <v-card rounded="xl" elevation="0" class="details-card pa-4 pa-md-6 mb-4 mx-2 mx-md-0">
+        <v-col v-if="!running" cols="12" md="4" lg="4" class="pa-0">
+          <v-card rounded="xl" elevation="0" class="details-card pa-4 pa-md-6 mb-4">
             <v-tabs v-model="activeTab" bg-color="transparent" color="primary" class="mb-4" show-arrows="false">
               <v-tab value="session">Session</v-tab>
               <v-tab value="subjects">Subjects</v-tab>
@@ -812,7 +812,7 @@ onUnmounted(() => { clearInterval(t) })
             </v-window>
           </v-card>
 
-          <backgrounds-gallery class="mt-4 mx-2 mx-md-0" />
+          <backgrounds-gallery class="mt-4" />
         </v-col>
       </v-row>
     </v-container>
@@ -1174,6 +1174,8 @@ onUnmounted(() => { clearInterval(t) })
 .timer-container {
   padding-left: 8px;
   padding-right: 8px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 @media (min-width: 960px) {
@@ -1190,6 +1192,14 @@ onUnmounted(() => { clearInterval(t) })
   transition: all 0.3s ease;
   position: relative;
   z-index: 10;
+}
+
+@media (min-width: 960px) {
+  .timer-card:not(.fullscreen-card) {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 .background-select-card {
