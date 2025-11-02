@@ -5,6 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import socketio
 import asyncio
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from app.api.routes import (
     auth,
@@ -21,24 +24,16 @@ from app.core.firebase import db
 
 app = FastAPI()
 
-
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["http://localhost:8080/", "*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+cors_allowed_origins = os.environ.get("CORS_ALLOWED_ORIGINS")
+if cors_allowed_origins is None:
+    # raise error if the CORS_ALLOWED_ORIGINS environment variable is not set
+    raise ValueError("CORS_ALLOWED_ORIGINS environment variable is not set")
+cors_origins = cors_allowed_origins.split(",")
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8081",  # Your frontend URL
-        "http://127.0.0.1:8081",
-        "http://localhost:8080",  # Alternative frontend URL
-        "http://127.0.0.1:8080",
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=[
         "GET",
@@ -60,7 +55,7 @@ app.mount("/static", StaticFiles(directory=static_path), name="static")
 # Socket.IO setup for real-time pet updates
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins=["http://localhost:8081", "http://localhost:8080", "*"],
+    cors_allowed_origins=cors_origins,
 )
 
 socket_app = socketio.ASGIApp(sio, app)
