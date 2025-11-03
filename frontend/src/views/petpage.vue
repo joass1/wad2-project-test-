@@ -4,6 +4,7 @@ import AnimatedPet from '@/components/AnimatedPet.vue'
 import SpritePreview from '@/components/SpritePreview.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import TMXTileBackground from '@/components/TMXTileBackground.vue'
+import PetMinigame from '@/components/PetMinigame.vue'
 import { useCoins } from '@/composables/useCoins.js'
 import { useGlobalPet } from '@/composables/useGlobalPet.js'
 import { api } from '@/lib/api.js'
@@ -498,6 +499,13 @@ function handleBorderWarning() {
 /* ==== Shop ==== */
 const showShop = ref(false)
 
+/* ==== Minigame ==== */
+const showMinigame = ref(false)
+
+function toggleMinigame() {
+  showMinigame.value = !showMinigame.value
+}
+
 // Use shared coin state
 const { coins: playerGold, coinsLoading, coinsError, fetchCoins, updateCoins } = useCoins()
 
@@ -808,6 +816,11 @@ watch(isPetDead, (newIsDead) => {
                 <img src="/shopkeeper/shop_cart_sized.png" alt="Shop" class="shop-icon" />
               </button>
 
+              <!-- Minigame Button -->
+              <button class="minigame-button" @click="toggleMinigame">
+                <span class="minigame-icon">🎮</span>
+              </button>
+
               <!-- Border Warning Popup -->
               <div v-if="showBorderWarning" class="border-warning">
                 <div class="warning-icon">⚠️</div>
@@ -946,6 +959,19 @@ watch(isPetDead, (newIsDead) => {
         >
           ⚠️ Test Deteriorate (-15)
         </button>
+      </div>
+    </div>
+
+    <!-- Minigame Overlay -->
+    <div v-if="showMinigame" class="minigame-overlay" @click="toggleMinigame">
+      <div class="minigame-popup" @click.stop>
+        <button class="close-minigame" @click="toggleMinigame">×</button>
+        <PetMinigame
+          :pet-sprite-url="PETS[selectedPetKey].config.spriteUrl"
+          :pet-slice="PETS[selectedPetKey].config.slice"
+          :pet-scale="PETS[selectedPetKey].config.scale"
+          :pet-animations="PETS[selectedPetKey].config.animations"
+        />
       </div>
     </div>
 
@@ -1384,6 +1410,33 @@ watch(isPetDead, (newIsDead) => {
   box-shadow:0 2px 8px rgba(0,0,0,0.2);
   transition:all 0.3s ease;
   z-index:100;
+}
+
+/* Minigame Button */
+.minigame-button{
+  position:absolute;
+  top:20px;
+  right:80px;
+  background:#3b82f6;
+  border:none;
+  border-radius:8px;
+  padding:8px 12px;
+  cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+  transition:all 0.3s ease;
+  z-index:100;
+}
+
+.minigame-button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(0,0,0,0.3);
+  background:#2563eb;
+}
+
+.minigame-icon{
+  font-size:24px;
+  display:block;
+  line-height:1;
 }
 
 @media (max-width: 960px) {
@@ -1899,5 +1952,75 @@ watch(isPetDead, (newIsDead) => {
 }
 .cancel-btn:hover{
   background:var(--surface-light);
+}
+
+/* Minigame Overlay */
+.minigame-overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100vw;
+  height:100vh;
+  background:rgba(0,0,0,0.9);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+}
+
+.minigame-popup{
+  background:#1a1a1a;
+  border-radius:12px;
+  width:820px;
+  height:640px;
+  overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  border:4px solid #3b82f6;
+}
+
+.close-minigame{
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:rgba(239,68,68,0.9);
+  border:none;
+  color:#fff;
+  font-size:28px;
+  cursor:pointer;
+  padding:4px 12px;
+  width:40px;
+  height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+  transition:background 0.2s ease;
+  z-index:10;
+  font-weight:bold;
+  line-height:1;
+}
+
+.close-minigame:hover{
+  background:#dc2626;
+}
+
+@media (max-width: 960px) {
+  .minigame-button {
+    top: 10px;
+    right: 60px;
+    padding: 6px 10px;
+  }
+
+  .minigame-icon {
+    font-size: 20px;
+  }
+
+  .minigame-popup{
+    width: 95vw;
+    height: 85vh;
+  }
 }
 </style>
