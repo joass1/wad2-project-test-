@@ -1109,14 +1109,26 @@ function closeAvatarModal() {
   previewAvatar.value = null;
 }
 
-function useDefaultAvatar() {
-  updateAvatar(null);
-  previewAvatar.value = null;
-  closeAvatarModal();
-  showSuccessNotification();
+async function useDefaultAvatar() {
+  try {
+    // Update local state
+    updateAvatar(null);
+    previewAvatar.value = null;
+    
+    // Save to Firestore
+    await api.put("/api/profile/avatar", {
+      avatar: ""
+    });
+    
+    closeAvatarModal();
+    showSuccessNotification();
+  } catch (error) {
+    console.error("Failed to update avatar:", error);
+    alert("Failed to update avatar. Please try again.");
+  }
 }
 
-function handleAvatarChange(event) {
+async function handleAvatarChange(event) {
   const file = event.target.files[0];
   if (file) {
     // Validate file type
@@ -1133,11 +1145,28 @@ function handleAvatarChange(event) {
 
     // Create a preview URL
     const reader = new FileReader();
-    reader.onload = (e) => {
-      previewAvatar.value = e.target.result;
-      updateAvatar(e.target.result);
-      closeAvatarModal();
-      showSuccessNotification();
+    reader.onload = async (e) => {
+      const base64Data = e.target.result;
+      previewAvatar.value = base64Data;
+      
+      try {
+        // Update local state immediately for preview
+        updateAvatar(base64Data);
+        
+        // Save base64 image to Firestore via API
+        await api.put("/api/profile/avatar", {
+          avatar: base64Data
+        });
+        
+        closeAvatarModal();
+        showSuccessNotification();
+      } catch (error) {
+        console.error("Failed to save avatar to Firestore:", error);
+        alert("Failed to save avatar. Please try again.");
+        // Reset preview on error
+        previewAvatar.value = displayAvatar.value;
+        updateAvatar(displayAvatar.value);
+      }
     };
     reader.readAsDataURL(file);
   }
