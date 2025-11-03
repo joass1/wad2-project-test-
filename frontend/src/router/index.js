@@ -94,21 +94,40 @@ const getCurrentUser = () => {
 router.beforeEach(async (to, from, next) => {
   const currentUser = await getCurrentUser();
 
+  // Redirect to login if route requires auth and user is not logged in
   if (to.meta.requiresAuth && !currentUser) {
-    next({ name: "Login" }); 
-  } else if (currentUser && to.name !== 'PetSelection') {
-    // Check if user has selected a pet (first-time user check)
+    next({ name: "Login" });
+    return;
+  }
+
+  // Redirect to login page if logged in user tries to access login
+  if (to.meta.requiresUnauth && currentUser) {
+    next({ name: "Dashboard" });
+    return;
+  }
+
+  // Check if user has selected a pet (for logged-in users only)
+  if (currentUser && to.meta.requiresAuth) {
     try {
-      const response = await fetch('/api/profile/pet-selection-status', {
+      const token = await currentUser.getIdToken();
+      const response = await fetch(`${process.env.VUE_APP_API_URL}/api/profile/pet-selection-status`, {
         headers: {
-          'Authorization': `Bearer ${await currentUser.getIdToken()}`
+          'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        if (!data.has_selected_pet) {
+
+        if (!data.has_selected_pet && to.name !== 'PetSelection') {
+          // Redirect to pet selection if they haven't selected a pet yet
           next({ name: "PetSelection" });
+          return;
+        }
+
+        if (data.has_selected_pet && to.name === 'PetSelection') {
+          // Redirect to dashboard if they've already selected a pet and try to access PetSelection
+          next({ name: "Dashboard" });
           return;
         }
       }
@@ -117,7 +136,7 @@ router.beforeEach(async (to, from, next) => {
       // Continue to the requested route if there's an error
     }
   }
-  
+
   next();
 });
 

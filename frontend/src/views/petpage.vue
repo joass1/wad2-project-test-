@@ -1,14 +1,13 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import AnimatedPet from '@/components/AnimatedPet.vue'
-import SpritePreview from '@/components/SpritePreview.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import TMXTileBackground from '@/components/TMXTileBackground.vue'
 import PetMinigame from '@/components/PetMinigame.vue'
 import { useCoins } from '@/composables/useCoins.js'
 import { useGlobalPet } from '@/composables/useGlobalPet.js'
 import { api } from '@/lib/api.js'
-import { PET_CATALOG, PET_KEYS } from '@/data/petCatalog.js'
+import { PET_CATALOG } from '@/data/petCatalog.js'
 
 /* ================= PET CATALOG ================= */
 const PETS = PET_CATALOG
@@ -39,28 +38,14 @@ const inventoryError = ref(null)
 const droppedItems = ref([])  // Items dropped on the background for pet to eat
 let nextDroppedItemId = 0
 
-/* ==== Pet picker (preview vs active pet) ==== */
-const petKeys = PET_KEYS
-const petIndex = ref(0) // Preview pet index
+/* ==== Global Pet State ==== */
 const {
   selectedPetKey: globalPetKey,
-  setGlobalPet,
-  petName,
-  updatePetName,
   petStatus: globalPetStatus,
   updatePetStatus,
   setPetDead
 } = useGlobalPet()
 const selectedPetKey = computed(() => globalPetKey.value) // Active pet from global state
-const previewPetKey = computed(() => petKeys[petIndex.value]) // Preview pet
-
-function previousPet() { if (petIndex.value > 0) petIndex.value-- }
-function nextPet() { if (petIndex.value < petKeys.length - 1) petIndex.value++ }
-function selectPet() { 
-  const newPetKey = petKeys[petIndex.value]
-  setGlobalPet(newPetKey)
-  console.log(`Selected pet: ${PETS[newPetKey].label}`)
-}
 
 /* ==== TMX Map Backgrounds ==== */
 const tmxMapPath = ref('/background/pet map.tmx')
@@ -439,45 +424,6 @@ function testDeteriorate() {
   console.log('Test deteriorate: Happiness:', petStatus.happiness, 'Health:', petStatus.health)
 }
 
-/* ==== Pet Name Editing ==== */
-const isEditingPetName = ref(false)
-const tempPetName = ref('')
-const petNameError = ref('')
-
-function startEditingPetName() {
-  isEditingPetName.value = true
-  tempPetName.value = petName.value || ''
-  petNameError.value = ''
-}
-
-function cancelEditingPetName() {
-  isEditingPetName.value = false
-  tempPetName.value = ''
-  petNameError.value = ''
-}
-
-async function savePetName() {
-  if (!tempPetName.value.trim()) {
-    petNameError.value = 'Pet name cannot be empty'
-    return
-  }
-  
-  if (tempPetName.value.length > 20) {
-    petNameError.value = 'Pet name must be 20 characters or less'
-    return
-  }
-  
-  const result = await updatePetName(tempPetName.value.trim())
-  
-  if (result.success) {
-    isEditingPetName.value = false
-    tempPetName.value = ''
-    petNameError.value = ''
-  } else {
-    petNameError.value = result.error || 'Failed to update pet name'
-  }
-}
-
 /* ==== Border Warning ==== */
 const showBorderWarning = ref(false)
 let borderWarningTimeout = null
@@ -816,11 +762,6 @@ watch(isPetDead, (newIsDead) => {
                 <img src="/shopkeeper/shop_cart_sized.png" alt="Shop" class="shop-icon" />
               </button>
 
-              <!-- Minigame Button -->
-              <button class="minigame-button" @click="toggleMinigame">
-                <span class="minigame-icon">🎮</span>
-              </button>
-
               <!-- Border Warning Popup -->
               <div v-if="showBorderWarning" class="border-warning">
                 <div class="warning-icon">⚠️</div>
@@ -854,33 +795,15 @@ watch(isPetDead, (newIsDead) => {
         
       </div>
 
-      <!-- Pet Name -->
+      <!-- Minigame Section -->
       <div class="panel-section">
-        <h4 class="section-title">Pet Name</h4>
-        <div v-if="!isEditingPetName" class="pet-name-display">
-          <div class="current-pet-name">
-            {{ petName || PETS[selectedPetKey].label }}
-          </div>
-          <button class="edit-name-btn" @click="startEditingPetName">
-            <span class="edit-icon">✏️</span>
-            Edit Name
+        <h4 class="section-title">Mini Game</h4>
+        <div class="minigame-section">
+          <p class="minigame-description">Play once per day to earn coins!</p>
+          <button class="action-btn minigame-action-btn" @click="toggleMinigame">
+            <span class="game-icon">🎮</span>
+            Play Game
           </button>
-        </div>
-        <div v-else class="pet-name-edit">
-          <input 
-            v-model="tempPetName" 
-            type="text" 
-            class="name-input" 
-            placeholder="Enter pet name"
-            maxlength="20"
-            @keyup.enter="savePetName"
-            @keyup.escape="cancelEditingPetName"
-          />
-          <div v-if="petNameError" class="name-error">{{ petNameError }}</div>
-          <div class="edit-buttons">
-            <button class="save-btn" @click="savePetName">Save</button>
-            <button class="cancel-btn" @click="cancelEditingPetName">Cancel</button>
-          </div>
         </div>
       </div>
 
@@ -911,31 +834,6 @@ watch(isPetDead, (newIsDead) => {
         </div>
       </div>
 
-      <!-- Pet Select -->
-      <div class="panel-section">
-        <h4 class="section-title">Pet Select</h4>
-        <div class="selection-container">
-          <button class="nav-btn" @click="previousPet" :disabled="petIndex === 0">‹</button>
-
-          <div class="item-display" @click="nextPet">
-            <!-- 🔑 key forces preview to redraw as you scroll -->
-            <SpritePreview
-              :key="PETS[previewPetKey].config.spriteUrl + ':' + PETS[previewPetKey].config.slice"
-              :sprite-url="PETS[previewPetKey].config.spriteUrl"
-              :slice="PETS[previewPetKey].config.slice"
-              :scale="2.5"
-              :row="0"
-              :col="0"
-            />
-            <div class="pet-name-small">{{ PETS[previewPetKey].label }}</div>
-          </div>
-
-          <button class="nav-btn" @click="nextPet" :disabled="petIndex === petKeys.length - 1">›</button>
-        </div>
-
-        <!-- Optional now; you can remove if you want instant-switch only -->
-        <button class="action-btn" @click="selectPet">Select Pet</button>
-      </div>
 
       <!-- Manual Control -->
       <div class="panel-section">
@@ -1239,6 +1137,36 @@ watch(isPetDead, (newIsDead) => {
   }
 }
 
+/* Minigame Section Styles */
+.minigame-section {
+  text-align: center;
+  padding: 12px 0;
+}
+
+.minigame-description {
+  margin: 0 0 12px 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.minigame-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.minigame-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.game-icon {
+  font-size: 18px;
+}
+
 /* Control Toggle Button */
 .control-toggle-btn{
   width:100%;
@@ -1412,40 +1340,13 @@ watch(isPetDead, (newIsDead) => {
   z-index:100;
 }
 
-/* Minigame Button */
-.minigame-button{
-  position:absolute;
-  top:20px;
-  right:80px;
-  background:#3b82f6;
-  border:none;
-  border-radius:8px;
-  padding:8px 12px;
-  cursor:pointer;
-  box-shadow:0 2px 8px rgba(0,0,0,0.2);
-  transition:all 0.3s ease;
-  z-index:100;
-}
-
-.minigame-button:hover{
-  transform:translateY(-2px);
-  box-shadow:0 4px 12px rgba(0,0,0,0.3);
-  background:#2563eb;
-}
-
-.minigame-icon{
-  font-size:24px;
-  display:block;
-  line-height:1;
-}
-
 @media (max-width: 960px) {
   .shop-button {
     top: 10px;
     right: 10px;
     padding: 6px;
   }
-  
+
   .shop-icon {
     width: 32px;
     height: 32px;
@@ -2008,16 +1909,6 @@ watch(isPetDead, (newIsDead) => {
 }
 
 @media (max-width: 960px) {
-  .minigame-button {
-    top: 10px;
-    right: 60px;
-    padding: 6px 10px;
-  }
-
-  .minigame-icon {
-    font-size: 20px;
-  }
-
   .minigame-popup{
     width: 95vw;
     height: 85vh;

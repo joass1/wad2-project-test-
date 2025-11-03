@@ -718,9 +718,10 @@ def get_pet_selection_status(user: dict = Depends(require_user)):
 
 @router.post("/select-pet")
 def select_pet(payload: dict, user: dict = Depends(require_user)):
-    """Set user's selected pet"""
+    """Set user's selected pet and pet name"""
     uid = user["uid"]
     pet_key = payload.get("pet_key")
+    pet_name = payload.get("pet_name")
 
     if not pet_key:
         return {"ok": False, "message": "Missing 'pet_key' field"}
@@ -730,19 +731,45 @@ def select_pet(payload: dict, user: dict = Depends(require_user)):
     if pet_key not in valid_pets:
         return {"ok": False, "message": "Invalid pet selection"}
 
+    # Validate pet name (now required)
+    if not pet_name:
+        return {"ok": False, "message": "Pet name is required"}
+
+    if len(pet_name.strip()) == 0:
+        return {"ok": False, "message": "Pet name cannot be empty"}
+
+    if len(pet_name.strip()) < 2:
+        return {"ok": False, "message": "Pet name must be at least 2 characters"}
+
+    if len(pet_name) > 20:
+        return {"ok": False, "message": "Pet name must be 20 characters or less"}
+
+    pet_name = pet_name.strip()
+
     # Update user's pet settings
+    pet_settings = {
+        "selected_pet": pet_key,
+        "has_selected_pet": True,
+        "pet_name": pet_name,
+        "selected_at": datetime.now(timezone.utc),
+    }
+
     db.collection("users").document(uid).set(
-        {
-            "pet_settings": {
-                "selected_pet": pet_key,
-                "has_selected_pet": True,
-                "selected_at": datetime.now(timezone.utc),
-            }
-        },
+        {"pet_settings": pet_settings},
         merge=True,
     )
 
-    return {"ok": True, "message": "Pet selected successfully", "selected_pet": pet_key}
+    # Also initialize pet status if not exists
+    doc_snapshot = db.collection("users").document(uid).get()
+    user_data = doc_snapshot.to_dict() or {}
+    if "pet_status" not in user_data:
+        now = datetime.now(timezone.utc)
+        db.collection("users").document(uid).set(
+            {"pet_status": {**DEFAULT_PET_STATUS, "last_updated": now}},
+            merge=True,
+        )
+
+    return {"ok": True, "message": "Pet selected successfully", "selected_pet": pet_key, "pet_name": pet_name}
 
 
 @router.put("/pet-name")

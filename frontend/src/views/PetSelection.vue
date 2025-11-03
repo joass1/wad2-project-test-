@@ -31,10 +31,25 @@
         </div>
       </div>
 
+      <div v-if="selectedPet" class="pet-name-section">
+        <h2 class="section-title">Give your pet a name</h2>
+        <input
+          v-model="petName"
+          type="text"
+          class="pet-name-input"
+          placeholder="Enter your pet's name"
+          maxlength="20"
+          @keyup.enter="confirmSelection"
+          required
+        />
+        <p v-if="petNameError" class="name-error">{{ petNameError }}</p>
+        <p class="input-hint">Choose a unique name for your companion (max 20 characters)</p>
+      </div>
+
       <div class="selection-actions">
-        <button 
+        <button
           class="confirm-btn"
-          :disabled="!selectedPet"
+          :disabled="!selectedPet || !petName.trim()"
           @click="confirmSelection"
         >
           Choose {{ selectedPet ? PETS[selectedPet].label : 'Pet' }}
@@ -57,6 +72,8 @@ const { setGlobalPet } = useGlobalPet()
 // Pet catalog
 const PETS = PET_CATALOG
 const selectedPet = ref(null)
+const petName = ref('')
+const petNameError = ref('')
 
 // Pet descriptions
 const petDescriptions = {
@@ -79,47 +96,67 @@ function selectPet(petKey) {
 async function confirmSelection() {
   if (!selectedPet.value) return
 
+  // Validate pet name
+  petNameError.value = ''
+  if (!petName.value || !petName.value.trim()) {
+    petNameError.value = 'Please enter a name for your pet'
+    return
+  }
+
+  if (petName.value.trim().length < 2) {
+    petNameError.value = 'Pet name must be at least 2 characters'
+    return
+  }
+
+  if (petName.value.length > 20) {
+    petNameError.value = 'Pet name must be 20 characters or less'
+    return
+  }
+
   try {
     // Get current user for authentication
     const { auth } = await import('@/lib/firebase')
     const { onAuthStateChanged } = await import('firebase/auth')
-    
+
     const currentUser = await new Promise((resolve) => {
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         unsubscribe()
         resolve(user)
       })
     })
-    
+
     if (!currentUser) {
       alert('Please log in to select a pet')
       router.push('/login')
       return
     }
-    
+
     // Save pet selection to backend
     const token = await currentUser.getIdToken()
-    const response = await fetch('/api/profile/select-pet', {
+    const payload = {
+      pet_key: selectedPet.value,
+      pet_name: petName.value.trim()
+    }
+
+    const response = await fetch(`${process.env.VUE_APP_API_URL}/api/profile/select-pet`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({
-        pet_key: selectedPet.value
-      })
+      body: JSON.stringify(payload)
     })
-    
+
     if (!response.ok) {
       const errorData = await response.json()
       throw new Error(errorData.message || 'Failed to save pet selection')
     }
-    
+
     // Set the global pet
     setGlobalPet(selectedPet.value)
-    
-    // Navigate to the main app
-    router.push('/')
+
+    // Navigate to the dashboard
+    router.push('/dashboard')
   } catch (error) {
     console.error('Error setting pet:', error)
     alert('There was an error setting your pet. Please try again.')
@@ -226,6 +263,54 @@ async function confirmSelection() {
   color: var(--text-muted);
   line-height: 1.5;
   margin: 0;
+}
+
+.pet-name-section {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 30px;
+  background: var(--surface-light);
+  border-radius: 16px;
+  border: 2px solid var(--surface-lighter);
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 20px 0;
+}
+
+.pet-name-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 14px 20px;
+  font-size: 1.1rem;
+  border: 2px solid var(--surface-lighter);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.pet-name-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(106, 122, 90, 0.1);
+}
+
+.input-hint {
+  margin: 10px 0 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.name-error {
+  margin: 10px 0 0 0;
+  color: #ef4444;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .selection-actions {
