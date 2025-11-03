@@ -554,7 +554,8 @@ def get_recent_activity(user: dict = Depends(require_user)):
             for session in study_sessions:
                 data = session.to_dict()
                 created_at = data.get("created_at")
-                duration = data.get("duration_minutes", 0)
+                # Check for actual_duration_minutes first (new format), fall back to duration_minutes (legacy)
+                duration = data.get("actual_duration_minutes") or data.get("duration_minutes", 0)
                 subject = data.get("subject", "")
 
                 # Build title with subject if available
