@@ -323,6 +323,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { useDisplay } from "vuetify";
 import { useAuth } from "@/composables/useAuth";
 import { useGlobalPet } from "@/composables/useGlobalPet";
 import { api } from "@/lib/api";
@@ -330,6 +331,7 @@ import { api } from "@/lib/api";
 const { userProfile, loading } = useAuth();
 const { petName, selectedPet } = useGlobalPet();
 const router = useRouter();
+const { mobile } = useDisplay();
 
 const navigateToPetPage = () => {
   router.push({ name: "PetPage" });
@@ -781,7 +783,7 @@ const currentTimeLineStyle = computed(() => {
   const currentMinutes = now.getMinutes();
 
   // Each hour is 60px, calculate position from 12 AM
-  const hourHeight = 60;
+  const hourHeight = mobile.value ? 50 : 60;
   const topPosition =
     currentHour * hourHeight + (currentMinutes / 60) * hourHeight;
 
@@ -799,7 +801,7 @@ function scrollToCurrentTime() {
   const currentMinutes = now.getMinutes();
 
   // Each hour is 60px, calculate scroll position
-  const hourHeight = 60;
+  const hourHeight = mobile.value ? 50 : 60;
   const scrollPosition =
     currentHour * hourHeight + (currentMinutes / 60) * hourHeight;
 
