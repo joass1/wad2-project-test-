@@ -342,17 +342,6 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive, watch, nextTick } from "vue";
-import ApexCharts from "vue3-apexcharts";
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  Timestamp,
-} from "firebase/firestore";
 import { auth } from "@/lib/firebase";
 import { api } from "@/lib/api.js";
 import { useTheme } from "vuetify";
@@ -363,10 +352,8 @@ onMounted(() => {
   loadWellnessData();
   getTaskGraph();
   loadWeeklyStudyChart();
-  // try1();
 });
 
-const filteredInsights = [""];
 const generatedInsights = ref([]);
 const dailyStudyChart = ref(null);
 const subjectChart = ref(null);
@@ -397,7 +384,6 @@ const hasWellnessData = computed(() => {
   return wellnessSeries.value.length > 0 &&
     wellnessSeries.value.some((series) => series.data.some((d) => d > 0));
 });
-
 
 const taskStat = reactive({
   completed: 0,
@@ -488,32 +474,9 @@ function formatToUserTimezone(isoDate, options = {}) {
   }).format(date);
 }
 
-async function try1() {
-  try {
-    const mockSession = {
-      duration_minutes: 50,
-      subject: 'Computer Science',
-      task: 'Implement linked list in Python',
-      task_id: 'task_abc123',
-      notes: 'Practiced building and traversing linked lists; review time complexity later.',
-      session_type: 'focus'
-    }
-
-    // Make sure your Axios instance points to the correct backend base URL
-    const response = await api.post("/api/study-sessions/", mockSession)
-
-    console.log("Session created:", response.data)
-    return response.data
-
-  } catch (error) {
-    console.error("Failed to create session:", error)
-  }
-}
-
 async function loadWeeklyStudyChart() {
   try {
     const data = await api.get("/api/study-sessions/stats/summary");
-    console.log(data);
     const dailyData = data.daily_hours_past_week;
     studyStats.studyHours = data.total_hours || 0;
     studyStats.studyStreak = data.study_streak || 0;
@@ -604,32 +567,6 @@ async function getTaskGraph() {
   }
 }
 
-// async function loadStudyData() {
-//   const user = auth.currentUser;
-//   if (!user) return;
-//   try {
-//     const response = await api.get("/api/study-sessions/stats/summary");
-//     studyStats.studyHours = response.total_hours || 0;
-//     studyStats.studyStreak = response.sessions_this_month || 0;
-//   } catch (error) {
-//     console.error("Error loading study data:", error);
-//     studyStats.studyHours = 0;
-//     studyStats.studyStreak = 0;
-//   }
-// }
-
-// async function loadStudyStreak() {
-//   const user = auth.currentUser;
-//   if (!user) return;
-//   try {
-//     const response = await api.get("/api/study-sessions/streak");
-//     studyStats.studyStreak = response.current_streak || 0;
-//   } catch (error) {
-//     console.error("Error loading study data:", error);
-//     studyStats.studyStreak = 0;
-//   }
-// }
-
 async function getTaskStats() {
   try {
     const tasksStats = await api.get("/api/tasks/stats");
@@ -642,63 +579,28 @@ async function getTaskStats() {
   }
 }
 
+
+const dateStr = `2025-11-02`
+
+const checkInPayload = {
+  date: dateStr,
+  mood: 1,
+  energy: 2,
+  sleep: 3,
+  stress: 4,
+  notes: null
+}
+
 async function getWellnessOverview() {
   try {
-    const user = auth.currentUser; // Ensure the user is logged in
-    if (!user) return;
-
-    // Query Firestore for wellness check-ins
-    const q = query(
-      collection(db, "wellnessCheckIns"),
-      where("userId", "==", user.uid),
-      orderBy("date", "desc")
-    );
-
-    const snapshot = await getDocs(q);
-    const checkIns = snapshot.docs.map((doc) => doc.data());
-
-    // Total Check-ins
-    wellnessOverview.totalCheckIns = checkIns.length;
-
-    // Last Check-in Date
-    if (checkIns.length > 0) {
-      const lastCheckIn = checkIns[0].date.toDate(); // Get the latest check-in date
-      wellnessOverview.lastCheckInDate = lastCheckIn.toLocaleDateString(undefined, {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    }
-
-    // Calculate Streak (Consecutive Check-ins)
-    wellnessOverview.streak = calculateStreak(checkIns);
+    const data = await api.get("/api/wellness/overview");
+    wellnessOverview.totalCheckIns = data.totalCheckIns;
+    console.log(wellnessOverview.totalCheckIns);
   } catch (error) {
     console.error("Failed to fetch wellness stats:", error);
   }
 }
 
-// Function to calculate streak based on check-in dates
-function calculateStreak(checkIns) {
-  let streak = 0;
-  const now = new Date();
-
-  // Loop through check-ins in reverse order (most recent to least recent)
-  for (let i = 0; i < checkIns.length; i++) {
-    const checkInDate = checkIns[i].date.toDate();
-
-    // Check if this check-in is on the current day or consecutive days
-    const diff = Math.floor((now - checkInDate) / (1000 * 60 * 60 * 24)); // days difference
-
-    if (diff === streak) {
-      streak++; // Increment streak if consecutive day
-    } else if (diff > streak) {
-      break; // If there's a gap in check-ins, stop counting the streak
-    }
-  }
-
-  return streak;
-}
 
 function hashStringToColor(str) {
   let hash = 0;
@@ -706,40 +608,14 @@ function hashStringToColor(str) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
   const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 70%, 60%)`; // you can adjust saturation/lightness
+  return `hsl(${hue}, 70%, 60%)`;
 }
 
 async function loadWellnessData() {
   try {
-    const user = auth.currentUser;
-    if (!user) return;
+    const data = await api.get("/api/wellness/checkins/weekly");
 
-    const now = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(now.getDate() - 6); // last 7 days
-
-    const q = query(
-      collection(db, "wellnessCheckIns"),
-      where("userId", "==", user.uid),
-      where("date", ">=", sevenDaysAgo),
-      orderBy("date", "asc"),
-      limit(7)
-    );
-
-    const snapshot = await getDocs(q);
-    const data = snapshot.docs.map((doc) => doc.data());
-
-    // Build a map keyed by date string for quick lookup
-    const dataMap = {};
-    data.forEach((d) => {
-      const dateStr = d.date.toDate
-        ? d.date.toDate().toLocaleDateString("en-US", { month: "short", day: "2-digit" })
-        : new Date(d.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "2-digit",
-        });
-      dataMap[dateStr] = d;
-    });
+    const checkIns = data.checkIns || [];
 
     const formattedDates = [];
     const moodData = [];
@@ -748,45 +624,61 @@ async function loadWellnessData() {
     const stressData = [];
     const notesData = [];
 
+    // Map check-ins by date for easy lookup
+    const dataMap = {};
+    checkIns.forEach((item) => {
+      const dateStr = new Date(item.date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+      });
+      dataMap[dateStr] = item;
+    });
+
+    const startDate = new Date(data.startDate);
     for (let i = 0; i < 7; i++) {
-      const date = new Date(sevenDaysAgo);
-      date.setDate(sevenDaysAgo.getDate() + i);
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
       const dateStr = date.toLocaleDateString("en-US", {
         month: "short",
         day: "2-digit",
       });
+
       formattedDates.push(dateStr);
 
       const dayData = dataMap[dateStr] || {};
 
-      moodData.push(dayData.mood !== undefined ? dayData.mood : 0);
-      energyData.push(dayData.energy !== undefined ? dayData.energy : 0);
-      sleepData.push(dayData.sleep !== undefined ? dayData.sleep : 0);
-      stressData.push(dayData.stress !== undefined ? dayData.stress : 0);
+      moodData.push(dayData.mood ?? 0);
+      energyData.push(dayData.energy ?? 0);
+      sleepData.push(dayData.sleep ?? 0);
+      stressData.push(dayData.stress ?? 0);
       notesData.push(dayData.notes || "");
     }
 
-    // Update chart data & x-axis
+    // Update chart series
     wellnessSeries.value = [
       { name: "Mood", data: moodData },
       { name: "Energy", data: energyData },
       { name: "Sleep", data: sleepData },
       { name: "Stress", data: stressData },
     ];
+
     wellnessOptions.value.xaxis.categories = formattedDates;
 
+    // Average calculation
     const avg = (arr) => {
-      const validData = arr.filter(
-        (value) => value !== 0 || arr.indexOf(value) === arr.lastIndexOf(value)
-      );
-      return validData.length > 0
-        ? (validData.reduce((a, b) => a + b, 0) / validData.length).toFixed(1)
-        : 0;
+      const valid = arr.filter((v) => v !== 0);
+      return valid.length ? (valid.reduce((a, b) => a + b, 0) / valid.length).toFixed(1) : 0;
     };
 
+    mood.value = avg(moodData);
+    energy.value = avg(energyData);
+    sleep.value = avg(sleepData);
+    stress.value = avg(stressData);
+
+    // Tooltip with notes
     wellnessOptions.value.tooltip = {
       shared: true,
-      custom: function ({ series, dataPointIndex, w }) {
+      custom: function ({ series, dataPointIndex }) {
         const dateLabel = formattedDates[dataPointIndex];
         const mood = series[0][dataPointIndex];
         const energy = series[1][dataPointIndex];
@@ -795,44 +687,31 @@ async function loadWellnessData() {
         const note = notesData[dataPointIndex] || "No notes";
 
         return `
-      <div style="min-width: 150px; padding: 8px;">  <!-- Added min-width and some padding -->
-        <div class="apexcharts-tooltip-title" style="font-weight: 600; padding-bottom: 8px;">${dateLabel}</div>
-        <div class="apexcharts-tooltip-series-group apexcharts-active" style="display: flex; align-items: center; padding: 4px 0;">
-          <span class="apexcharts-tooltip-marker" style="background-color: #FF7043; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
-          <span>Mood: ${mood}</span>
-        </div>
-        <div class="apexcharts-tooltip-series-group" style="display: flex; align-items: center; padding: 4px 0;">
-          <span class="apexcharts-tooltip-marker" style="background-color: #42A5F5; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
-          <span>Energy: ${energy}</span>
-        </div>
-        <div class="apexcharts-tooltip-series-group" style="display: flex; align-items: center; padding: 4px 0;">
-          <span class="apexcharts-tooltip-marker" style="background-color: #80CBC4; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
-          <span>Sleep: ${sleep}</span>
-        </div>
-        <div class="apexcharts-tooltip-series-group" style="display: flex; align-items: center; padding: 4px 0;">
-          <span class="apexcharts-tooltip-marker" style="background-color: #FFD54F; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
-          <span>Stress: ${stress}</span>
-        </div>
-<div style="
-    border-top: 1px solid #eee;
-    margin-top: 10px;
-    padding-top: 8px;
-    font-style: italic;
-    font-size: 13px;
-    white-space: normal;
-    word-break: break-word;
-">
-  Notes: ${note}
-</div>
-    `;
+          <div style="min-width: 150px; padding: 8px;">
+            <div style="font-weight: 600; padding-bottom: 8px;">${dateLabel}</div>
+            <div style="display: flex; align-items: center; padding: 4px 0;">
+              <span style="background-color: #FF7043; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
+              <span>Mood: ${mood}</span>
+            </div>
+            <div style="display: flex; align-items: center; padding: 4px 0;">
+              <span style="background-color: #42A5F5; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
+              <span>Energy: ${energy}</span>
+            </div>
+            <div style="display: flex; align-items: center; padding: 4px 0;">
+              <span style="background-color: #80CBC4; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
+              <span>Sleep: ${sleep}</span>
+            </div>
+            <div style="display: flex; align-items: center; padding: 4px 0;">
+              <span style="background-color: #FFD54F; margin-right: 6px; border-radius: 50%; width: 10px; height: 10px; display: inline-block;"></span>
+              <span>Stress: ${stress}</span>
+            </div>
+            <div style="border-top: 1px solid #eee; margin-top: 10px; padding-top: 8px; font-style: italic; font-size: 13px; word-break: break-word;">
+              Notes: ${note}
+            </div>
+          </div>
+        `;
       },
     };
-
-    // Calculate the average for each field (mood, energy, sleep, stress)
-    mood.value = avg(moodData);
-    energy.value = avg(energyData);
-    sleep.value = avg(sleepData);
-    stress.value = avg(stressData);
   } catch (error) {
     console.error("Error loading wellness data:", error);
   }

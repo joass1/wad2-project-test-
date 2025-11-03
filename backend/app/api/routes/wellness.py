@@ -1,6 +1,6 @@
 from copy import deepcopy
-from datetime import date, datetime, timezone
-from typing import Any, Dict, List, Tuple, cast
+from datetime import date, datetime, timezone, timedelta
+from typing import Any, Dict, List, Tuple, cast, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from google.cloud import firestore
@@ -456,4 +456,37 @@ def submit_checkin(payload: CheckInPayload, user: dict = Depends(require_user)):
         ),
         updatedStreak=overview.get("streak", 0),
         updatedTotalCheckIns=overview.get("totalCheckIns", 0),
+    )
+
+class WeeklyCheckinsResponse(BaseModel):
+    checkIns: List[dict]
+    checkInDates: List[datetime]
+    startDate: Optional[str] = None
+    endDate: Optional[str] = None
+
+@router.get("/checkins/weekly", response_model=WeeklyCheckinsResponse)
+def get_weekly_checkins(
+    user: dict = Depends(require_user),
+):
+    """Return all check-ins from the past 7 days (including today)."""
+    uid = user["uid"]
+    checkins_ref = _checkins_collection(uid)
+
+    now = datetime.utcnow()
+    seven_days_ago = now - timedelta(days=6)
+    query = (
+        checkins_ref
+        .where(filter=firestore.FieldFilter("timestamp", ">=", seven_days_ago))
+        .where(filter=firestore.FieldFilter("timestamp", "<=", now))
+        .order_by("timestamp", direction=firestore.Query.ASCENDING)
+    )
+
+    checkins = [_serialize_checkin(doc) for doc in query.stream()]
+    checkin_dates = [entry.date for entry in checkins if entry.date]
+
+    return WeeklyCheckinsResponse(
+        checkIns=[checkin.model_dump() for checkin in checkins],  # serialize cleanly
+        checkInDates=checkin_dates,
+        startDate=seven_days_ago.date().isoformat(),
+        endDate=now.date().isoformat(),
     )
