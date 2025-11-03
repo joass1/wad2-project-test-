@@ -1471,12 +1471,20 @@ async function saveSettings() {
 
 .tab-navigation {
   display: flex;
-  gap: 0;
+  gap: 4px;
   margin-bottom: 24px;
   background-color: var(--surface-lighter);
   border-radius: 12px;
   padding: 4px;
   position: relative;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 960px) {
+  .tab-navigation {
+    overflow-x: visible;
+  }
 }
 
 .tab-item {
@@ -1487,9 +1495,14 @@ async function saveSettings() {
   color: var(--text-muted);
   font-weight: 500;
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
   text-align: center;
   background: transparent;
+  white-space: nowrap;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tab-item:hover {
@@ -3436,17 +3449,238 @@ async function saveSettings() {
   box-shadow: 0 4px 15px rgba(106, 122, 90, 0.3);
 }
 
+@media (max-width: 960px) {
+  .main-content {
+    padding: 16px 12px;
+  }
+
+  .content-header {
+    margin-bottom: 16px;
+  }
+
+  .page-subtitle {
+    font-size: 14px;
+  }
+
+  /* Tab Navigation */
+  .tab-navigation {
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+
+  .tab-item {
+    padding: 10px 16px;
+    font-size: 14px;
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Profile Card */
+  .profile-card {
+    padding: 20px 16px;
+  }
+
+  .profile-avatar-section {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    padding-bottom: 60px;
+  }
+
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 32px;
+  }
+
+  .profile-info {
+    text-align: center;
+    width: 100%;
+  }
+
+  .profile-name {
+    font-size: 20px;
+  }
+
+  .profile-email {
+    font-size: 14px;
+  }
+
+  .profile-member-since {
+    font-size: 13px;
+  }
+
+  .edit-profile-btn {
+    position: absolute;
+    top: auto;
+    bottom: 0;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    justify-content: center;
+  }
+
+  .experience-section {
+    margin-top: 12px;
+  }
+
+  .xp-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .xp-title {
+    font-size: 13px;
+  }
+
+  .xp-counter {
+    font-size: 12px;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 20px 16px;
+  }
+
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+    margin-bottom: 12px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+  }
+
+  /* Stats Header */
+  .stats-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .stats-header .section-title {
+    font-size: 18px;
+    margin-bottom: 0;
+  }
+
+  .refresh-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .refresh-icon-wrapper {
+    width: 18px;
+    height: 18px;
+  }
+
+  .refresh-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Recent Activity */
+  .recent-activity {
+    padding: 20px 16px;
+  }
+
+  .activity-title-section {
+    gap: 10px;
+  }
+
+  .activity-icon-main {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+
+  .activity-item {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .activity-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  /* Overview Content */
+  .overview-content {
+    gap: 20px;
+  }
+
+  /* Achievements Grid */
+  .achievements-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
 @media (max-width: 768px) {
   .main-content {
-    padding: 16px;
+    padding: 12px 8px;
   }
 
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
 
   .achievements-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px 12px;
+  }
+
+  .stat-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-label {
+    font-size: 12px;
   }
 }
 
