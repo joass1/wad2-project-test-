@@ -5,9 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import socketio
 import asyncio
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# load .env file backend dir
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 from app.api.routes import (
     auth,
