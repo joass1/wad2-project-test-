@@ -15,6 +15,7 @@
         v-if="isMobile && modelValue"
         icon
         variant="text"
+        size="small"
         class="close-btn"
         @click="$emit('update:modelValue', false)"
       >
@@ -168,7 +169,7 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
 
 <style scoped>
 .sb-drawer {
-  border-right: 1px solid rgba(0, 0, 0, 0.12);
+  border-right: 1px solid var(--surface-lighter);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -178,8 +179,11 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
   top: 12px;
   right: 12px;
   z-index: 10;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--surface-lighter);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 /* Slide fade transition */
@@ -236,9 +240,9 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
   align-items: center;
   gap: 16px;
   padding: 20px;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--surface-light);
   border-radius: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid var(--surface-lighter);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   cursor: pointer;
