@@ -6,10 +6,13 @@ import time
 import secrets
 import requests
 from typing import Optional
+from dotenv import load_dotenv
 
 from ..deps.auth import require_user
 from ...core.firebase import db
 from ...core.google_calendar import call_google_calendar_api
+
+load_dotenv()
 
 
 router = APIRouter(prefix="/google/oauth", tags=["google-oauth"])
