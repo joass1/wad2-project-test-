@@ -374,6 +374,7 @@ import { ref, computed, onMounted, watch} from 'vue'
 import { getFirestore, collection, addDoc, query, where, getDocs, orderBy } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { useCoins } from '@/composables/useCoins.js'
+import { api } from '@/lib/api.js'
 import confetti from 'canvas-confetti'
 
 // Initialize Firebase instances
@@ -505,23 +506,39 @@ const checkTodayCheckIn = async () => {
   const user = auth.currentUser
   if (!user) return
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-
   try {
-    const q = query(
-      collection(db, 'wellnessCheckIns'),
-      where('userId', '==', user.uid),
-      where('date', '>=', today),
-      where('date', '<', tomorrow)
-    )
+    // Get today's date string
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    const todayStr = `${year}-${month}-${day}`
+
+    // Use wellness overview API to check today's status
+    const overview = await api.get('/api/wellness/overview')
     
-    const querySnapshot = await getDocs(q)
-    hasCheckedInToday.value = !querySnapshot.empty
+    // Check if last check-in date matches today
+    hasCheckedInToday.value = (overview.lastCheckInDate === todayStr)
+    
+    // Also update streak from API
+    if (overview.streak !== undefined) {
+      streak.value = overview.streak
+    }
   } catch (error) {
     console.error('Error checking today\'s check-in:', error)
+    // Fallback: try to check from monthly check-ins
+    try {
+      const today = new Date()
+      const year = today.getFullYear()
+      const month = String(today.getMonth() + 1).padStart(2, '0')
+      const day = String(today.getDate()).padStart(2, '0')
+      const todayStr = `${year}-${month}-${day}`
+      
+      const monthData = await api.get(`/api/wellness/checkins?month=${month}&year=${year}`)
+      hasCheckedInToday.value = (monthData.checkInDates || []).includes(todayStr)
+    } catch (fallbackError) {
+      console.error('Fallback check also failed:', fallbackError)
+    }
   }
 }
 
@@ -531,32 +548,53 @@ const loadCheckIns = async () => {
   if (!user) return
 
   try {
-    const q = query(
-      collection(db, 'wellnessCheckIns'),
-      where('userId', '==', user.uid),
-      orderBy('date', 'desc')
-    )
+    // Load check-ins for current month and previous month (for calendar display)
+    const today = new Date()
+    const currentYear = today.getFullYear()
+    const currentMonth = today.getMonth() + 1
     
-    const querySnapshot = await getDocs(q)
+    // Load current month
+    const currentMonthData = await api.get(`/api/wellness/checkins?month=${currentMonth}&year=${currentYear}`)
+    
+    // Load previous month (for calendar that shows previous month dates)
+    let prevMonth = currentMonth - 1
+    let prevYear = currentYear
+    if (prevMonth < 1) {
+      prevMonth = 12
+      prevYear = currentYear - 1
+    }
+    const prevMonthData = await api.get(`/api/wellness/checkins?month=${prevMonth}&year=${prevYear}`)
+    
+    // Combine check-ins from both months
+    const allCheckIns = [...currentMonthData.checkIns, ...prevMonthData.checkIns]
+    
+    // Build history object
     const history = {}
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data()
-      const dateStr = getDateString(data.date.toDate())
-      history[dateStr] = {
-        mood: data.mood,
-        energy: data.energy,
-        sleep: data.sleep,
-        stress: data.stress,
-        notes: data.notes || ''
+    allCheckIns.forEach((checkIn) => {
+      history[checkIn.date] = {
+        mood: checkIn.mood,
+        energy: checkIn.energy,
+        sleep: checkIn.sleep,
+        stress: checkIn.stress,
+        notes: checkIn.notes || ''
       }
     })
     
     checkInHistory.value = history
-    totalCheckIns.value = querySnapshot.size
-    calculateStreak()
+    totalCheckIns.value = allCheckIns.length
+    
+    // Update streak from API overview
+    try {
+      const overview = await api.get('/api/wellness/overview')
+      streak.value = overview.streak || 0
+    } catch (overviewError) {
+      console.error('Error loading overview for streak:', overviewError)
+      calculateStreak() // Fallback to local calculation
+    }
   } catch (error) {
     console.error('Error loading check-ins:', error)
+    // Fallback to local calculation if API fails
+    calculateStreak()
   }
 }
 
@@ -748,21 +786,29 @@ const completeCheckIn = async () => {
   }
 
   try {
-    const checkInData = {
-      userId: user.uid,
-      date: new Date(),
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+
+    // Submit check-in using the wellness API endpoint
+    const checkInPayload = {
+      date: dateStr,
       mood: mood.value,
       energy: energy.value,
       sleep: sleep.value,
       stress: stress.value,
-      notes: notes.value,
-      createdAt: new Date()
+      notes: notes.value || null
     }
 
-    await addDoc(collection(db, 'wellnessCheckIns'), checkInData)
+    const response = await api.post('/api/wellness/checkin', checkInPayload)
 
+    // Update local state
     isCompleted.value = true
     hasCheckedInToday.value = true
+
     // Confetti Celebration
     triggerCelebration()
 
@@ -780,8 +826,22 @@ const completeCheckIn = async () => {
       // Don't fail the check-in if coins fail to update
     }
 
+    // Update streak from API response
+    if (response.overview) {
+      streak.value = response.overview.streak || 0
+    }
+
     // Reload data
     await loadCheckIns()
+
+    // Emit event to notify other components (e.g., profile.vue) that a check-in was submitted
+    window.dispatchEvent(new CustomEvent('wellness-checkin-submitted', {
+      detail: {
+        date: dateStr,
+        streak: response.overview?.streak || streak.value,
+        overview: response.overview
+      }
+    }))
   } catch (error) {
     console.error('Error saving check-in:', error)
     alert('Failed to save check-in. Please try again.')
