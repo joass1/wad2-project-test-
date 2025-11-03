@@ -90,6 +90,32 @@ def upsert_profile(payload: dict, user: dict = Depends(require_user)):
     return {"ok": True, "uid": uid, "message": "profile upserted successfully"}
 
 
+@router.put("/avatar")
+def update_avatar(payload: dict, user: dict = Depends(require_user)):
+    """Update user's profile avatar (base64 encoded image)"""
+    uid = user["uid"]
+    avatar = payload.get("avatar")
+    
+    # Allow null/empty string to remove avatar
+    if avatar is None:
+        return {"ok": False, "message": "Missing 'avatar' field"}
+    
+    # Validate base64 string if provided (basic check)
+    if avatar and isinstance(avatar, str) and len(avatar) > 0:
+        # Check if it looks like a base64 data URL
+        if not (avatar.startswith("data:image/") or avatar.startswith("data:") or len(avatar) > 100):
+            # If it's not a data URL, assume it's a base64 string (for backward compatibility)
+            pass
+    
+    # Update avatar in Firestore
+    db.collection("users").document(uid).set(
+        {"avatar": avatar},
+        merge=True,
+    )
+    
+    return {"ok": True, "message": "Avatar updated successfully", "avatar": avatar}
+
+
 @router.get("/preferences", response_model=UserPreferences)
 def get_user_preferences(user: dict = Depends(require_user)):
     uid = user["uid"]

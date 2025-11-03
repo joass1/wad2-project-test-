@@ -11,7 +11,7 @@
     </v-btn>
 
     <v-toolbar-title class="text-h6 font-weight-bold ml-2 title-shimmer">
-      pomogotchi
+      Pomogotchi
     </v-toolbar-title>
 
     <v-spacer />

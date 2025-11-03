@@ -21,11 +21,13 @@ function clearStorage() {
   }
 }
 
-// Function to load from localStorage (only for avatar)
+// Function to load from localStorage (avatar no longer loaded from localStorage, using Firestore instead)
 function loadFromStorage() {
+  // Avatar is now stored in Firestore, not localStorage
+  // This function is kept for backward compatibility but doesn't load avatar
   try {
     const data = JSON.parse(localStorage.getItem("demo_user") || "{}")
-    if (data?.avatar) _profile.value.avatar = data.avatar
+    // No longer loading avatar from localStorage
   } catch (error) {
     console.warn('Failed to load user profile from localStorage:', error)
   }
@@ -54,8 +56,8 @@ export function useUserProfile() {
     return authUser.value?.email || firebaseProfile.value?.email || ''
   })
   const displayAvatar = computed(() => {
-    // Prioritize localStorage avatar, then Firebase
-    return _profile.value.avatar || authUser.value?.photoURL || firebaseProfile.value?.avatar || firebaseProfile.value?.avatar_url || null
+    // Prioritize Firestore avatar, then Firebase Auth photoURL, then localStorage (for temporary previews)
+    return firebaseProfile.value?.avatar || authUser.value?.photoURL || _profile.value.avatar || firebaseProfile.value?.avatar_url || null
   })
   const level = computed(() => _profile.value.level || 1)
 
@@ -87,15 +89,12 @@ export function useUserProfile() {
       }
       
       if (profile) {
-        // Only update avatar from Firebase if no localStorage avatar exists
-        if (!_profile.value.avatar) {
-          _profile.value.avatar = profile.avatar || profile.avatar_url || firebaseUser?.photoURL || _profile.value.avatar
-        }
+        // Firestore is the source of truth - displayAvatar computed will prioritize Firestore
+        // Local avatar is only used for temporary previews before Firestore syncs
+        // No need to manually sync here since displayAvatar handles the priority
       } else if (firebaseUser) {
-        // Only update avatar from Firebase Auth if no localStorage avatar exists
-        if (!_profile.value.avatar) {
-          _profile.value.avatar = firebaseUser.photoURL || _profile.value.avatar
-        }
+        // If no Firestore profile, use Firebase Auth photoURL if available
+        // Local avatar is only used for temporary previews
       } else {
         // User logged out, clear everything
         currentUserId = null
@@ -117,12 +116,13 @@ export function useUserProfile() {
     saveToStorage()
   }
 
-  // Function to save to localStorage (only avatar)
+  // Function to save to localStorage (avatar no longer saved to localStorage, using Firestore instead)
   function saveToStorage() {
+    // Avatar is now stored in Firestore, not localStorage
+    // This function is kept for backward compatibility but doesn't save avatar
     try {
-      const userData = {
-        avatar: _profile.value.avatar
-      }
+      // Only save non-avatar data if needed in the future
+      const userData = {}
       localStorage.setItem("demo_user", JSON.stringify(userData))
     } catch (error) {
       console.warn('Failed to save user profile to localStorage:', error)
@@ -141,9 +141,12 @@ export function useUserProfile() {
     // Don't save to localStorage since email comes from Firebase
   }
 
-  // Function to update avatar
+  // Function to update avatar (for temporary local preview only, doesn't save to localStorage)
+  // The actual save to Firestore is handled in profile.vue via API call
   function updateAvatar(avatar) {
-    updateProfile({ avatar })
+    // Only update local state for immediate preview
+    // Don't save to localStorage since Firestore is the source of truth
+    _profile.value.avatar = avatar
   }
 
   // Function to update level
