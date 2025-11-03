@@ -4,17 +4,25 @@ import { auth } from "@/lib/firebase";
 const API_BASE_URL = (import.meta?.env?.VITE_API_URL || process.env?.VUE_APP_API_URL || "http://localhost:8000");
 
 async function authorizedFetch(path, options = {}) {
-  const user = auth.currentUser;
-  const token = user ? await user.getIdToken() : null;
+const user = auth.currentUser;
+const token = user ? await user.getIdToken() : null;
 
-  const headers = {
-    "Content-Type": "application/json",
-    ...(options.headers ?? {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+const headers = {
+"Content-Type": "application/json",
+...(options.headers ?? {}),
+...(token ? { Authorization: `Bearer ${token}` } : {}),
+};
 
-  const base = API_BASE_URL.replace(/\/$/, "");
-  const response = await fetch(`${base}${path}`, {
+const base = API_BASE_URL.replace(/\/$/, "");
+let url = `${base}${path}`;
+if (options.params) {
+const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(options.params)) {
+      searchParams.append(key, value);
+    }
+    url += `?${searchParams.toString()}`;
+  }
+  const response = await fetch(url, {
     ...options,
     headers,
   });
@@ -30,7 +38,7 @@ async function authorizedFetch(path, options = {}) {
 }
 
 export const api = {
-  get: (path) => authorizedFetch(path),
+  get: (path, options = {}) => authorizedFetch(path, { method: "GET", ...options }),
   post: (path, body) =>
     authorizedFetch(path, { method: "POST", body: JSON.stringify(body) }),
   patch: (path, body) =>
