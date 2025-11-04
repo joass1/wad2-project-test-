@@ -229,15 +229,26 @@
                 }}
               </span>
             </div>
-            <div class="board-column">
+            <div
+              class="board-column"
+              :class="{ 'drag-over': draggedOverColumn === status }"
+              @dragover.prevent="handleDragOver($event, status)"
+              @dragenter.prevent="handleDragEnter(status)"
+              @dragleave="handleDragLeave($event, status)"
+              @drop.prevent="handleDrop($event, status)"
+            >
               <v-card
                 v-for="task in getFilteredTasks().filter(
                   (t) => t.status === status
                 )"
                 :key="task.id"
-                class="mb-3"
+                class="mb-3 task-card"
+                :class="{ 'dragging': draggedTaskId === task.id }"
                 elevation="0"
                 rounded="xl"
+                draggable="true"
+                @dragstart="handleDragStart($event, task)"
+                @dragend="handleDragEnd"
                 :style="
                   isOverdue(task)
                     ? 'background: rgba(220, 38, 38, 0.05); border-left: 4px solid var(--error);'
@@ -249,7 +260,7 @@
                     <div class="text-body-2" style="color: var(--text-primary)">
                       {{ task.title }}
                     </div>
-                    <div class="d-flex align-center ga-1">
+                    <div class="d-flex align-center ga-1" @mousedown.stop @click.stop>
                       <v-btn
                         icon
                         size="x-small"
@@ -334,16 +345,18 @@
                       >{{ formatDate(task.dueDate) }}</span
                     >
                   </div>
-                  <v-select
-                    :model-value="task.status"
-                    @update:model-value="handleStatusChange(task.id, $event)"
-                    :items="statusSelectItems"
-                    density="compact"
-                    variant="outlined"
-                    hide-details
-                    style="font-size: 0.875rem"
-                    :menu-props="{ contentClass: 'dropdown-opaque' }"
-                  ></v-select>
+                  <div @mousedown.stop @click.stop>
+                    <v-select
+                      :model-value="task.status"
+                      @update:model-value="handleStatusChange(task.id, $event)"
+                      :items="statusSelectItems"
+                      density="compact"
+                      variant="outlined"
+                      hide-details
+                      style="font-size: 0.875rem"
+                      :menu-props="{ contentClass: 'dropdown-opaque' }"
+                    ></v-select>
+                  </div>
                 </v-card-text>
               </v-card>
             </div>
@@ -881,6 +894,11 @@ const addTaskError = ref("");
 const isEditing = ref(false);
 const editingTaskId = ref(null);
 
+// Drag and drop state
+const draggedTaskId = ref(null);
+const draggedTaskStatus = ref(null);
+const draggedOverColumn = ref(null);
+
 const newTaskDefaults = {
   title: "",
   status: "todo",
@@ -1254,6 +1272,91 @@ const handlePermanentDeleteTask = async (id) => {
     loading.value = false;
   }
 };
+
+// Drag and drop handlers
+const handleDragStart = (event, task) => {
+  draggedTaskId.value = task.id;
+  draggedTaskStatus.value = task.status;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', task.id);
+};
+
+const handleDragEnd = () => {
+  draggedTaskId.value = null;
+  draggedTaskStatus.value = null;
+  draggedOverColumn.value = null;
+};
+
+const handleDragOver = (event, targetStatus) => {
+  event.preventDefault();
+  if (canMoveToStatus(targetStatus)) {
+    event.dataTransfer.dropEffect = 'move';
+    if (draggedOverColumn.value !== targetStatus) {
+      draggedOverColumn.value = targetStatus;
+    }
+  } else {
+    event.dataTransfer.dropEffect = 'none';
+    if (draggedOverColumn.value === targetStatus) {
+      draggedOverColumn.value = null;
+    }
+  }
+};
+
+const handleDragEnter = (targetStatus) => {
+  if (canMoveToStatus(targetStatus)) {
+    draggedOverColumn.value = targetStatus;
+  }
+};
+
+const handleDragLeave = (event, targetStatus) => {
+  // Only clear if we're actually leaving the column (not just moving to a child)
+  const relatedTarget = event.relatedTarget;
+  const columnElement = event.currentTarget;
+  
+  // Check if we're actually leaving the column (relatedTarget might be null)
+  if (!relatedTarget || !columnElement.contains(relatedTarget)) {
+    if (draggedOverColumn.value === targetStatus) {
+      draggedOverColumn.value = null;
+    }
+  }
+};
+
+const handleDrop = async (event, targetStatus) => {
+  event.preventDefault();
+  draggedOverColumn.value = null;
+  
+  if (!draggedTaskId.value || !canMoveToStatus(targetStatus)) {
+    return;
+  }
+
+  const taskId = draggedTaskId.value;
+  const currentStatus = draggedTaskStatus.value;
+  
+  // Only update if status actually changed
+  if (currentStatus !== targetStatus) {
+    try {
+      await api.patch(`/api/tasks/${taskId}`, { status: targetStatus });
+      await fetchTasks();
+    } catch (error) {
+      errorMessage.value = error.message || "Failed to update task status";
+    }
+  }
+  
+  draggedTaskId.value = null;
+  draggedTaskStatus.value = null;
+};
+
+// Validate forward-only movement
+const canMoveToStatus = (targetStatus) => {
+  if (!draggedTaskStatus.value) return false;
+  
+  const statusOrder = { todo: 0, inProgress: 1, done: 2 };
+  const currentOrder = statusOrder[draggedTaskStatus.value];
+  const targetOrder = statusOrder[targetStatus];
+  
+  // Only allow forward movement (same or next status)
+  return targetOrder >= currentOrder;
+};
 </script>
 
 <style scoped>
@@ -1354,12 +1457,44 @@ const handlePermanentDeleteTask = async (id) => {
 
 .board-column {
   min-height: 200px;
+  transition: background-color 0.2s ease;
+}
+
+.board-column.drag-over {
+  background-color: rgba(99, 102, 241, 0.1);
+  border-radius: 12px;
+  border: 2px dashed rgba(99, 102, 241, 0.3);
 }
 
 @media (min-width: 960px) {
   .board-column {
     min-height: 400px;
   }
+}
+
+.task-card {
+  cursor: grab;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.task-card:active {
+  cursor: grabbing;
+}
+
+.task-card.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.task-card :deep(button),
+.task-card :deep(.v-btn),
+.task-card :deep(.v-select) {
+  pointer-events: auto;
+}
+
+.task-card :deep(button):hover,
+.task-card :deep(.v-btn):hover {
+  cursor: pointer;
 }
 
 /* Ensure cards have proper spacing on mobile */
