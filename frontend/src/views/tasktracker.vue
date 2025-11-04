@@ -242,7 +242,7 @@
                   (t) => t.status === status
                 )"
                 :key="task.id"
-                class="mb-3 task-card"
+                class="mb-3 task-card task-card-bg"
                 :class="{ 'dragging': draggedTaskId === task.id }"
                 elevation="0"
                 rounded="xl"
@@ -251,8 +251,8 @@
                 @dragend="handleDragEnd"
                 :style="
                   isOverdue(task)
-                    ? 'background: rgba(220, 38, 38, 0.05); border-left: 4px solid var(--error);'
-                    : 'background: var(--surface);'
+                    ? 'border-left: 4px solid var(--error);'
+                    : ''
                 "
               >
                 <v-card-text class="pa-4">
@@ -384,13 +384,13 @@
           <v-card
             v-for="task in getFilteredTasks()"
             :key="task.id"
-            class="mb-3"
+            class="mb-3 task-card-bg"
             elevation="0"
             rounded="xl"
             :style="
               isOverdue(task)
-                ? 'background: rgba(220, 38, 38, 0.05); border-left: 4px solid var(--error);'
-                : 'background: var(--surface-light);'
+                ? 'border-left: 4px solid var(--error);'
+                : ''
             "
           >
             <v-card-text class="pa-4">
@@ -529,13 +529,13 @@
             <v-card
               v-for="task in groupTasks"
               :key="task.id"
-              class="mb-3"
+              class="mb-3 task-card-bg"
               elevation="0"
               rounded="xl"
               :style="
                 isOverdue(task)
-                  ? 'background: rgba(220, 38, 38, 0.05); border-left: 4px solid var(--error);'
-                  : 'background: var(--surface-light);'
+                  ? 'border-left: 4px solid var(--error);'
+                  : ''
               "
             >
               <v-card-text class="pa-4">
@@ -1474,7 +1474,22 @@ const canMoveToStatus = (targetStatus) => {
 
 .task-card {
   cursor: grab;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.task-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Task card background with better contrast */
+.task-card-bg {
+  background: var(--surface-light) !important;
+}
+
+[data-theme="dark"] .task-card-bg {
+  background: var(--surface-light) !important;
 }
 
 .task-card:active {

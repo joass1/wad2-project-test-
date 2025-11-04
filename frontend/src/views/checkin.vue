@@ -1307,13 +1307,13 @@ onMounted(async () => {
 .coin-text {
   font-size: 14px;
   font-weight: 600;
-  color: #b8860b;
+  color: var(--warning);
   flex: 1;
 }
 
 /* Coin Reward Message in completion */
 .coin-reward-message {
-  color: #b8860b;
+  color: var(--warning);
   font-weight: 600;
   font-size: 1rem;
   margin: 0.75rem 0;
@@ -1378,7 +1378,7 @@ onMounted(async () => {
 
 .stat-sublabel {
   font-size: 0.75rem;
-  color: #888;
+  color: var(--text-muted);
 }
 
 /* Check-in Card */
@@ -1435,7 +1435,7 @@ onMounted(async () => {
 
 .slider-label {
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1525,7 +1525,7 @@ onMounted(async () => {
 .notes-label {
   display: block;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
   font-size: 0.95rem;
 }
@@ -1550,8 +1550,8 @@ onMounted(async () => {
 .complete-btn {
   width: 100%;
   padding: 1rem;
-  background: #6A7A5A;
-  color: white;
+  background: var(--primary);
+  color: #ffffff;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
@@ -1564,7 +1564,7 @@ onMounted(async () => {
 }
 
 .complete-btn:hover {
-  background: #5a6a4a;
+  opacity: 0.9;
 }
 
 /* Completion Message */
@@ -1577,7 +1577,7 @@ onMounted(async () => {
   width: 60px;
   height: 60px;
   background: var(--primary);
-  color: white;
+  color: #ffffff;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1754,7 +1754,7 @@ onMounted(async () => {
 
 .tooltip-row span:last-child {
   font-weight: 600;
-  color: #4ade80;
+  color: var(--success);
 }
 
 /* Ripple effect on click */
@@ -2282,7 +2282,7 @@ onMounted(async () => {
 
 /* Envelope Back */
 .envelope-back {
-  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,0.95) 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
   border: 2px solid var(--primary);
   transform: rotateY(180deg);
   background-size: cover;
@@ -2306,7 +2306,7 @@ onMounted(async () => {
 .envelope-back .message-content {
   position: relative;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--surface);
   backdrop-filter: blur(8px);
   padding: 1.75rem;
   border-radius: 12px;
@@ -2315,10 +2315,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-}
-
-[data-theme="dark"] .envelope-back {
-  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
+  border: 1px solid var(--surface-lighter);
 }
 
 .message-content {
