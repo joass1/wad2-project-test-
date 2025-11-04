@@ -10,6 +10,13 @@
         <h3 class="section-title">
           <span class="icon">📊</span> Wellness Overview
         </h3>
+
+        <!-- Coin Reward Badge -->
+        <div v-if="!hasCheckedInToday" class="coin-reward-badge">
+          <AnimatedCoin :scale="1.5" :speed="8" />
+          <span class="coin-text">Earn 20 coins today!</span>
+        </div>
+
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-label">Streak</div>
@@ -30,6 +37,7 @@
           <div class="success-icon">✓</div>
           <h3>Already Checked In Today!</h3>
           <p>You've completed your wellness check-in for {{ todayFormatted }}.</p>
+          <p class="coin-reward-message">🎉 You've collected your 20 coins for the day!</p>
           <p class="next-checkin-text">Come back tomorrow!</p>
 
           <!-- TEMPORARY: Reset button for testing -->
@@ -376,6 +384,7 @@ import { getAuth } from 'firebase/auth'
 import { useCoins } from '@/composables/useCoins.js'
 import { api } from '@/lib/api.js'
 import confetti from 'canvas-confetti'
+import AnimatedCoin from '@/components/AnimatedCoin.vue'
 
 // Initialize Firebase instances
 const db = getFirestore()
@@ -1081,6 +1090,59 @@ onMounted(async () => {
   border-radius: 12px;
   padding: 1.5rem;
   height: fit-content;
+}
+
+/* Coin Reward Badge */
+.coin-reward-badge {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.1));
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.coin-reward-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+  transition: left 0.6s;
+}
+
+.coin-reward-badge:hover::before {
+  left: 100%;
+}
+
+.coin-reward-badge:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.15));
+  border-color: rgba(255, 215, 0, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.coin-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #b8860b;
+  flex: 1;
+}
+
+/* Coin Reward Message in completion */
+.coin-reward-message {
+  color: #b8860b;
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0.75rem 0;
+  animation: fadeIn 0.5s ease;
 }
 
 .section-title {

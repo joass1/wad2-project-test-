@@ -4,8 +4,9 @@ import { useSubjects, useRecurringTopics } from '@/composables/useSubjects'
 // NEW: Background imports
 import { useBackground } from '@/composables/useBackgrounds'
 import BackgroundsGallery from '@/components/BackgroundsGallery.vue'
-import { useCoins } from '@/composables/useCoins.js' 
+import { useCoins } from '@/composables/useCoins.js'
 import { api } from '@/lib/api.js'
+import AnimatedCoin from '@/components/AnimatedCoin.vue'
 
 const { subjects, loading: subjectsLoading, fetchSubjects, createSubject, updateSubject, deleteSubject } = useSubjects()
 const { topics: recurringTopics, loading: topicsLoading, fetchTopics, createTopic, updateTopic, deleteTopic } = useRecurringTopics()
@@ -92,6 +93,14 @@ const label = computed(() => {
   const mins = Math.floor(timeLeft.value / 60)
   const secs = timeLeft.value % 60
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+})
+
+// Computed property for potential coins based on timer duration
+const potentialCoins = computed(() => {
+  if (mode.value === 'Focus') {
+    return Math.floor(minutes.value * 10)
+  }
+  return 0
 })
 
 // FIX: Added a safe default return to prevent 'Cannot read properties of undefined' errors on mount
@@ -490,8 +499,17 @@ onUnmounted(() => { clearInterval(t) })
 
               <div class="text-center mb-6 mb-md-8">
                 <div :class="['timer-display', 'mb-4', { 'timer-display-large': running }]">{{ label }}</div>
-                <v-progress-linear :model-value="pct" :height="$vuetify.display.mobile ? 6 : 8" rounded color="primary" 
+                <v-progress-linear :model-value="pct" :height="$vuetify.display.mobile ? 6 : 8" rounded color="primary"
                                   bg-color="surface-lighter" class="mb-2"/>
+              </div>
+
+              <!-- Coin Reward Display -->
+              <div v-if="!running && mode === 'Focus'" class="coin-reward-display mb-4">
+                <AnimatedCoin :scale="1.5" :speed="8" />
+                <div class="coin-info">
+                  <div class="coin-amount">{{ potentialCoins }} coins</div>
+                  <div class="coin-note">Awarded on completion only</div>
+                </div>
               </div>
 
               <div class="d-flex ga-2 ga-md-3 justify-center flex-wrap">
@@ -1266,6 +1284,62 @@ onUnmounted(() => { clearInterval(t) })
 
 .stats-divider {
   border-top: 1px solid var(--surface-lighter);
+}
+
+/* Coin Reward Display */
+.coin-reward-display {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.1));
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.coin-reward-display::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+  transition: left 0.6s;
+}
+
+.coin-reward-display:hover::before {
+  left: 100%;
+}
+
+.coin-reward-display:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.15));
+  border-color: rgba(255, 215, 0, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.coin-info {
+  text-align: left;
+}
+
+.coin-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #b8860b;
+}
+
+.coin-note {
+  font-size: 12px;
+  font-weight: 500;
+  color: #888;
+  font-style: italic;
 }
 
 .reset-btn {
