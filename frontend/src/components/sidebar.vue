@@ -281,7 +281,7 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
   justify-content: center;
   font-size: 24px;
   font-weight: bold;
-  color: white;
+  color: var(--text-primary);
   box-shadow: 0 4px 15px rgba(106, 122, 90, 0.3);
   border: 3px solid rgba(255, 255, 255, 0.8);
   transition: all 0.3s ease;
@@ -303,7 +303,7 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
 .avatar-text {
   font-size: 24px;
   font-weight: bold;
-  color: white;
+  color: #ffffff;
 }
 
 .profile-info {
@@ -321,7 +321,6 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
 
 /* Navigation Container */
 .nav-container {
@@ -413,7 +412,7 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
 }
 
 .error-text {
-  color: #ff6b6b;
+  color: var(--error);
   font-size: 12px;
   flex: 1;
 }

@@ -447,8 +447,8 @@
                 <div class="message-icon">🌸</div>
                 <h4 class="message-title">Take a breath, {{ displayName || 'friend' }}</h4>
                 <p class="message-text">
-                  Take five minutes to breathe deeply. Go for a walk, or listen 
-                  to your favorite song. One step at a time. 
+                  One step at a time. Go for a walk, or listen 
+                  to your favorite song.
                 </p>
               </div>
             </div>
@@ -546,7 +546,7 @@
                 <h4 class="message-title">You're amazing, {{ displayName || 'friend' }}!</h4>
                 <p class="message-text">
                   In case no one told you today: YOU matter. 
-                  You're worthy of all the good things. You're more than enough. Keep shining! 
+                  You're worthy of all the good things. You're more than enough!
                 </p>
               </div>
             </div>
@@ -608,6 +608,14 @@ const flippedEnvelopes = ref({
   motivation: false,
   anxious: false,
   proud: false
+})
+
+// Reset flipped envelopes when changing tabs
+watch(activeTab, () => {
+  // Close all envelopes when switching tabs
+  Object.keys(flippedEnvelopes.value).forEach(key => {
+    flippedEnvelopes.value[key] = false
+  })
 })
 
 // Sliders for particle generation
@@ -1307,13 +1315,13 @@ onMounted(async () => {
 .coin-text {
   font-size: 14px;
   font-weight: 600;
-  color: #b8860b;
+  color: var(--warning);
   flex: 1;
 }
 
 /* Coin Reward Message in completion */
 .coin-reward-message {
-  color: #b8860b;
+  color: var(--warning);
   font-weight: 600;
   font-size: 1rem;
   margin: 0.75rem 0;
@@ -1378,7 +1386,7 @@ onMounted(async () => {
 
 .stat-sublabel {
   font-size: 0.75rem;
-  color: #888;
+  color: var(--text-muted);
 }
 
 /* Check-in Card */
@@ -1435,7 +1443,7 @@ onMounted(async () => {
 
 .slider-label {
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1525,7 +1533,7 @@ onMounted(async () => {
 .notes-label {
   display: block;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
   font-size: 0.95rem;
 }
@@ -1533,12 +1541,13 @@ onMounted(async () => {
 .notes-textarea {
   width: 100%;
   padding: 0.875rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--surface-lighter);
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.95rem;
   resize: vertical;
   background: var(--surface);
+  color: var(--text-primary);
 }
 
 .notes-textarea:focus {
@@ -1550,8 +1559,8 @@ onMounted(async () => {
 .complete-btn {
   width: 100%;
   padding: 1rem;
-  background: #6A7A5A;
-  color: white;
+  background: var(--primary);
+  color: #ffffff;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
@@ -1564,7 +1573,7 @@ onMounted(async () => {
 }
 
 .complete-btn:hover {
-  background: #5a6a4a;
+  opacity: 0.9;
 }
 
 /* Completion Message */
@@ -1577,7 +1586,7 @@ onMounted(async () => {
   width: 60px;
   height: 60px;
   background: var(--primary);
-  color: white;
+  color: #ffffff;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1754,7 +1763,7 @@ onMounted(async () => {
 
 .tooltip-row span:last-child {
   font-weight: 600;
-  color: #4ade80;
+  color: var(--success);
 }
 
 /* Ripple effect on click */
@@ -2282,7 +2291,7 @@ onMounted(async () => {
 
 /* Envelope Back */
 .envelope-back {
-  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,0.95) 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
   border: 2px solid var(--primary);
   transform: rotateY(180deg);
   background-size: cover;
@@ -2306,19 +2315,16 @@ onMounted(async () => {
 .envelope-back .message-content {
   position: relative;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--surface);
   backdrop-filter: blur(8px);
-  padding: 1.75rem;
+  padding:  1.75rem 1.75rem 4rem 1.75rem;
   border-radius: 12px;
   max-height: 85%; /* Prevent overflow */
   /* overflow-y: auto; */
   display: flex;
   flex-direction: column;
   justify-content: center;
-}
-
-[data-theme="dark"] .envelope-back {
-  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
+  border: 1px solid var(--surface-lighter);
 }
 
 .message-content {
@@ -2334,13 +2340,13 @@ onMounted(async () => {
 .message-title {
   font-size: 1.3rem;
   font-weight: 700;
-  color: var(--primary);
+  color:#5a8a7a;
   margin: 0 0 1rem 0;
 }
 
 .message-text {
   font-size: 1rem;
-  color: var(--text-primary);
+  color:  #333;
   line-height: 1.7;
   margin: 0;
   overflow-wrap: break-word;

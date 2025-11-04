@@ -1804,13 +1804,13 @@ onUnmounted(() => { clearInterval(t) })
 .coin-amount {
   font-size: 16px;
   font-weight: 700;
-  color: #b8860b;
+  color: var(--warning);
 }
 
 .coin-note {
   font-size: 12px;
   font-weight: 500;
-  color: #888;
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -2031,8 +2031,8 @@ li {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgba(211, 47, 47, 0.95);
-  color: white;
+      background-color: var(--error);
+      color: #ffffff;
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 0.75rem;

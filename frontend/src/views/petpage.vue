@@ -4,6 +4,7 @@ import AnimatedPet from '@/components/AnimatedPet.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import TMXTileBackground from '@/components/TMXTileBackground.vue'
 import PetMinigame from '@/components/PetMinigame.vue'
+import SpritePreview from '@/components/SpritePreview.vue'
 import { useCoins } from '@/composables/useCoins.js'
 import { useGlobalPet } from '@/composables/useGlobalPet.js'
 import { api } from '@/lib/api.js'
@@ -400,10 +401,6 @@ function removeDroppedItem(itemId) {
 /* ==== Manual Control ==== */
 const manualControlEnabled = ref(false)
 
-function toggleManualControl() {
-  manualControlEnabled.value = !manualControlEnabled.value
-}
-
 /* ==== Test Functions ==== */
 function testDeteriorate() {
   // Decrease happiness and health by 15 points
@@ -444,6 +441,104 @@ function handleBorderWarning() {
 
 /* ==== Shop ==== */
 const showShop = ref(false)
+
+/* ==== Pet Switching ==== */
+const showPetSwitch = ref(false)
+const selectedNewPet = ref(null)
+const PET_SWITCH_COST = 10000
+const showPetSwitchCelebration = ref(false)
+const switchedPetInfo = ref(null)
+
+// Pet descriptions for shop
+const petDescriptions = {
+  catBlack: "A mysterious black cat with a calm demeanor.",
+  catGrey: "A gentle grey cat that loves to explore.",
+  catNew: "A playful orange cat full of energy.",
+  dogBlonde: "A loyal blonde dog that's always happy.",
+  dogGrey: "A wise grey dog with a gentle nature.",
+  dogLight: "A friendly light brown dog full of enthusiasm."
+}
+
+function showSwitchCelebration(petKey, petLabel) {
+  switchedPetInfo.value = { key: petKey, label: petLabel }
+  showPetSwitchCelebration.value = true
+
+  // Auto-hide after 3.5 seconds
+  setTimeout(() => {
+    showPetSwitchCelebration.value = false
+    switchedPetInfo.value = null
+  }, 3500)
+}
+
+function openPetSwitch() {
+  showPetSwitch.value = true
+  selectedNewPet.value = null
+}
+
+function closePetSwitch() {
+  showPetSwitch.value = false
+  selectedNewPet.value = null
+}
+
+function selectNewPet(petKey) {
+  selectedNewPet.value = petKey
+}
+
+async function confirmPetSwitch() {
+  if (!selectedNewPet.value) return
+
+  // Check if user is trying to select the same pet
+  if (selectedNewPet.value === selectedPetKey.value) {
+    alert('You already have this pet!')
+    return
+  }
+
+  // Check if user has enough coins
+  if (playerGold.value < PET_SWITCH_COST) {
+    alert(`You need ${PET_SWITCH_COST} coins to switch pets!`)
+    return
+  }
+
+  try {
+    // Deduct coins
+    const newCoinAmount = playerGold.value - PET_SWITCH_COST
+    const result = await updateCoins(newCoinAmount)
+
+    if (!result.success) {
+      alert('Failed to process payment: ' + (result.error || 'Please try again'))
+      return
+    }
+
+    // Update pet in backend
+    const response = await api.post('/api/profile/switch-pet', {
+      pet_key: selectedNewPet.value
+    })
+
+    if (response && response.ok) {
+      // Store the pet info before closing the dialog
+      const newPetKey = selectedNewPet.value
+      const newPetLabel = PETS[selectedNewPet.value].label
+
+      // Update global pet state
+      globalPetKey.value = newPetKey
+
+      // Close the dialog
+      closePetSwitch()
+
+      // Show celebration animation
+      showSwitchCelebration(newPetKey, newPetLabel)
+    } else {
+      // Refund coins if backend update failed
+      await updateCoins(playerGold.value + PET_SWITCH_COST)
+      alert('Failed to switch pet. Please try again.')
+    }
+  } catch (error) {
+    console.error('Error switching pet:', error)
+    // Try to refund coins
+    await updateCoins(playerGold.value + PET_SWITCH_COST)
+    alert('An error occurred while switching pets. Please try again.')
+  }
+}
 
 /* ==== Minigame ==== */
 const showMinigame = ref(false)
@@ -801,7 +896,7 @@ watch(isPetDead, (newIsDead) => {
         <div class="minigame-section">
           <p class="minigame-description">Play once per day to earn coins!</p>
           <button class="action-btn minigame-action-btn" @click="toggleMinigame">
-            <span class="game-icon">🎮</span>
+            
             Play Game
           </button>
         </div>
@@ -834,28 +929,13 @@ watch(isPetDead, (newIsDead) => {
         </div>
       </div>
 
-
-      <!-- Manual Control -->
+      <!-- Testing -->
       <div class="panel-section">
-        <h4 class="section-title">Controls</h4>
-        <button
-          class="control-toggle-btn"
-          :class="{ active: manualControlEnabled }"
-          @click="toggleManualControl"
-        >
-
-          <span class="control-text">{{ manualControlEnabled ? 'Manual (WASD)' : 'Auto Roam' }}</span>
-        </button>
-        <div v-if="manualControlEnabled" class="control-hint">
-          Use W/A/S/D keys to move your pet
-        </div>
-
-        <!-- Test Deteriorate Button -->
         <button
           class="test-deteriorate-btn"
           @click="testDeteriorate"
         >
-          ⚠️ Test Deteriorate (-15)
+           Test Deteriorate (-15)
         </button>
       </div>
     </div>
@@ -951,10 +1031,116 @@ watch(isPetDead, (newIsDead) => {
                     </button>
                   </div>
                 </div>
+
+                <!-- Pet Switching Special Item -->
+                <div class="shop-item special-item">
+                  <div class="item-icon special-icon">
+                    🔄
+                  </div>
+                  <div class="item-info">
+                    <div class="item-name">Switch Pet</div>
+                    <div class="item-description">Change your pet companion to a different species!</div>
+                  </div>
+                  <div class="item-price">
+                    <div class="price-container">
+                      <AnimatedCoin :scale="1" :speed="8" />
+                      <span class="price">{{ PET_SWITCH_COST }}</span>
+                    </div>
+                    <button
+                      class="buy-btn special-btn"
+                      @click="openPetSwitch"
+                      :disabled="coinsLoading || coinsError || playerGold === null || playerGold < PET_SWITCH_COST"
+                    >
+                      Switch
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Pet Switching Dialog -->
+    <div v-if="showPetSwitch" class="shop-overlay" @click="closePetSwitch">
+      <div class="pet-switch-popup" @click.stop>
+        <div class="pet-switch-header">
+          <h3>Switch Your Pet</h3>
+          <div class="header-gold">
+            <AnimatedCoin :scale="1.5" :speed="8" />
+            <span class="gold-amount">{{ playerGold }}</span>
+          </div>
+          <button class="close-shop" @click="closePetSwitch">×</button>
+        </div>
+
+        <div class="pet-switch-content">
+          <p class="switch-description">
+            Choose a new pet companion! Cost: <AnimatedCoin :scale="1" :speed="8" style="display: inline-block; vertical-align: middle;" /> <strong>{{ PET_SWITCH_COST }} coins</strong>
+          </p>
+
+          <div class="pet-switch-grid">
+            <div
+              v-for="(pet, key) in PETS"
+              :key="key"
+              class="pet-switch-card"
+              :class="{
+                'selected': selectedNewPet === key,
+                'current': key === selectedPetKey,
+                'disabled': key === selectedPetKey
+              }"
+              @click="key !== selectedPetKey && selectNewPet(key)"
+            >
+              <div class="pet-switch-preview">
+                <SpritePreview
+                  :sprite-url="pet.config.spriteUrl"
+                  :slice="pet.config.slice"
+                  :scale="2"
+                  :row="0"
+                  :col="0"
+                />
+              </div>
+              <div class="pet-switch-info">
+                <h4 class="pet-switch-name">{{ pet.label }}</h4>
+                <p class="pet-switch-desc">{{ petDescriptions[key] }}</p>
+                <span v-if="key === selectedPetKey" class="current-badge">Current Pet</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pet-switch-actions">
+            <button class="cancel-switch-btn" @click="closePetSwitch">
+              Cancel
+            </button>
+            <button
+              class="confirm-switch-btn"
+              :disabled="!selectedNewPet || selectedNewPet === selectedPetKey || playerGold < PET_SWITCH_COST"
+              @click="confirmPetSwitch"
+            >
+              Switch Pet ({{ PET_SWITCH_COST }} coins)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pet Switch Celebration -->
+    <div v-if="showPetSwitchCelebration" class="pet-switch-celebration-overlay">
+      <div class="pet-switch-celebration">
+        <div class="celebration-sparkle">✨</div>
+        <div class="celebration-icon-container">
+          <SpritePreview
+            v-if="switchedPetInfo"
+            :sprite-url="PETS[switchedPetInfo.key].config.spriteUrl"
+            :slice="PETS[switchedPetInfo.key].config.slice"
+            :scale="4"
+            :row="0"
+            :col="0"
+          />
+        </div>
+        <div class="celebration-title">Pet Switched!</div>
+        <div class="celebration-subtitle">{{ switchedPetInfo?.label }}</div>
+        <div class="celebration-message">Your new companion is ready!</div>
       </div>
     </div>
   </div>
@@ -1912,6 +2098,413 @@ watch(isPetDead, (newIsDead) => {
   .minigame-popup{
     width: 95vw;
     height: 85vh;
+  }
+}
+
+/* Pet Switching Styles */
+.special-item {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1), rgba(59, 130, 246, 0.1)) !important;
+  border: 2px solid rgba(147, 51, 234, 0.3) !important;
+}
+
+.special-icon {
+  font-size: 32px !important;
+  background: linear-gradient(135deg, #9333ea, #3b82f6) !important;
+}
+
+.special-btn {
+  background: linear-gradient(135deg, #9333ea, #3b82f6) !important;
+}
+
+.special-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #7c3aed, #2563eb) !important;
+}
+
+.pet-switch-popup {
+  background: var(--surface);
+  border-radius: 16px;
+  width: 800px;
+  max-width: 95vw;
+  max-height: 85vh;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.pet-switch-header {
+  background: linear-gradient(135deg, #9333ea, #3b82f6);
+  color: #fff;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pet-switch-header h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.pet-switch-content {
+  padding: 24px;
+  overflow-y: auto;
+  max-height: calc(85vh - 70px);
+}
+
+.switch-description {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  padding: 12px;
+  background: var(--surface-light);
+  border-radius: 8px;
+}
+
+.pet-switch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.pet-switch-card {
+  background: var(--surface-light);
+  border: 3px solid transparent;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.pet-switch-card:hover:not(.disabled) {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border-color: #3b82f6;
+}
+
+.pet-switch-card.selected {
+  border-color: #9333ea;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1), rgba(59, 130, 246, 0.1));
+  box-shadow: 0 8px 24px rgba(147, 51, 234, 0.3);
+}
+
+.pet-switch-card.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pet-switch-card.current {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.pet-switch-preview {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.pet-switch-info {
+  width: 100%;
+}
+
+.pet-switch-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.pet-switch-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.current-badge {
+  display: inline-block;
+  background: var(--primary);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pet-switch-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.cancel-switch-btn {
+  padding: 12px 24px;
+  background: var(--surface-lighter);
+  color: var(--text-muted);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.cancel-switch-btn:hover {
+  background: var(--surface-light);
+  color: var(--text-primary);
+}
+
+.confirm-switch-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #9333ea, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.confirm-switch-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
+}
+
+.confirm-switch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 768px) {
+  .pet-switch-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pet-switch-actions {
+    flex-direction: column;
+  }
+
+  .cancel-switch-btn,
+  .confirm-switch-btn {
+    width: 100%;
+  }
+}
+
+/* Pet Switch Celebration Styles */
+.pet-switch-celebration-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.pet-switch-celebration {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(252, 252, 254, 0.96) 50%,
+    rgba(250, 250, 255, 0.95) 100%
+  );
+  border-radius: 24px;
+  padding: 48px 64px;
+  text-align: center;
+  position: relative;
+  box-shadow:
+    0 20px 60px rgba(147, 51, 234, 0.3),
+    0 0 0 1px rgba(147, 51, 234, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  animation: celebrationSlideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.pet-switch-celebration::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(135deg, #9333ea, #3b82f6, #9333ea);
+  border-radius: 24px;
+  z-index: -1;
+  animation: borderGlow 3s ease-in-out infinite;
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.celebration-sparkle {
+  font-size: 48px;
+  margin-bottom: 16px;
+  animation: sparkleFloat 2s ease-in-out infinite;
+}
+
+@keyframes sparkleFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(5deg);
+  }
+  75% {
+    transform: translateY(-5px) rotate(-5deg);
+  }
+}
+
+.celebration-icon-container {
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1), rgba(59, 130, 246, 0.1));
+  border-radius: 50%;
+  border: 3px solid;
+  border-color: #9333ea;
+  box-shadow:
+    0 10px 30px rgba(147, 51, 234, 0.3),
+    inset 0 2px 10px rgba(255, 255, 255, 0.5);
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 10px 30px rgba(147, 51, 234, 0.3), inset 0 2px 10px rgba(255, 255, 255, 0.5);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(147, 51, 234, 0.5), inset 0 2px 10px rgba(255, 255, 255, 0.7);
+  }
+}
+
+.celebration-title {
+  font-size: 32px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #9333ea, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+  animation: titleBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s backwards;
+}
+
+@keyframes titleBounce {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.celebration-subtitle {
+  font-size: 24px;
+  font-weight: 600;
+  color: #9333ea;
+  margin-bottom: 8px;
+  animation: subtitleFadeIn 0.6s ease-out 0.4s backwards;
+}
+
+@keyframes subtitleFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.celebration-message {
+  font-size: 16px;
+  color: #6b7280;
+  animation: messageFadeIn 0.6s ease-out 0.6s backwards;
+}
+
+@keyframes messageFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes celebrationSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(50px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .pet-switch-celebration {
+    padding: 32px 24px;
+    max-width: 90vw;
+  }
+
+  .celebration-icon-container {
+    width: 120px;
+    height: 120px;
+  }
+
+  .celebration-title {
+    font-size: 24px;
+  }
+
+  .celebration-subtitle {
+    font-size: 18px;
+  }
+
+  .celebration-message {
+    font-size: 14px;
   }
 }
 </style>
