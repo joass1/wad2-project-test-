@@ -145,75 +145,54 @@
       style="background: var(--surface)"
     >
       <v-card-text class="pa-4 pa-md-6">
-        <div class="mb-4 mb-md-0">
-          <v-btn-toggle
+        <div class="d-flex flex-column flex-md-row justify-space-between align-start align-md-center ga-3">
+          <v-tabs
             v-model="view"
             mandatory
-            variant="text"
             density="comfortable"
-            class="view-toggle"
-            style="background: transparent"
+            class="view-tabs"
+            hide-slider
+            style="min-width: 0; flex: 0 0 auto;"
           >
-            <v-btn
-              value="board"
-              class="text-none"
-              size="small"
-              size-md="default"
-              style="text-transform: none; color: var(--text-muted)"
-              >Board</v-btn
-            >
-            <v-btn
-              value="list"
-              class="text-none"
-              size="small"
-              size-md="default"
-              style="text-transform: none; color: var(--text-muted)"
-              >List</v-btn
-            >
-            <v-btn
-              value="upcoming"
-              class="text-none"
-              size="small"
-              size-md="default"
-              style="text-transform: none; color: var(--text-muted)"
-              >Upcoming</v-btn
-            >
-          </v-btn-toggle>
-        </div>
-        <div class="d-flex flex-column flex-md-row ga-3">
-          <v-select
-            v-model="filterStatus"
-            :items="statusOptions"
-            label="Status"
-            density="compact"
-            variant="outlined"
-            hide-details
-            class="filter-select"
-            style="font-size: 0.875rem"
-            :menu-props="{ contentClass: 'dropdown-opaque' }"
-          ></v-select>
-          <v-select
-            v-model="filterPriority"
-            :items="priorityOptions"
-            label="Priority"
-            density="compact"
-            variant="outlined"
-            hide-details
-            class="filter-select"
-            style="font-size: 0.875rem"
-            :menu-props="{ contentClass: 'dropdown-opaque' }"
-          ></v-select>
-          <v-select
-            v-model="sortBy"
-            :items="sortOptions"
-            label="Sort by"
-            density="compact"
-            variant="outlined"
-            hide-details
-            class="filter-select"
-            style="font-size: 0.875rem"
-            :menu-props="{ contentClass: 'dropdown-opaque' }"
-          ></v-select>
+            <v-tab value="board" class="text-none" style="text-transform: none;">Board</v-tab>
+            <v-tab value="list" class="text-none" style="text-transform: none;">List</v-tab>
+            <v-tab value="upcoming" class="text-none" style="text-transform: none;">Upcoming</v-tab>
+          </v-tabs>
+          <div class="d-flex flex-column flex-md-row ga-3" style="width: 100%; flex: 1 1 auto; justify-content: flex-end;">
+            <v-select
+              v-model="filterStatus"
+              :items="statusOptions"
+              label="Status"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="filter-select"
+              style="font-size: 0.875rem"
+              :menu-props="{ contentClass: 'dropdown-opaque' }"
+            ></v-select>
+            <v-select
+              v-model="filterPriority"
+              :items="priorityOptions"
+              label="Priority"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="filter-select"
+              style="font-size: 0.875rem"
+              :menu-props="{ contentClass: 'dropdown-opaque' }"
+            ></v-select>
+            <v-select
+              v-model="sortBy"
+              :items="sortOptions"
+              label="Sort by"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="filter-select"
+              style="font-size: 0.875rem"
+              :menu-props="{ contentClass: 'dropdown-opaque' }"
+            ></v-select>
+          </div>
         </div>
       </v-card-text>
     </v-card>
@@ -657,6 +636,29 @@
             hide-details
           ></v-text-field>
           <v-select
+            v-model="newTask.subjectId"
+            :items="subjects.map(s => ({ title: s.name, value: s.id }))"
+            label="Subject"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+            hide-details
+            required
+            :disabled="!subjects || subjects.length === 0"
+            :menu-props="{ contentClass: 'dropdown-opaque' }"
+          />
+          <v-select
+            v-model="newTask.typeId"
+            :items="typeSelectItems"
+            label="Type (optional)"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+            hide-details
+            :disabled="typeSelectItems.length === 0"
+            :menu-props="{ contentClass: 'dropdown-opaque' }"
+          />
+          <v-select
             v-model="newTask.status"
             :items="statusSelectItems"
             label="Status"
@@ -685,28 +687,6 @@
             class="mb-3"
             hide-details
           ></v-text-field>
-          <v-select
-            v-model="newTask.subjectId"
-            :items="subjects.map(s => ({ title: s.name, value: s.id }))"
-            label="Subject (optional)"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-            hide-details
-            :disabled="!subjects || subjects.length === 0"
-            :menu-props="{ contentClass: 'dropdown-opaque' }"
-          />
-          <v-select
-            v-model="newTask.typeId"
-            :items="typeSelectItems"
-            label="Type (optional)"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-            hide-details
-            :disabled="typeSelectItems.length === 0"
-            :menu-props="{ contentClass: 'dropdown-opaque' }"
-          />
           <v-alert
             v-if="addTaskError"
             type="error"
@@ -936,6 +916,11 @@ const handleSubmitTask = async () => {
     return;
   }
 
+  if (!newTask.value.subjectId) {
+    addTaskError.value = "Please select a subject";
+    return;
+  }
+
   if (!newTask.value.dueDate) {
     addTaskError.value = "Please select a due date";
     return;
@@ -1096,15 +1081,28 @@ const isOverdue = (task) => {
   }
 }
 
-.view-toggle {
+.view-tabs {
   width: 100%;
-  justify-content: center;
 }
 
 @media (min-width: 960px) {
-  .view-toggle {
+  .view-tabs {
     width: auto;
   }
+}
+
+/* Hide scrollbar and ensure tabs don't scroll */
+.view-tabs :deep(.v-tabs__wrapper) {
+  overflow: hidden !important;
+}
+
+.view-tabs :deep(.v-slide-group__content) {
+  overflow: hidden !important;
+}
+
+.view-tabs :deep(.v-tab) {
+  min-width: auto;
+  padding: 0 16px;
 }
 
 .add-task-btn {
