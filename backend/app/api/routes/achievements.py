@@ -106,11 +106,23 @@ async def _get_user_stats(uid: str) -> Dict[str, Any]:
         study_sessions = db.collection("users").document(uid).collection("studySessions").stream()
         total_minutes = 0
         session_count = 0
+        completed_count = 0
         for session in study_sessions:
             session_data = session.to_dict()
-            total_minutes += session_data.get("duration_minutes", 0)
+            # Use actual_duration_minutes (new format) with fallback to duration_minutes (legacy)
+            actual_duration = session_data.get("actual_duration_minutes")
+            if actual_duration is None:
+                actual_duration = session_data.get("duration_minutes", 0)
+            
+            # Sum actual_duration_minutes from ALL sessions for total study hours
+            if actual_duration is not None and isinstance(actual_duration, (int, float)) and actual_duration > 0:
+                total_minutes += int(actual_duration)
+            
             session_count += 1
-        stats["total_study_sessions"] = session_count
+            # Count completed sessions for Streak Master achievement
+            if session_data.get("status") == "completed" and actual_duration and actual_duration > 0:
+                completed_count += 1
+        stats["total_study_sessions"] = completed_count  # Use completed sessions count
         stats["total_study_hours"] = total_minutes / 60
     except Exception:
         pass
