@@ -2334,13 +2334,13 @@ onMounted(async () => {
 .message-title {
   font-size: 1.3rem;
   font-weight: 700;
-  color: var(--primary);
+  color:#5a8a7a;
   margin: 0 0 1rem 0;
 }
 
 .message-text {
   font-size: 1rem;
-  color: var(--text-primary);
+  color:  #333;
   line-height: 1.7;
   margin: 0;
   overflow-wrap: break-word;
