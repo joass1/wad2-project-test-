@@ -50,6 +50,9 @@ const isMarkingTaskComplete = ref(false)
 const sessionsToday = ref(0)
 const focusScore = ref(0)
 
+// Error message for missing session details
+const showStartError = ref(false)
+
 // NEW: Store all topics (not filtered by subject)
 const allRecurringTopics = ref([])
 
@@ -201,7 +204,7 @@ const subjectsWithMiscellaneous = computed(() => {
     name: 'Miscellaneous',
     icon: '📋',
     color: '#9E9E9E',
-    description: 'General study sessions'
+    description: 'General sessions'
   }
   return [miscOption, ...subjects.value]
 })
@@ -530,6 +533,16 @@ function switchMode(m) {
 function start(){ 
   if (running.value) return
   if (timeLeft.value <= 0) return // Disable if timer is at 0
+  
+  // Check if session details are configured
+  if (!selectedSubject.value) {
+    showStartError.value = true
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      showStartError.value = false
+    }, 3000)
+    return
+  }
   
   // Reset coin message when starting a new session
   recentlyEarnedCoins.value = 0
@@ -935,7 +948,7 @@ onUnmounted(() => { clearInterval(t) })
               </div>
 
               <div class="d-flex ga-2 ga-md-3 justify-center flex-wrap">
-                <v-btn color="primary" :size="$vuetify.display.mobile ? 'default' : 'large'" rounded="lg" @click="start" :disabled="running || timeLeft <= 0 || !selectedSubject" 
+                <v-btn color="primary" :size="$vuetify.display.mobile ? 'default' : 'large'" rounded="lg" @click="start" :disabled="running || timeLeft <= 0" 
                        class="px-6 px-md-8 text-none" elevation="0">
                   <v-icon start>mdi-play</v-icon>Start
                 </v-btn>
@@ -1520,6 +1533,11 @@ onUnmounted(() => { clearInterval(t) })
       </v-card>
     </v-dialog>
 
+    <!-- Start Error Message -->
+    <div v-if="showStartError" class="start-error-message">
+      Fill up your session details to start the timer!
+    </div>
+
     <!-- Task Completion Dialog -->
     <v-dialog v-model="taskCompletionDialog" max-width="400px" persistent>
       <v-card rounded="xl">
@@ -2005,5 +2023,33 @@ li {
 
 .cursor-pointer {
   cursor: pointer;
+}
+
+/* Start Error Message */
+.start-error-message {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(211, 47, 47, 0.95);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 </style>

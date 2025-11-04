@@ -66,11 +66,6 @@
           <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Daily Check-in</v-tooltip>
         </v-list-item>
         
-        <v-list-item to="/social-hub" :prepend-icon="(!isMobile || modelValue) ? 'mdi-account-group-outline' : ''" :title="(!isMobile || modelValue) ? 'Social' : ''" rounded="lg">
-          <v-icon v-if="isMobile && !modelValue">mdi-account-group-outline</v-icon>
-          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Social</v-tooltip>
-        </v-list-item>
-        
         <v-list-item to="/pet" :prepend-icon="(!isMobile || modelValue) ? 'mdi-paw' : ''" :title="(!isMobile || modelValue) ? 'Pet' : ''" rounded="lg">
           <v-icon v-if="isMobile && !modelValue">mdi-paw</v-icon>
           <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Pet</v-tooltip>
