@@ -41,7 +41,7 @@
           <div class="profile-card">
             <div class="profile-avatar-section">
               <div class="avatar-container">
-                <div class="profile-avatar">
+                <div class="profile-avatar" :class="{ 'premium-border': allAchievementsCompleted }">
                   <img
                     v-if="displayAvatar"
                     :src="displayAvatar"
@@ -51,6 +51,9 @@
                   <span v-else class="avatar-text">{{
                     displayName?.charAt(0)?.toUpperCase() || "S"
                   }}</span>
+                  <div v-if="allAchievementsCompleted" class="premium-badge">
+                    <span>⭐</span>
+                  </div>
                   <div class="camera-icon" @click="triggerAvatarUpload">
                     <svg
                       width="12"
@@ -466,6 +469,7 @@
                 class="form-input"
                 placeholder="Enter your email"
                 required
+                readonly
               />
             </div>
             <div class="modal-actions">
@@ -526,7 +530,42 @@
     <!-- Success Toast Notification -->
     <div v-if="showSuccessToast" class="success-toast">
       <div class="toast-icon">✓</div>
-      <div class="toast-message">Profile updated successfully!</div>
+        <div class="toast-message">Profile updated successfully!</div>
+      </div>
+
+    <!-- All Achievements Completed Modal -->
+    <div v-if="showAllAchievementsModal" class="modal-overlay achievement-complete-modal" @click="closeAllAchievementsModal">
+      <div class="modal-content achievement-complete-content" @click.stop>
+        <div class="achievement-complete-header">
+          <div class="achievement-complete-icon">🎉</div>
+          <h2 class="achievement-complete-title">Congratulations!</h2>
+          <p class="achievement-complete-subtitle">You've completed all achievements!</p>
+        </div>
+        <div class="achievement-complete-body">
+          <div class="premium-border-preview">
+            <div class="preview-avatar premium-border">
+              <img
+                v-if="displayAvatar"
+                :src="displayAvatar"
+                alt="Profile Avatar"
+                class="avatar-image"
+              />
+              <span v-else class="avatar-text">{{
+                displayName?.charAt(0)?.toUpperCase() || "S"
+              }}</span>
+            </div>
+          </div>
+          <div class="achievement-complete-message">
+            <p>Your profile border has been upgraded to a <strong>premium golden border</strong>!</p>
+            <p>This exclusive border is awarded to users who have completed all 6 achievements.</p>
+          </div>
+        </div>
+        <div class="achievement-complete-footer">
+          <button class="achievement-complete-btn" @click="closeAllAchievementsModal">
+            Awesome!
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Sign Out Confirmation Modal -->
@@ -637,6 +676,7 @@ const showAvatarModal = ref(false);
 const showLogoutModal = ref(false);
 const showDeleteModal = ref(false);
 const showDeleteSuccessModal = ref(false);
+const showAllAchievementsModal = ref(false);
 const deleteCountdown = ref(3);
 const deleteChallenge = reactive({ a: 0, b: 0, op: '+', userInput: '' });
 const isDeleteAnswerCorrect = ref(false);
@@ -778,11 +818,88 @@ async function loadAchievements() {
     
     // Update stats card
     stats.achievements = achievementsResponse.total_unlocked || 0;
+    
+    // Check if all achievements are completed and show modal if not seen before
+    const claimedCount = achievementsData.value.achievements.filter(a => a.claimed).length;
+    if (claimedCount === achievementsData.value.totalAchievements && 
+        achievementsData.value.totalAchievements === 6) {
+      // Check if user has already seen the premium border modal (fetch from API)
+      let hasSeenModal = false;
+      try {
+        // Fetch directly from API to ensure we have the latest value
+        const profileResponse = await api.get("/api/profile/");
+        hasSeenModal = profileResponse.hasSeenPremiumBorderModal === true;
+        console.log('🔍 Premium border modal check:', {
+          hasSeenModal,
+          profileResponse,
+          allAchievementsCompleted: claimedCount === achievementsData.value.totalAchievements
+        });
+      } catch (error) {
+        console.warn('Could not check premium border modal status:', error);
+        // If API call fails, assume not seen (safer to show than to hide)
+        hasSeenModal = false;
+      }
+      
+      if (!hasSeenModal && !showAllAchievementsModal.value) {
+        console.log('🎉 loadAchievements: Showing premium border celebration modal!', {
+          hasSeenModal,
+          showAllAchievementsModal: showAllAchievementsModal.value,
+          claimedCount,
+          totalAchievements: achievementsData.value.totalAchievements
+        });
+        
+        // Show modal first
+        showAllAchievementsModal.value = true;
+        
+        // Wait for Vue to update DOM and modal to be visible
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Trigger flying stars animation after modal appears
+        console.log('⭐ loadAchievements: Triggering flying stars animation...');
+        animateStarsToModalAvatar();
+        
+        // Save flag to Firebase so it doesn't show again
+        await savePremiumBorderModalSeen();
+      } else {
+        console.log('🚫 Not showing modal:', {
+          hasSeenModal,
+          showAllAchievementsModal: showAllAchievementsModal.value,
+          claimedCount,
+          totalAchievements: achievementsData.value.totalAchievements
+        });
+      }
+    }
   } catch (error) {
     console.error("Error loading achievements:", error);
   } finally {
     isLoadingAchievements.value = false;
   }
+}
+
+// Computed property to check if all achievements are completed
+const allAchievementsCompleted = computed(() => {
+  if (!achievementsData.value.achievements || achievementsData.value.achievements.length === 0) {
+    return false;
+  }
+  // Check if all 6 achievements are claimed
+  const claimedCount = achievementsData.value.achievements.filter(a => a.claimed).length;
+  return claimedCount === achievementsData.value.totalAchievements && achievementsData.value.totalAchievements === 6;
+});
+
+// Function to save premium border modal seen flag to Firebase
+async function savePremiumBorderModalSeen() {
+  try {
+    await api.put("/api/profile/", {
+      hasSeenPremiumBorderModal: true
+    });
+  } catch (error) {
+    console.error("Failed to save premium border modal status:", error);
+  }
+}
+
+// Function to close all achievements modal
+function closeAllAchievementsModal() {
+  showAllAchievementsModal.value = false;
 }
 
 // Function to refresh achievements (can be called from other components)
@@ -864,6 +981,9 @@ async function claimAchievement(achievement) {
       setTimeout(async () => {
         await loadAchievements();
         
+        // Check if this was the 6th achievement and trigger celebration modal
+        await checkAndShowPremiumBorderModal();
+        
         // Dispatch custom event for other components
         window.dispatchEvent(new CustomEvent('achievement-claimed', {
           detail: { achievement, response }
@@ -876,6 +996,74 @@ async function claimAchievement(achievement) {
     alert(error.response?.data?.detail || "Failed to claim achievement");
   } finally {
     claimingAchievementId.value = null;
+  }
+}
+
+// Function to check if all achievements are completed and show premium border modal
+async function checkAndShowPremiumBorderModal() {
+  try {
+    // Wait a bit for Firebase to sync
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Reload achievements to get latest data
+    const achievementsResponse = await api.get("/api/achievements/");
+    const achievements = achievementsResponse.achievements || [];
+    const claimedCount = achievements.filter(a => a.claimed).length;
+    const totalAchievements = achievementsResponse.total_achievements || 6;
+    
+    // Check if all 6 achievements are claimed
+    if (claimedCount === totalAchievements && totalAchievements === 6) {
+      // Check if user has already seen the premium border modal (fetch from API)
+      let hasSeenModal = false;
+      try {
+        // Fetch directly from API to ensure we have the latest value
+        const profileResponse = await api.get("/api/profile/");
+        hasSeenModal = profileResponse.hasSeenPremiumBorderModal === true;
+        console.log('🔍 checkAndShowPremiumBorderModal - Premium border modal check:', {
+          hasSeenModal,
+          profileResponse,
+          claimedCount,
+          totalAchievements
+        });
+      } catch (error) {
+        console.warn('Could not check premium border modal status:', error);
+        // If API call fails, assume not seen (safer to show than to hide)
+        hasSeenModal = false;
+      }
+      
+      // Show modal if not seen before
+      if (!hasSeenModal && !showAllAchievementsModal.value) {
+        console.log('🎉 Showing premium border celebration modal!', {
+          hasSeenModal,
+          showAllAchievementsModal: showAllAchievementsModal.value,
+          claimedCount,
+          totalAchievements
+        });
+        
+        // Show modal first
+        showAllAchievementsModal.value = true;
+        console.log('✅ showAllAchievementsModal.value set to:', showAllAchievementsModal.value);
+        
+        // Wait for Vue to update DOM and modal to be visible
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Trigger flying stars animation after modal appears
+        console.log('⭐ Triggering flying stars animation...');
+        animateStarsToModalAvatar();
+        
+        // Save flag to Firebase so it doesn't show again
+        await savePremiumBorderModalSeen();
+      } else {
+        console.log('🚫 checkAndShowPremiumBorderModal - Not showing modal:', {
+          hasSeenModal,
+          showAllAchievementsModal: showAllAchievementsModal.value,
+          claimedCount,
+          totalAchievements
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error checking premium border modal:", error);
   }
 }
 
@@ -982,6 +1170,116 @@ function createGlidingStar() {
   }, 1050); // Match CSS transition duration
 }
 
+// Function to animate stars flying into the avatar border in the modal
+function animateStarsToModalAvatar() {
+  console.log('⭐ Starting flying stars animation to modal avatar...');
+  
+  // Get the modal avatar element
+  const modalAvatar = document.querySelector('.premium-border-preview .preview-avatar');
+  if (!modalAvatar) {
+    console.warn('⚠️ Modal avatar not found, skipping animation');
+    return;
+  }
+  
+  const avatarRect = modalAvatar.getBoundingClientRect();
+  const avatarCenterX = avatarRect.left + avatarRect.width / 2;
+  const avatarCenterY = avatarRect.top + avatarRect.height / 2;
+  
+  // Create 6 stars (one for each achievement)
+  const stars = [];
+  const starEmojis = ['⭐', '✨', '🌟', '💫', '⭐', '✨'];
+  
+  for (let i = 0; i < 6; i++) {
+    const star = document.createElement('div');
+    star.className = 'flying-star-modal';
+    star.textContent = starEmojis[i];
+    star.style.position = 'fixed';
+    
+    // Start from random positions around the screen edges
+    const angle = (Math.PI * 2 * i) / 6;
+    const startDistance = Math.max(window.innerWidth, window.innerHeight) * 0.6;
+    const startX = window.innerWidth / 2 + Math.cos(angle) * startDistance;
+    const startY = window.innerHeight / 2 + Math.sin(angle) * startDistance;
+    
+    star.style.left = `${startX}px`;
+    star.style.top = `${startY}px`;
+    star.style.transform = 'translate(-50%, -50%)';
+    star.style.zIndex = '10001';
+    
+    document.body.appendChild(star);
+    stars.push(star);
+    
+    // Animate star flying to avatar
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        star.style.transition = 'all 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        star.style.left = `${avatarCenterX}px`;
+        star.style.top = `${avatarCenterY}px`;
+        star.style.transform = 'translate(-50%, -50%) scale(0.3)';
+        star.style.opacity = '0';
+      }, i * 150); // Stagger the stars
+    });
+    
+    // Remove star after animation
+    setTimeout(() => {
+      if (star.parentNode) {
+        star.remove();
+      }
+    }, 1200 + (i * 150) + 100);
+  }
+  
+  // Create sparkle effect on the border after stars arrive
+  setTimeout(() => {
+    createBorderSparkles(modalAvatar);
+  }, 1500);
+}
+
+// Function to create golden glow effects on the border
+function createBorderSparkles(avatarElement) {
+  console.log('✨ Creating golden glow effects...');
+  
+  const glowCount = 12;
+  
+  for (let i = 0; i < glowCount; i++) {
+    const glow = document.createElement('div');
+    glow.className = 'border-sparkle-modal';
+    glow.style.position = 'absolute';
+    glow.style.width = '20px';
+    glow.style.height = '20px';
+    glow.style.borderRadius = '50%';
+    glow.style.background = 'radial-gradient(circle, rgba(255, 215, 0, 0.9), rgba(255, 215, 0, 0.4), transparent)';
+    glow.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.5)';
+    
+    // Position around the border circle
+    const angle = (Math.PI * 2 * i) / glowCount;
+    const radius = 60; // Avatar radius + border width
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    
+    glow.style.left = `calc(50% + ${x}px)`;
+    glow.style.top = `calc(50% + ${y}px)`;
+    glow.style.transform = 'translate(-50%, -50%)';
+    
+    avatarElement.style.position = 'relative';
+    avatarElement.appendChild(glow);
+    
+    // Animate glow (slower animation)
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        glow.style.animation = 'sparklePulse 6s ease-in-out';
+        glow.style.opacity = '0';
+      }, 50);
+    });
+    
+    // Remove glow after animation (increased duration for slower animation)
+    setTimeout(() => {
+      if (glow.parentNode) {
+        glow.remove();
+      }
+    }, 6050);
+  }
+}
+
 // Function to unclaim an achievement (for testing)
 async function unclaimAchievement(achievement) {
   if (claimingAchievementId.value) return; // Prevent multiple operations at once
@@ -996,8 +1294,23 @@ async function unclaimAchievement(achievement) {
     // Call unclaim endpoint
     await api.post(`/api/achievements/${achievement.id}/unclaim`);
     
+    // Reset premium border modal flag when unclaiming (for testing)
+    try {
+      await api.put("/api/profile/", {
+        hasSeenPremiumBorderModal: false
+      });
+      console.log('🔄 Reset premium border modal flag for testing');
+    } catch (error) {
+      console.warn('Could not reset premium border modal flag:', error);
+    }
+    
     // Reload achievements to get updated data
     await loadAchievements();
+    
+    // Dispatch event to notify other components (like sidebar)
+    window.dispatchEvent(new CustomEvent('achievement-unclaimed', {
+      detail: { achievementId: achievement.id }
+    }));
     
   } catch (error) {
     console.error("Error unclaiming achievement:", error);
@@ -1594,24 +1907,118 @@ async function saveSettings() {
 .profile-avatar {
   width: 90px;
   height: 90px;
-  background: linear-gradient(135deg, var(--surface-light), var(--surface-lighter));
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 36px;
   font-weight: bold;
-  color: var(--text-muted);
+  color: #ffffff;
   position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  border: 4px solid rgba(255, 255, 255, 0.8);
+  overflow: visible;
+  box-shadow: 0 4px 15px rgba(106, 122, 90, 0.3);
+  border: 3px solid rgba(255, 255, 255, 0.8);
   transition: all 0.3s ease;
 }
 
 .profile-avatar:hover {
-  transform: scale(1.05);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  transform: scale(1.05) rotate(5deg);
+  box-shadow: 0 6px 25px rgba(106, 122, 90, 0.4);
+}
+
+/* Premium Border Styles - Unlocked when all achievements are completed */
+.profile-avatar.premium-border {
+  border: 4px solid transparent;
+  background: linear-gradient(135deg, var(--primary), var(--secondary)) padding-box,
+              linear-gradient(135deg, #ffd700, #ffed4e, #ffd700, #ff6b6b, #4ecdc4, #45b7d1, #ffd700) border-box;
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4),
+              0 4px 15px rgba(106, 122, 90, 0.3),
+              inset 0 0 20px rgba(255, 215, 0, 0.1);
+  animation: premiumGlow 3s ease-in-out infinite;
+}
+
+.profile-avatar.premium-border::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  padding: 4px;
+  background: linear-gradient(135deg, #ffd700, #ffed4e, #ffd700, #ff6b6b, #4ecdc4, #45b7d1, #ffd700);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: premiumRotate 4s linear infinite;
+  z-index: -1;
+}
+
+@keyframes premiumGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4),
+                0 4px 15px rgba(106, 122, 90, 0.3),
+                inset 0 0 20px rgba(255, 215, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6),
+                0 4px 15px rgba(106, 122, 90, 0.3),
+                inset 0 0 30px rgba(255, 215, 0, 0.2);
+  }
+}
+
+@keyframes premiumRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.profile-avatar.premium-border:hover {
+  transform: scale(1.08) rotate(5deg);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.6),
+              0 6px 25px rgba(106, 122, 90, 0.4),
+              inset 0 0 40px rgba(255, 215, 0, 0.2);
+}
+
+/* Premium Badge */
+.premium-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5),
+              0 0 12px rgba(255, 215, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  z-index: 10;
+  animation: premiumBadgePulse 2s ease-in-out infinite;
+}
+
+.premium-badge span {
+  font-size: 14px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+@keyframes premiumBadgePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5),
+                0 0 12px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 2px 12px rgba(255, 215, 0, 0.7),
+                0 0 20px rgba(255, 215, 0, 0.5);
+  }
 }
 
 .avatar-image {
@@ -3671,6 +4078,13 @@ async function saveSettings() {
   margin-bottom: 8px;
 }
 
+.form-input[readonly] {
+  background-color: var(--surface-lighter);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .form-input {
   width: 100%;
   padding: 12px 16px;
@@ -3686,6 +4100,11 @@ async function saveSettings() {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(106, 122, 90, 0.1);
+}
+
+.form-input[readonly]:focus {
+  border-color: var(--surface-lighter);
+  box-shadow: none;
 }
 
 .modal-actions {
@@ -3934,6 +4353,262 @@ async function saveSettings() {
 /* Dark mode adjustments for toast shadow */
 [data-theme="dark"] .success-toast {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* All Achievements Completed Modal */
+.achievement-complete-modal {
+  z-index: 10000;
+  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.achievement-complete-content {
+  max-width: 500px;
+  width: 90%;
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
+  border-radius: 24px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3),
+              0 0 40px rgba(255, 215, 0, 0.2);
+  animation: modalSlideIn 0.4s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.achievement-complete-header {
+  text-align: center;
+  padding: 32px 32px 24px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 237, 78, 0.1));
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.achievement-complete-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: celebrationBounce 1s ease-in-out;
+}
+
+@keyframes celebrationBounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.2) rotate(-5deg);
+  }
+  50% {
+    transform: scale(1.1) rotate(5deg);
+  }
+  75% {
+    transform: scale(1.15) rotate(-3deg);
+  }
+}
+
+.achievement-complete-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+  background: linear-gradient(135deg, #ffd700, #ffed4e, #ffd700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.achievement-complete-subtitle {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.achievement-complete-body {
+  padding: 32px;
+  text-align: center;
+}
+
+.premium-border-preview {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.premium-border-preview .preview-avatar {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: bold;
+  color: #ffffff;
+  position: relative;
+  overflow: visible;
+  border: 4px solid transparent;
+  background: linear-gradient(135deg, var(--primary), var(--secondary)) padding-box,
+              linear-gradient(135deg, #ffd700, #ffed4e, #ffd700, #ff6b6b, #4ecdc4, #45b7d1, #ffd700) border-box;
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4),
+              0 4px 15px rgba(106, 122, 90, 0.3),
+              inset 0 0 20px rgba(255, 215, 0, 0.1);
+  animation: premiumGlow 3s ease-in-out infinite;
+}
+
+.premium-border-preview .preview-avatar::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  padding: 4px;
+  background: linear-gradient(135deg, #ffd700, #ffed4e, #ffd700, #ff6b6b, #4ecdc4, #45b7d1, #ffd700);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: premiumRotate 4s linear infinite;
+  z-index: -1;
+}
+
+.premium-border-preview .preview-avatar .avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  position: relative;
+  z-index: 1;
+}
+
+.premium-border-preview .preview-avatar .avatar-text {
+  font-size: 48px;
+  font-weight: bold;
+  color: #ffffff;
+  position: relative;
+  z-index: 1;
+}
+
+.achievement-complete-message {
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.achievement-complete-message p {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+}
+
+.achievement-complete-message p:last-child {
+  margin-bottom: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.achievement-complete-message strong {
+  color: #ffd700;
+  font-weight: 600;
+}
+
+.achievement-complete-footer {
+  padding: 24px 32px 32px;
+  display: flex;
+  justify-content: center;
+}
+
+.achievement-complete-btn {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #1a1a1a;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+}
+
+.achievement-complete-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+  background: linear-gradient(135deg, #ffed4e, #ffd700);
+}
+
+.achievement-complete-btn:active {
+  transform: translateY(0);
+}
+
+/* Flying Stars Animation for Modal */
+.flying-star-modal {
+  position: fixed;
+  font-size: 1500px;
+  z-index: 10001;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 12px rgba(255, 215, 0, 0.8));
+  text-shadow: 0 0 40px rgba(255, 215, 0, 0.9), 0 0 80px rgba(255, 215, 0, 0.6);
+  will-change: transform, opacity;
+}
+
+.border-sparkle-modal {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+@keyframes sparklePulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0.8;
+  }
+}
+
+/* Mobile responsiveness for achievement modal */
+@media (max-width: 768px) {
+  .achievement-complete-content {
+    width: 95%;
+    max-width: none;
+  }
+  
+  .achievement-complete-header {
+    padding: 24px 20px 20px;
+  }
+  
+  .achievement-complete-icon {
+    font-size: 48px;
+  }
+  
+  .achievement-complete-title {
+    font-size: 24px;
+  }
+  
+  .achievement-complete-body {
+    padding: 24px 20px;
+  }
+  
+  .premium-border-preview .preview-avatar {
+    width: 100px;
+    height: 100px;
+    font-size: 40px;
+  }
+  
+  .achievement-complete-footer {
+    padding: 20px;
+  }
 }
 
 /* Mobile responsiveness */

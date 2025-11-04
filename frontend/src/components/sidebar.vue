@@ -25,9 +25,12 @@
       <!-- Profile header -->
       <div class="profile-header">
         <div class="profile-avatar-container" @click="navigateToProfile">
-          <div class="profile-avatar">
+          <div class="profile-avatar" :class="{ 'premium-border': allAchievementsCompleted }">
             <img v-if="displayAvatar" :src="displayAvatar" alt="Profile Avatar" class="avatar-image" />
             <span v-else class="avatar-text">{{ displayName.charAt(0).toUpperCase() }}</span>
+            <div v-if="allAchievementsCompleted" class="premium-badge">
+              <span>⭐</span>
+            </div>
           </div>
           <transition name="slide-fade">
             <div v-show="!isMobile || modelValue" class="profile-info">
@@ -107,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import ThemeToggle from '@/components/ThemeToggle.vue'
@@ -115,6 +118,7 @@ import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import { useCoins } from '@/composables/useCoins.js'
 import { useUserProfile } from '@/composables/useUserProfile.js'
 import { useAuth } from '@/composables/useAuth.js'
+import { api } from '@/lib/api.js'
 
 defineProps({
   modelValue: Boolean
@@ -141,7 +145,45 @@ const { coins, coinsLoading, coinsError, fetchCoins } = useCoins()
 const { displayName, displayAvatar } = useUserProfile()
 
 // Use auth state to wait for authentication
-const { loading: authLoading, isAuthed } = useAuth()
+const { loading: authLoading, isAuthed, user: authUser } = useAuth()
+
+// Achievements data
+const achievementsData = ref({
+  achievements: [],
+  totalUnlocked: 0,
+  totalAchievements: 6,
+  completionPercentage: 0,
+})
+
+// Computed property to check if all achievements are completed
+const allAchievementsCompleted = computed(() => {
+  if (!achievementsData.value.achievements || achievementsData.value.achievements.length === 0) {
+    return false
+  }
+  // Check if all 6 achievements are claimed
+  const claimedCount = achievementsData.value.achievements.filter(a => a.claimed).length
+  return claimedCount === achievementsData.value.totalAchievements && achievementsData.value.totalAchievements === 6
+})
+
+// Function to load achievements
+async function loadAchievements() {
+  if (!authUser.value) return
+  
+  try {
+    const achievementsResponse = await api.get('/api/achievements/')
+    achievementsData.value.achievements = achievementsResponse.achievements || []
+    achievementsData.value.totalUnlocked = achievementsResponse.total_unlocked || 0
+    achievementsData.value.totalAchievements = achievementsResponse.total_achievements || 6
+    achievementsData.value.completionPercentage = achievementsResponse.completion_percentage || 0
+  } catch (error) {
+    console.error('Error loading achievements in sidebar:', error)
+  }
+}
+
+// Function to refresh achievements (can be called from events)
+function refreshAchievements() {
+  loadAchievements()
+}
 
 // Navigate to profile page
 function navigateToProfile() {
@@ -152,13 +194,30 @@ function navigateToProfile() {
   }
 }
 
-// Watch for authentication to be ready before fetching coins
+// Watch for authentication to be ready before fetching coins and achievements
 watch([authLoading, isAuthed], ([loading, authed]) => {
   // Only fetch coins when auth is ready and user is authenticated
   if (!loading && authed && coins.value === null && !coinsLoading.value) {
     fetchCoins()
   }
+  // Load achievements when auth is ready
+  if (!loading && authed) {
+    loadAchievements()
+  }
 }, { immediate: true })
+
+// Listen for achievement events to refresh achievements
+onMounted(() => {
+  window.addEventListener('achievement-claimed', refreshAchievements)
+  window.addEventListener('achievement-unlocked', refreshAchievements)
+  window.addEventListener('achievement-unclaimed', refreshAchievements)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('achievement-claimed', refreshAchievements)
+  window.removeEventListener('achievement-unlocked', refreshAchievements)
+  window.removeEventListener('achievement-unclaimed', refreshAchievements)
+})
 </script>
 
 <style scoped>
@@ -281,7 +340,9 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
   justify-content: center;
   font-size: 24px;
   font-weight: bold;
-  color: var(--text-primary);
+  color: #ffffff;
+  position: relative;
+  overflow: visible;
   box-shadow: 0 4px 15px rgba(106, 122, 90, 0.3);
   border: 3px solid rgba(255, 255, 255, 0.8);
   transition: all 0.3s ease;
@@ -291,6 +352,100 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
 .profile-avatar:hover {
   transform: scale(1.05) rotate(5deg);
   box-shadow: 0 6px 25px rgba(106, 122, 90, 0.4);
+}
+
+/* Premium Border Styles - Unlocked when all achievements are completed */
+.profile-avatar.premium-border {
+  border: 4px solid transparent;
+  background: linear-gradient(135deg, var(--primary), var(--secondary)) padding-box,
+              linear-gradient(135deg, #ffd700, #ffed4e, #ffd700, #ff6b6b, #4ecdc4, #45b7d1, #ffd700) border-box;
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4),
+              0 4px 15px rgba(106, 122, 90, 0.3),
+              inset 0 0 20px rgba(255, 215, 0, 0.1);
+  animation: premiumGlow 3s ease-in-out infinite;
+}
+
+.profile-avatar.premium-border::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  padding: 4px;
+  background: linear-gradient(135deg, #ffd700, #ffed4e, #ffd700, #ff6b6b, #4ecdc4, #45b7d1, #ffd700);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: premiumRotate 4s linear infinite;
+  z-index: -1;
+}
+
+@keyframes premiumGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4),
+                0 4px 15px rgba(106, 122, 90, 0.3),
+                inset 0 0 20px rgba(255, 215, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.6),
+                0 4px 15px rgba(106, 122, 90, 0.3),
+                inset 0 0 30px rgba(255, 215, 0, 0.2);
+  }
+}
+
+@keyframes premiumRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.profile-avatar.premium-border:hover {
+  transform: scale(1.08) rotate(5deg);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.6),
+              0 6px 25px rgba(106, 122, 90, 0.4),
+              inset 0 0 40px rgba(255, 215, 0, 0.2);
+}
+
+/* Premium Badge */
+.premium-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5),
+              0 0 12px rgba(255, 215, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  z-index: 10;
+  animation: premiumBadgePulse 2s ease-in-out infinite;
+}
+
+.premium-badge span {
+  font-size: 10px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+@keyframes premiumBadgePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5),
+                0 0 12px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 2px 12px rgba(255, 215, 0, 0.7),
+                0 0 20px rgba(255, 215, 0, 0.5);
+  }
 }
 
 .avatar-image {

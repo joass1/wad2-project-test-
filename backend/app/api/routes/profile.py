@@ -90,6 +90,47 @@ def upsert_profile(payload: dict, user: dict = Depends(require_user)):
     return {"ok": True, "uid": uid, "message": "profile upserted successfully"}
 
 
+@router.get("/")
+def get_profile(user: dict = Depends(require_user)):
+    """Get user profile data including flags"""
+    uid = user["uid"]
+    doc_snapshot = db.collection("users").document(uid).get()
+    
+    if not doc_snapshot.exists:
+        return {"hasSeenPremiumBorderModal": False}
+    
+    user_data = doc_snapshot.to_dict() or {}
+    return {
+        "hasSeenPremiumBorderModal": user_data.get("hasSeenPremiumBorderModal", False)
+    }
+
+
+@router.put("/")
+def update_profile(payload: dict, user: dict = Depends(require_user)):
+    """Update general user profile fields"""
+    uid = user["uid"]
+    
+    # Build update dictionary with only allowed fields
+    update_data = {}
+    
+    # Allow updating hasSeenPremiumBorderModal
+    if "hasSeenPremiumBorderModal" in payload:
+        update_data["hasSeenPremiumBorderModal"] = payload["hasSeenPremiumBorderModal"]
+    
+    # Add more allowed fields here as needed
+    
+    if not update_data:
+        return {"ok": False, "message": "No valid fields to update"}
+    
+    # Update the user document
+    db.collection("users").document(uid).set(
+        update_data,
+        merge=True,
+    )
+    
+    return {"ok": True, "message": "Profile updated successfully"}
+
+
 @router.put("/avatar")
 def update_avatar(payload: dict, user: dict = Depends(require_user)):
     """Update user's profile avatar (base64 encoded image)"""
