@@ -346,6 +346,14 @@ import { auth } from "@/lib/firebase";
 import { api } from "@/lib/api.js";
 import { useTheme } from "vuetify";
 
+// Listen for study session completion events to refresh data
+window.addEventListener('study-session-completed', () => {
+  // Refresh study analytics data when a session is completed
+  if (tab.value === 0) { // Only refresh if on Study Analytics tab
+    loadWeeklyStudyChart()
+  }
+})
+
 onMounted(() => {
   getTaskStats();
   getWellnessOverview();

@@ -7,6 +7,7 @@ import BackgroundsGallery from '@/components/BackgroundsGallery.vue'
 import { useCoins } from '@/composables/useCoins.js'
 import { api } from '@/lib/api.js'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
+import confetti from 'canvas-confetti'
 
 const { subjects, loading: subjectsLoading, fetchSubjects, createSubject, updateSubject, deleteSubject } = useSubjects()
 const { topics: recurringTopics, loading: topicsLoading, fetchTopics, createTopic, updateTopic, deleteTopic } = useRecurringTopics()
@@ -24,6 +25,15 @@ const customFocusTime = ref(25)
 const customBreakTime = ref(5)
 let t = null
 
+// Session tracking variables
+const sessionStartTime = ref(null)
+const pauseCount = ref(0)
+const totalPausedDurationMs = ref(0)
+const pauseStartTime = ref(null)
+const currentSessionId = ref(null)
+const completionDialog = ref(false)
+const recentlyEarnedCoins = ref(0)
+
 // Session Details Data
 const selectedSubject = ref(null)
 const selectedTopic = ref('') // Can be manual text or selected topic ID
@@ -33,6 +43,7 @@ const sessionNotes = ref('')
 // Task completion dialog
 const taskCompletionDialog = ref(false)
 const tasksFromTracker = ref([])
+const isMarkingTaskComplete = ref(false)
 
 // NEW: Store all topics (not filtered by subject)
 const allRecurringTopics = ref([])
@@ -103,6 +114,18 @@ const potentialCoins = computed(() => {
   return 0
 })
 
+// Computed properties for session subject and task names
+const sessionSubjectName = computed(() => {
+  if (!selectedSubject.value) return null
+  if (selectedSubject.value === 'MISCELLANEOUS') return 'Miscellaneous'
+  return subjects.value.find(s => s.id === selectedSubject.value)?.name
+})
+
+const sessionTaskTitle = computed(() => {
+  if (!selectedTask.value) return null
+  return tasksFromTracker.value.find(t => t.id === selectedTask.value)?.title
+})
+
 // FIX: Added a safe default return to prevent 'Cannot read properties of undefined' errors on mount
 const blurredBackgroundStyle = computed(() => {
   // Depend on selectedBackgroundId to react to changes made in the gallery
@@ -129,6 +152,32 @@ const blurredBackgroundStyle = computed(() => {
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     backgroundAttachment: 'fixed',
+  }
+})
+
+// Computed subjects list with "Miscellaneous" always included
+const subjectsWithMiscellaneous = computed(() => {
+  const miscOption = {
+    id: 'MISCELLANEOUS',
+    name: 'Miscellaneous',
+    icon: '📋',
+    color: '#9E9E9E',
+    description: 'General study sessions'
+  }
+  return [miscOption, ...subjects.value]
+})
+
+// Check if Miscellaneous is selected
+const isMiscellaneousSelected = computed(() => {
+  return selectedSubject.value === 'MISCELLANEOUS'
+})
+
+// Watch for subject changes - clear topic and task when switching to Miscellaneous
+watch(selectedSubject, (newSubject) => {
+  if (newSubject === 'MISCELLANEOUS') {
+    // Clear topic and task when Miscellaneous is selected
+    selectedTopic.value = ''
+    selectedTask.value = null
   }
 })
 
@@ -257,14 +306,27 @@ function showTaskCompletionDialog() {
 async function markTaskAsComplete() {
   if (!selectedTask.value) return
   
+  isMarkingTaskComplete.value = true
+  
   try {
+    // Update task status to 'done' regardless of current status (todo or in_progress)
     await api.patch(`/api/tasks/${selectedTask.value}`, {
       status: 'done'
     })
+    
+    // Refresh tasks list to reflect the update
+    await fetchTasksFromTracker()
+    
+    // Close the dialog after successful update
     taskCompletionDialog.value = false
+    
+    // Show success feedback
+    console.log('Task marked as completed successfully!')
   } catch (error) {
     console.error('Error updating task:', error)
-    alert('Failed to update task status')
+    alert('Failed to update task status. Please try again.')
+  } finally {
+    isMarkingTaskComplete.value = false
   }
 }
 
@@ -355,6 +417,29 @@ function switchMode(m) {
 
 function start(){ 
   if (running.value) return
+  if (timeLeft.value <= 0) return // Disable if timer is at 0
+  
+  // Reset coin message when starting a new session
+  recentlyEarnedCoins.value = 0
+  
+  // If resuming from pause, calculate pause duration
+  if (pauseStartTime.value) {
+    const pauseDuration = Date.now() - pauseStartTime.value
+    totalPausedDurationMs.value += pauseDuration
+    pauseStartTime.value = null
+    
+    // Update session status to active
+    if (currentSessionId.value) {
+      updateSessionStatus('active')
+    }
+  }
+  
+  // If starting a new session, record start time
+  if (!sessionStartTime.value) {
+    sessionStartTime.value = Date.now()
+    startNewSession()
+  }
+  
   running.value = true
   t = setInterval(() => { 
     timeLeft.value--
@@ -370,37 +455,139 @@ function start(){
   }, 1000) 
 }
 
+async function startNewSession() {
+  try {
+    // Get subject name - handle Miscellaneous
+    let subjectName = null
+    if (selectedSubject.value === 'MISCELLANEOUS') {
+      subjectName = 'Miscellaneous'
+    } else if (selectedSubject.value) {
+      subjectName = subjects.value.find(s => s.id === selectedSubject.value)?.name
+    }
+
+    // Get topic/task display - only if not Miscellaneous
+    let taskDisplay = null
+    if (!isMiscellaneousSelected.value && selectedTopic.value) {
+      const topic = allRecurringTopics.value.find(t => t.id === selectedTopic.value)
+      if (topic) {
+        taskDisplay = topic.title
+      } else {
+        taskDisplay = selectedTopic.value // Manual text entry
+      }
+    }
+
+    // Only include task_id if not Miscellaneous and task is selected
+    const taskId = isMiscellaneousSelected.value ? null : selectedTask.value
+
+    const response = await api.post('/api/study-sessions/start', {
+      planned_duration_minutes: minutes.value,
+      subject: subjectName,
+      task: taskDisplay,
+      task_id: taskId,
+      notes: sessionNotes.value,
+      session_type: mode.value.toLowerCase()
+    })
+    
+    currentSessionId.value = response.id
+  } catch (error) {
+    console.error('Error starting session:', error)
+  }
+}
+
+async function updateSessionStatus(status) {
+  if (!currentSessionId.value) return
+  
+  try {
+    const updateData = {
+      status: status
+    }
+    
+    // If pausing, also update time remaining
+    if (status === 'paused') {
+      updateData.time_remaining_seconds = timeLeft.value
+    }
+    
+    await api.patch(`/api/study-sessions/${currentSessionId.value}`, updateData)
+  } catch (error) {
+    console.error('Error updating session status:', error)
+  }
+}
+
 async function dispatchStudySessionCompleted() {
   console.log('Focus session completed! Dispatching event...');
 
-  const subjectName = selectedSubject.value
-    ? subjects.value.find(s => s.id === selectedSubject.value)?.name
-    : null
+  // Calculate actual session duration
+  const totalDurationMs = sessionStartTime.value ? Date.now() - sessionStartTime.value : minutes.value * 60 * 1000
+  const totalPausedMs = pauseStartTime.value 
+    ? totalPausedDurationMs.value + (Date.now() - pauseStartTime.value)
+    : totalPausedDurationMs.value
+  const actualDurationMs = totalDurationMs - totalPausedMs
+  const actualDurationMinutes = Math.floor(actualDurationMs / 60000)
 
-  // Get topic title - could be manual text or a topic ID
-  let taskDisplay = selectedTopic.value
-  if (selectedTopic.value) {
+  // Get subject name - handle Miscellaneous
+  let subjectName = null
+  if (selectedSubject.value === 'MISCELLANEOUS') {
+    subjectName = 'Miscellaneous'
+  } else if (selectedSubject.value) {
+    subjectName = subjects.value.find(s => s.id === selectedSubject.value)?.name
+  }
+
+  // Get topic title - only if not Miscellaneous
+  let taskDisplay = null
+  if (!isMiscellaneousSelected.value && selectedTopic.value) {
     const topic = allRecurringTopics.value.find(t => t.id === selectedTopic.value)
     if (topic) {
       taskDisplay = topic.title
+    } else {
+      taskDisplay = selectedTopic.value // Manual text entry
     }
   }
 
+  // Log session to API
+  try {
+    if (currentSessionId.value) {
+      // Update existing session to completed
+      await api.patch(`/api/study-sessions/${currentSessionId.value}`, {
+        status: 'completed',
+        actual_duration_minutes: actualDurationMinutes,
+        time_remaining_seconds: 0,
+        pause_count: pauseCount.value,
+        total_paused_duration_minutes: Math.round(totalPausedMs / 60000 * 10) / 10
+      })
+    } else {
+      // Create new completed session (fallback if session wasn't started properly)
+      const taskId = isMiscellaneousSelected.value ? null : selectedTask.value
+      await api.post('/api/study-sessions/', {
+        duration_minutes: actualDurationMinutes,
+        subject: subjectName,
+        task: taskDisplay,
+        task_id: taskId,
+        notes: sessionNotes.value,
+        session_type: mode.value.toLowerCase()
+      })
+    }
+  } catch (error) {
+    console.error('Error logging study session:', error)
+  }
+
+  // Dispatch event for other components
   window.dispatchEvent(new CustomEvent('study-session-completed', {
     detail: {
-      duration: minutes.value,
+      duration: actualDurationMinutes,
       mode: mode.value,
       subject: subjectName,
       task: taskDisplay,
       task_id: selectedTask.value,
       notes: sessionNotes.value,
+      pause_count: pauseCount.value,
+      total_paused_duration_minutes: Math.round(totalPausedMs / 60000 * 10) / 10,
       timestamp: new Date()
     }
   }))
 
   // Award coins for completing study session (pro-rated: 10 coins per 25 minutes)
   try {
-    const durationMinutes = minutes.value
+    const durationMinutes = actualDurationMinutes || minutes.value
     const coinsEarned = Math.floor((durationMinutes) * 10)
 
     console.log(`Calculating coins: ${durationMinutes} minutes × 10 / 25 = ${coinsEarned} coins`)
@@ -413,29 +600,116 @@ async function dispatchStudySessionCompleted() {
       const result = await updateCoins(newCoins)
       if (result.success) {
         console.log(`Study session rewarded ${coinsEarned} coins! Total: ${newCoins}`)
+        recentlyEarnedCoins.value = coinsEarned
       }
     } else {
       console.log('No coins earned (duration too short)')
+      recentlyEarnedCoins.value = 0
     }
   } catch (coinError) {
     console.error('Error awarding study session coins:', coinError)
     // Don't fail the session completion if coins fail to update
+    recentlyEarnedCoins.value = 0
   }
 
-  // Show completion dialog with task option
+  // Show task completion dialog if task was selected, otherwise show completion modal
   if (selectedTask.value) {
+    triggerCelebration()
     showTaskCompletionDialog()
+  } else {
+    completionDialog.value = true
+    triggerCelebration()
   }
+  
+  // Reset session tracking
+  sessionStartTime.value = null
+  pauseCount.value = 0
+  totalPausedDurationMs.value = 0
+  pauseStartTime.value = null
+  currentSessionId.value = null
+}
+
+function triggerCelebration() {
+  // Main confetti burst
+  confetti({
+    particleCount: 150,
+    spread: 120,
+    origin: { y: 0.6 },
+    colors: ['#5a8a7a', '#6A7A5A', '#AAC4BC', '#FFD700', '#FF69B4']
+  })
+  
+  // Side bursts
+  setTimeout(() => {
+    confetti({
+      particleCount: 80,
+      angle: 60,
+      spread: 80,
+      origin: { x: 0 },
+      colors: ['#5a8a7a', '#AAC4BC', '#FFD700']
+    })
+  }, 200)
+  
+  setTimeout(() => {
+    confetti({
+      particleCount: 80,
+      angle: 120,
+      spread: 80,
+      origin: { x: 1 },
+      colors: ['#5a8a7a', '#AAC4BC', '#FFD700']
+    })
+  }, 400)
+  
+  // Additional burst
+  setTimeout(() => {
+    confetti({
+      particleCount: 30,
+      spread: 100,
+      origin: { y: 0.6 },
+      shapes: ['circle'],
+      scalar: 2,
+      colors: ['#FF69B4', '#FFD700', '#98FB98']
+    })
+  }, 300)
 }
 
 function stop(){ 
   running.value = false
-  clearInterval(t) 
+  clearInterval(t)
+  
+  // Track pause
+  if (sessionStartTime.value && !pauseStartTime.value) {
+    pauseCount.value++
+    pauseStartTime.value = Date.now()
+    
+    // Update session status to paused
+    if (currentSessionId.value) {
+      updateSessionStatus('paused')
+    }
+  }
 }
 
-function reset(){ 
+async function reset(){ 
   stop()
   timeLeft.value = minutes.value * 60
+  
+  // Cancel current session if it exists
+  if (currentSessionId.value) {
+    try {
+      await api.patch(`/api/study-sessions/${currentSessionId.value}`, {
+        status: 'cancelled'
+      })
+    } catch (error) {
+      console.error('Error cancelling session:', error)
+    }
+  }
+  
+  // Reset session tracking
+  sessionStartTime.value = null
+  pauseCount.value = 0
+  totalPausedDurationMs.value = 0
+  pauseStartTime.value = null
+  currentSessionId.value = null
+  recentlyEarnedCoins.value = 0 // Reset coin message
 }
 
 function openSettings() {
@@ -482,7 +756,24 @@ onUnmounted(() => { clearInterval(t) })
                   <div class="text-subtitle-2 text-md-subtitle-2 text-medium-emphasis mb-1">Study Session</div>
                   <div class="text-caption text-medium-emphasis">Set your timer</div>
                 </div>
-                <v-chip color="primary" size="small" variant="flat" class="px-3 px-md-4">Ready</v-chip>
+                <!-- Session Info Badge (shown when running, top right) -->
+                <v-chip 
+                  v-if="running && (sessionSubjectName || sessionTaskTitle)"
+                  color="primary" 
+                  size="small" 
+                  variant="flat" 
+                  class="px-3 px-md-4"
+                >
+                  <template v-if="sessionSubjectName && sessionTaskTitle">
+                    {{ sessionSubjectName }} | {{ sessionTaskTitle }}
+                  </template>
+                  <template v-else-if="sessionSubjectName">
+                    {{ sessionSubjectName }}
+                  </template>
+                  <template v-else-if="sessionTaskTitle">
+                    {{ sessionTaskTitle }}
+                  </template>
+                </v-chip>
               </div>
 
               <div class="d-flex ga-2 mb-6 mb-md-8 flex-wrap justify-center">
@@ -507,13 +798,14 @@ onUnmounted(() => { clearInterval(t) })
               <div v-if="!running && mode === 'Focus'" class="coin-reward-display mb-4">
                 <AnimatedCoin :scale="1.5" :speed="8" />
                 <div class="coin-info">
-                  <div class="coin-amount">{{ potentialCoins }} coins</div>
-                  <div class="coin-note">Awarded on completion only</div>
+                  <div v-if="recentlyEarnedCoins > 0" class="coin-amount">You have just earned {{ recentlyEarnedCoins }} coins!</div>
+                  <div v-else class="coin-amount">{{ potentialCoins }} coins</div>
+                  <div v-if="recentlyEarnedCoins === 0" class="coin-note">Awarded on completion only</div>
                 </div>
               </div>
 
               <div class="d-flex ga-2 ga-md-3 justify-center flex-wrap">
-                <v-btn color="primary" :size="$vuetify.display.mobile ? 'default' : 'large'" rounded="lg" @click="start" :disabled="running" 
+                <v-btn color="primary" :size="$vuetify.display.mobile ? 'default' : 'large'" rounded="lg" @click="start" :disabled="running || timeLeft <= 0 || !selectedSubject" 
                        class="px-6 px-md-8 text-none" elevation="0">
                   <v-icon start>mdi-play</v-icon>Start
                 </v-btn>
@@ -594,15 +886,15 @@ onUnmounted(() => { clearInterval(t) })
                   </div>
                   <v-select 
                     v-model="selectedSubject"
-                    :items="subjects"
+                    :items="subjectsWithMiscellaneous"
                     item-title="name"
                     item-value="id"
                     density="comfortable" 
                     variant="outlined" 
                     rounded="lg" 
-                    placeholder="Select subject" 
+                    placeholder="Select subject (required)" 
                     hide-details
-                    :disabled="subjects.length === 0"
+                    required
                     :menu-props="{ contentClass: 'dropdown-opaque' }"
                   >
                     <template v-slot:item="{ item, props }">
@@ -617,19 +909,14 @@ onUnmounted(() => { clearInterval(t) })
                       <span class="text-h6 mr-2">{{ item.raw.icon }}</span>
                       <span>{{ item.raw.name }}</span>
                     </template>
-                    
-                    <template v-slot:no-data>
-                      <v-list-item>
-                        <v-list-item-title class="text-center text-caption">
-                          No subjects yet. Click "Manage" to create one!
-                        </v-list-item-title>
-                      </v-list-item>
-                    </template>
                   </v-select>
                 </div>
 
                 <div class="mb-4">
-                  <label class="text-body-2 font-weight-medium mb-2 d-block">Type (Recurring)</label>
+                  <label class="text-body-2 font-weight-medium mb-2 d-block">
+                    Type (Recurring)
+                    <span v-if="!isMiscellaneousSelected" class="text-error">*</span>
+                  </label>
                   <v-combobox
                     v-model="selectedTopic"
                     :items="topicDropdownItems"
@@ -637,9 +924,10 @@ onUnmounted(() => { clearInterval(t) })
                     item-value="value"
                     variant="outlined"
                     rounded="lg"
-                    placeholder="Type or select a recurring type"
+                    :placeholder="isMiscellaneousSelected ? 'Type or select a recurring type (optional)' : 'Type or select a recurring type'"
                     hide-details
                     density="comfortable"
+                    :disabled="isMiscellaneousSelected"
                     :menu-props="{ contentClass: 'dropdown-opaque' }"
                   >
                     <template v-slot:item="{ props, item }">
@@ -649,10 +937,16 @@ onUnmounted(() => { clearInterval(t) })
                       </v-list-item>
                     </template>
                   </v-combobox>
+                  <div v-if="isMiscellaneousSelected" class="text-caption text-medium-emphasis mt-1">
+                    Optional for Miscellaneous sessions
+                  </div>
                 </div>
 
                 <div class="mb-4">
-                  <label class="text-body-2 font-weight-medium mb-2 d-block">Task (from Task Tracker)</label>
+                  <label class="text-body-2 font-weight-medium mb-2 d-block">
+                    Task (from Task Tracker)
+                    <span v-if="!isMiscellaneousSelected" class="text-error">*</span>
+                  </label>
                   <v-select
                     v-model="selectedTask"
                     :items="tasksFromTracker"
@@ -660,10 +954,11 @@ onUnmounted(() => { clearInterval(t) })
                     item-value="id"
                     variant="outlined"
                     rounded="lg"
-                    placeholder="Select a task (optional)"
+                    :placeholder="isMiscellaneousSelected ? 'Select a task (optional)' : 'Select a task (optional)'"
                     hide-details
                     density="comfortable"
                     clearable
+                    :disabled="isMiscellaneousSelected"
                     :menu-props="{ contentClass: 'dropdown-opaque' }"
                   >
                     <template v-slot:item="{ props, item }">
@@ -1069,11 +1364,37 @@ onUnmounted(() => { clearInterval(t) })
       </v-card>
     </v-dialog>
 
+    <!-- Study Session Completion Dialog (shown when no task is selected) -->
+    <v-dialog v-model="completionDialog" max-width="500px" persistent>
+      <v-card rounded="xl">
+        <v-card-title class="pa-6 text-center">
+          <div class="w-100">
+            <v-icon size="64" color="primary" class="mb-4">mdi-check-circle</v-icon>
+            <div class="text-h5 font-weight-bold text-primary mb-2">Congrats on finishing a study session!</div>
+            <div class="text-body-2 text-medium-emphasis">Great job staying focused! 🎉</div>
+          </div>
+        </v-card-title>
+        
+        <v-card-actions class="pa-6 pt-0 justify-center">
+          <v-btn
+            color="primary"
+            variant="flat"
+            size="large"
+            rounded="lg"
+            @click="completionDialog = false"
+            class="text-none px-8"
+          >
+            Awesome!
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Task Completion Dialog -->
-    <v-dialog v-model="taskCompletionDialog" max-width="400px">
+    <v-dialog v-model="taskCompletionDialog" max-width="400px" persistent>
       <v-card rounded="xl">
         <v-card-title class="pa-6">
-          <span class="text-h6">Session Complete! 🎉</span>
+          <span class="text-h6 text-primary font-weight-bold">Session Complete! 🎉</span>
         </v-card-title>
         
         <v-card-text class="pa-6 pt-0">
@@ -1097,6 +1418,7 @@ onUnmounted(() => { clearInterval(t) })
             variant="flat"
             @click="markTaskAsComplete"
             class="text-none"
+            :loading="isMarkingTaskComplete"
           >
             Yes, Complete Task!
           </v-btn>
