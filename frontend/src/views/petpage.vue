@@ -446,6 +446,8 @@ const showShop = ref(false)
 const showPetSwitch = ref(false)
 const selectedNewPet = ref(null)
 const PET_SWITCH_COST = 10000
+const showPetSwitchCelebration = ref(false)
+const switchedPetInfo = ref(null)
 
 // Pet descriptions for shop
 const petDescriptions = {
@@ -455,6 +457,17 @@ const petDescriptions = {
   dogBlonde: "A loyal blonde dog that's always happy.",
   dogGrey: "A wise grey dog with a gentle nature.",
   dogLight: "A friendly light brown dog full of enthusiasm."
+}
+
+function showSwitchCelebration(petKey, petLabel) {
+  switchedPetInfo.value = { key: petKey, label: petLabel }
+  showPetSwitchCelebration.value = true
+
+  // Auto-hide after 3.5 seconds
+  setTimeout(() => {
+    showPetSwitchCelebration.value = false
+    switchedPetInfo.value = null
+  }, 3500)
 }
 
 function openPetSwitch() {
@@ -502,13 +515,18 @@ async function confirmPetSwitch() {
     })
 
     if (response && response.ok) {
+      // Store the pet info before closing the dialog
+      const newPetKey = selectedNewPet.value
+      const newPetLabel = PETS[selectedNewPet.value].label
+
       // Update global pet state
-      globalPetKey.value = selectedNewPet.value
+      globalPetKey.value = newPetKey
 
       // Close the dialog
       closePetSwitch()
 
-      alert(`Successfully switched to ${PETS[selectedNewPet.value].label}!`)
+      // Show celebration animation
+      showSwitchCelebration(newPetKey, newPetLabel)
     } else {
       // Refund coins if backend update failed
       await updateCoins(playerGold.value + PET_SWITCH_COST)
@@ -1103,6 +1121,26 @@ watch(isPetDead, (newIsDead) => {
             </button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Pet Switch Celebration -->
+    <div v-if="showPetSwitchCelebration" class="pet-switch-celebration-overlay">
+      <div class="pet-switch-celebration">
+        <div class="celebration-sparkle">✨</div>
+        <div class="celebration-icon-container">
+          <SpritePreview
+            v-if="switchedPetInfo"
+            :sprite-url="PETS[switchedPetInfo.key].config.spriteUrl"
+            :slice="PETS[switchedPetInfo.key].config.slice"
+            :scale="4"
+            :row="0"
+            :col="0"
+          />
+        </div>
+        <div class="celebration-title">Pet Switched!</div>
+        <div class="celebration-subtitle">{{ switchedPetInfo?.label }}</div>
+        <div class="celebration-message">Your new companion is ready!</div>
       </div>
     </div>
   </div>
@@ -2265,6 +2303,208 @@ watch(isPetDead, (newIsDead) => {
   .cancel-switch-btn,
   .confirm-switch-btn {
     width: 100%;
+  }
+}
+
+/* Pet Switch Celebration Styles */
+.pet-switch-celebration-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.pet-switch-celebration {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(252, 252, 254, 0.96) 50%,
+    rgba(250, 250, 255, 0.95) 100%
+  );
+  border-radius: 24px;
+  padding: 48px 64px;
+  text-align: center;
+  position: relative;
+  box-shadow:
+    0 20px 60px rgba(147, 51, 234, 0.3),
+    0 0 0 1px rgba(147, 51, 234, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  animation: celebrationSlideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.pet-switch-celebration::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(135deg, #9333ea, #3b82f6, #9333ea);
+  border-radius: 24px;
+  z-index: -1;
+  animation: borderGlow 3s ease-in-out infinite;
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.celebration-sparkle {
+  font-size: 48px;
+  margin-bottom: 16px;
+  animation: sparkleFloat 2s ease-in-out infinite;
+}
+
+@keyframes sparkleFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(5deg);
+  }
+  75% {
+    transform: translateY(-5px) rotate(-5deg);
+  }
+}
+
+.celebration-icon-container {
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1), rgba(59, 130, 246, 0.1));
+  border-radius: 50%;
+  border: 3px solid;
+  border-color: #9333ea;
+  box-shadow:
+    0 10px 30px rgba(147, 51, 234, 0.3),
+    inset 0 2px 10px rgba(255, 255, 255, 0.5);
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 10px 30px rgba(147, 51, 234, 0.3), inset 0 2px 10px rgba(255, 255, 255, 0.5);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(147, 51, 234, 0.5), inset 0 2px 10px rgba(255, 255, 255, 0.7);
+  }
+}
+
+.celebration-title {
+  font-size: 32px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #9333ea, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+  animation: titleBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s backwards;
+}
+
+@keyframes titleBounce {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.celebration-subtitle {
+  font-size: 24px;
+  font-weight: 600;
+  color: #9333ea;
+  margin-bottom: 8px;
+  animation: subtitleFadeIn 0.6s ease-out 0.4s backwards;
+}
+
+@keyframes subtitleFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.celebration-message {
+  font-size: 16px;
+  color: #6b7280;
+  animation: messageFadeIn 0.6s ease-out 0.6s backwards;
+}
+
+@keyframes messageFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes celebrationSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(50px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .pet-switch-celebration {
+    padding: 32px 24px;
+    max-width: 90vw;
+  }
+
+  .celebration-icon-container {
+    width: 120px;
+    height: 120px;
+  }
+
+  .celebration-title {
+    font-size: 24px;
+  }
+
+  .celebration-subtitle {
+    font-size: 18px;
+  }
+
+  .celebration-message {
+    font-size: 14px;
   }
 }
 </style>
