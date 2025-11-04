@@ -111,10 +111,10 @@ const label = computed(() => {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 })
 
-// Computed property for potential coins based on timer duration
+// Computed property for potential coins based on timer duration (50 coins per 25 minutes)
 const potentialCoins = computed(() => {
   if (mode.value === 'Focus') {
-    return Math.floor(minutes.value * 10)
+    return Math.floor(minutes.value * 2)
   }
   return 0
 })
@@ -711,12 +711,12 @@ async function dispatchStudySessionCompleted() {
     }
   }))
 
-  // Award coins for completing study session (pro-rated: 10 coins per 25 minutes)
+  // Award coins for completing study session (50 coins per 25 minutes = 2 coins per minute)
   try {
     const durationMinutes = actualDurationMinutes || minutes.value
-    const coinsEarned = Math.floor((durationMinutes) * 10)
+    const coinsEarned = Math.floor(durationMinutes * 2)
 
-    console.log(`Calculating coins: ${durationMinutes} minutes × 10 / 25 = ${coinsEarned} coins`)
+    console.log(`Calculating coins: ${durationMinutes} minutes × 2 = ${coinsEarned} coins`)
 
     if (coinsEarned > 0) {
       const currentCoins = coins.value || 0
