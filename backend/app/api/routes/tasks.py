@@ -70,11 +70,21 @@ def _to_task_response(data: Dict[str, Any]) -> TaskResponse:
             total_study_mins = 0
     
     # Build response data dict, ensuring all required fields are present
+    # Handle priority: if None, default to "medium"
+    priority = data.get("priority")
+    if priority is None or priority not in ["high", "medium", "low"]:
+        priority = "medium"
+    
+    # Handle title: if None, use empty string (not the string "None")
+    title = data.get("title")
+    if title is None:
+        title = ""
+    
     response_data = {
         "id": str(data.get("id", "")),
-        "title": str(data.get("title", "")),
+        "title": str(title),
         "status": data.get("status", "todo"),
-        "priority": data.get("priority", "medium"),
+        "priority": priority,
         "dueDate": data.get("dueDate"),
         "category": data.get("category", "General"),
         "createdAt": data.get("createdAt"),
