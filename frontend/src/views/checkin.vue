@@ -610,6 +610,14 @@ const flippedEnvelopes = ref({
   proud: false
 })
 
+// Reset flipped envelopes when changing tabs
+watch(activeTab, () => {
+  // Close all envelopes when switching tabs
+  Object.keys(flippedEnvelopes.value).forEach(key => {
+    flippedEnvelopes.value[key] = false
+  })
+})
+
 // Sliders for particle generation
 watch(mood, (newVal, oldVal) => {
   if (Math.abs(newVal - oldVal) > 0) {
@@ -1533,12 +1541,13 @@ onMounted(async () => {
 .notes-textarea {
   width: 100%;
   padding: 0.875rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--surface-lighter);
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.95rem;
   resize: vertical;
   background: var(--surface);
+  color: var(--text-primary);
 }
 
 .notes-textarea:focus {
