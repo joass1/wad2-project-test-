@@ -239,7 +239,7 @@
             <!-- Star Counter -->
             <div class="star-counter" id="star-counter">
               <div 
-                v-for="index in 8" 
+                v-for="index in 6" 
                 :key="index"
                 class="star-slot"
                 :class="{ filled: index <= achievementsData.totalUnlocked, empty: index > achievementsData.totalUnlocked }"
@@ -673,7 +673,7 @@ const showAllActivities = ref(false);
 const achievementsData = ref({
   achievements: [],
   totalUnlocked: 0,
-  totalAchievements: 8,
+  totalAchievements: 6,
   completionPercentage: 0,
 });
 
@@ -773,7 +773,7 @@ async function loadAchievements() {
     const achievementsResponse = await api.get("/api/achievements/");
     achievementsData.value.achievements = achievementsResponse.achievements || [];
     achievementsData.value.totalUnlocked = achievementsResponse.total_unlocked || 0;
-    achievementsData.value.totalAchievements = achievementsResponse.total_achievements || 8;
+    achievementsData.value.totalAchievements = achievementsResponse.total_achievements || 6;
     achievementsData.value.completionPercentage = achievementsResponse.completion_percentage || 0;
     
     // Update stats card

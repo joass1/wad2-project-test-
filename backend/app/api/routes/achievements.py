@@ -74,14 +74,6 @@ ACHIEVEMENTS_CONFIG = {
         "required": 5,
         "check": lambda stats: stats.get("total_checkins", 0),
     },
-    "social_butterfly": {
-        "title": "Social Butterfly",
-        "description": "Connect with 5 study buddies",
-        "icon": "🦋",
-        "category": "social",
-        "required": 5,
-        "check": lambda stats: stats.get("study_buddies", 0),
-    },
     "challenge_champion": {
         "title": "Challenge Champion",
         "description": "Complete 10 tasks",
@@ -89,14 +81,6 @@ ACHIEVEMENTS_CONFIG = {
         "category": "tasks",
         "required": 10,
         "check": lambda stats: stats.get("completed_tasks", 0),
-    },
-    "pet_lover": {
-        "title": "Pet Lover",
-        "description": "Take care of your pet for 30 days",
-        "icon": "🐾",
-        "category": "pet",
-        "required": 30,
-        "check": lambda stats: stats.get("pet_care_days", 0),
     },
 }
 
@@ -114,9 +98,7 @@ async def _get_user_stats(uid: str) -> Dict[str, Any]:
         "total_study_hours": 0,
         "longest_streak": 0,
         "total_checkins": 0,
-        "study_buddies": 0,
         "completed_tasks": 0,
-        "pet_care_days": 0,
     }
     
     # Get study sessions stats
