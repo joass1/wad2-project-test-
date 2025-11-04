@@ -909,10 +909,17 @@ def get_timer_stats(user: dict = Depends(require_user)):
             completed_count += 1
             
             # Use tracked paused duration for completed sessions
-            if isinstance(total_paused_duration, (int, float)):
-                total_paused_minutes += total_paused_duration
-                paused_sec = total_paused_duration * 60
-                print(f"DEBUG: Completed session {session_id[:8]}...: paused={total_paused_duration:.2f} min ({paused_sec:.1f} sec)")
+            # Cap to planned duration to prevent unrealistic values
+            paused_duration_to_use = total_paused_duration if isinstance(total_paused_duration, (int, float)) else 0.0
+            if isinstance(planned_minutes, (int, float)) and planned_minutes > 0:
+                original_paused = paused_duration_to_use
+                paused_duration_to_use = min(paused_duration_to_use, float(planned_minutes))
+                if original_paused > planned_minutes:
+                    print(f"DEBUG: Capped paused time for completed session {session_id[:8]}...: {original_paused:.2f} -> {paused_duration_to_use:.2f} (planned: {planned_minutes})")
+            
+            total_paused_minutes += paused_duration_to_use
+            paused_sec = paused_duration_to_use * 60
+            print(f"DEBUG: Completed session {session_id[:8]}...: paused={paused_duration_to_use:.2f} min ({paused_sec:.1f} sec)")
         
         elif status == "paused":
             paused_count += 1
@@ -933,16 +940,24 @@ def get_timer_stats(user: dict = Depends(require_user)):
                         current_pause_minutes = (now - paused_dt).total_seconds() / 60
                     except (ValueError, AttributeError):
                         current_pause_minutes = 0.0
-                
+            
                 # Cap current pause duration at planned duration to prevent unrealistic values
                 # (e.g., if session was paused days ago and never resumed)
                 original_current_pause = current_pause_minutes
                 if isinstance(planned_minutes, (int, float)) and planned_minutes > 0:
                     current_pause_minutes = min(current_pause_minutes, float(planned_minutes))
                     if original_current_pause > planned_minutes:
-                        print(f"DEBUG: Capped pause time for session {session_id}: {original_current_pause:.2f} -> {current_pause_minutes:.2f} (planned: {planned_minutes})")
+                        print(f"DEBUG: Capped current pause time for session {session_id[:8]}...: {original_current_pause:.2f} -> {current_pause_minutes:.2f} (planned: {planned_minutes})")
             
             session_paused_total = paused_duration_so_far + current_pause_minutes
+            
+            # Cap total paused time to planned duration (logical limit: can't pause more than session length)
+            if isinstance(planned_minutes, (int, float)) and planned_minutes > 0:
+                original_total = session_paused_total
+                session_paused_total = min(session_paused_total, float(planned_minutes))
+                if original_total > planned_minutes:
+                    print(f"DEBUG: Capped total paused time for session {session_id[:8]}...: {original_total:.2f} -> {session_paused_total:.2f} (planned: {planned_minutes})")
+            
             total_paused_minutes += session_paused_total
             paused_sec_total = session_paused_total * 60
             print(f"DEBUG: Paused session {session_id[:8]}...: planned={planned_minutes} min, paused={session_paused_total:.2f} min ({paused_sec_total:.1f} sec)")
@@ -950,10 +965,18 @@ def get_timer_stats(user: dict = Depends(require_user)):
         elif status == "active":
             # Active sessions may have paused time if they were paused and resumed
             # Include their tracked paused duration in the calculation
+            # Cap to planned duration to prevent unrealistic values
             if isinstance(total_paused_duration, (int, float)) and total_paused_duration > 0:
-                total_paused_minutes += total_paused_duration
-                paused_sec = total_paused_duration * 60
-                print(f"DEBUG: Active session {session_id[:8]}...: paused={total_paused_duration:.2f} min ({paused_sec:.1f} sec)")
+                paused_duration_to_use = total_paused_duration
+                if isinstance(planned_minutes, (int, float)) and planned_minutes > 0:
+                    original_paused = paused_duration_to_use
+                    paused_duration_to_use = min(paused_duration_to_use, float(planned_minutes))
+                    if original_paused > planned_minutes:
+                        print(f"DEBUG: Capped paused time for active session {session_id[:8]}...: {original_paused:.2f} -> {paused_duration_to_use:.2f} (planned: {planned_minutes})")
+                
+                total_paused_minutes += paused_duration_to_use
+                paused_sec = paused_duration_to_use * 60
+                print(f"DEBUG: Active session {session_id[:8]}...: paused={paused_duration_to_use:.2f} min ({paused_sec:.1f} sec)")
     
     # Get additional metrics from daily metrics
     metrics = _get_daily_metrics(uid, today)
