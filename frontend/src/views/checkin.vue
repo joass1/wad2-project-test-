@@ -423,9 +423,8 @@
                 <div class="message-icon">💙</div>
                 <h4 class="message-title">Hey {{ displayName || 'friend' }},</h4>
                 <p class="message-text">
-                  Remember that storms don't last forever, 
-                  and brighter days are ahead. You've overcome challenges before, and you'll 
-                  get through this too. Take a deep breath and be gentle with yourself!
+                  Remember that storms don't last forever.
+                  You'll get through this too. Be gentle with yourself!
                 </p>
               </div>
             </div>
@@ -448,9 +447,8 @@
                 <div class="message-icon">🌸</div>
                 <h4 class="message-title">Take a breath, {{ displayName || 'friend' }}</h4>
                 <p class="message-text">
-                  Take five minutes to breathe deeply, go for a walk, or listen 
-                  to your favorite song. You don't have to handle everything at once. One step 
-                  at a time. 
+                  Take five minutes to breathe deeply. Go for a walk, or listen 
+                  to your favorite song. One step at a time. 
                 </p>
               </div>
             </div>
@@ -473,8 +471,8 @@
                 <div class="message-icon">🌙</div>
                 <h4 class="message-title">Rest well, {{ displayName || 'friend' }}</h4>
                 <p class="message-text">
-                  It's okay to rest and slow down. Rest isn't lazy, it's necessary. Give yourself permission to 
-                  recharge. Tomorrow is a new day, sleep tight. 
+                  It's okay to slow down. Rest isn't lazy, it's necessary. Give yourself time to 
+                  recharge. Tomorrow is a new day! 
                 </p>
               </div>
             </div>
@@ -497,8 +495,8 @@
                 <div class="message-icon">🚀</div>
                 <h4 class="message-title">You've got this, {{ displayName || 'friend' }}!</h4>
                 <p class="message-text">
-                  Look how far you've come! Every small step counts, you're making progress 
-                  even when it doesn't feel like it. Keep pushing and keep believing.
+                  Look how far you've come! You're making progress 
+                  even when it doesn't feel like it. Keep pushing.
                   Let's go! 
                 </p>
               </div>
@@ -524,8 +522,7 @@
                 <p class="message-text">
                   Try the 5-4-3-2-1 technique: 
                   name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, and 1 you 
-                  taste. You're safe and you're going to be okay. This feeling is 
-                  temporary. 
+                  taste. You're going to be okay! 
                 </p>
               </div>
             </div>
@@ -548,8 +545,8 @@
                 <div class="message-icon">⭐</div>
                 <h4 class="message-title">You're amazing, {{ displayName || 'friend' }}!</h4>
                 <p class="message-text">
-                  In case no one told you today: you matter. 
-                  You're worthy of love, happiness, and all good things. You're more than enough. Keep shining! 
+                  In case no one told you today: YOU matter. 
+                  You're worthy of all the good things. You're more than enough. Keep shining! 
                 </p>
               </div>
             </div>
@@ -2273,9 +2270,39 @@ onMounted(async () => {
 
 /* Envelope Back */
 .envelope-back {
-  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,0.95) 100%);
   border: 2px solid var(--primary);
   transform: rotateY(180deg);
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.envelope-back::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: inherit;
+  opacity: 0.3;
+  z-index: 0;
+  border-radius: 16px;
+}
+
+.envelope-back .message-content {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  padding: 1.75rem;
+  border-radius: 12px;
+  max-height: 85%; /* Prevent overflow */
+  /* overflow-y: auto; */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 [data-theme="dark"] .envelope-back {
@@ -2300,10 +2327,11 @@ onMounted(async () => {
 }
 
 .message-text {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--text-primary);
   line-height: 1.7;
   margin: 0;
+  overflow-wrap: break-word;
 }
 
 /* Responsive */
@@ -2333,5 +2361,30 @@ onMounted(async () => {
   .open-when-title {
     font-size: 1.5rem;
   }
+}
+
+/* Individual envelope backgrounds */
+.envelope-card:nth-child(1) .envelope-back {
+  background-image: url('/public/background/envelopes/sad.jpg');
+}
+
+.envelope-card:nth-child(2) .envelope-back {
+  background-image: url('/public/background/envelopes/stressed.jpg');
+}
+
+.envelope-card:nth-child(3) .envelope-back {
+  background-image: url('/public/background/envelopes/tired.jpg');
+}
+
+.envelope-card:nth-child(4) .envelope-back {
+  background-image: url('/public/background/envelopes/motivation.jpg');
+}
+
+.envelope-card:nth-child(5) .envelope-back {
+  background-image: url('/public/background/envelopes/anxious.jpg');
+}
+
+.envelope-card:nth-child(6) .envelope-back {
+  background-image: url('/public/background/envelopes/needreminder.jpg');
 }
 </style>
