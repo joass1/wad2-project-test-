@@ -1143,8 +1143,10 @@ def get_study_stats(user: dict = Depends(require_user)):
                     if session_date in daily_minutes:
                         daily_minutes[session_date] += duration
                         
-                    subject = session_data.get("subject") or "Uncategorized"
-                    subject_minutes_past_week[subject] += duration
+                    # Only count sessions with a valid subject (filter out Uncategorized/legacy data)
+                    subject = session_data.get("subject")
+                    if subject and subject.strip():  # Only add if subject exists and is not empty
+                        subject_minutes_past_week[subject] += duration
             elif status == "paused":
                 paused_sessions += 1
             elif status == "active":
@@ -1185,7 +1187,7 @@ def get_study_stats(user: dict = Depends(require_user)):
         subject_hours_list = [
             {"subject": subject, "hours": round(minutes / 60, 2)}
             for subject, minutes in subject_minutes_past_week.items()
-            if minutes > 0
+            if minutes > 0 and subject and subject.lower() != "uncategorized"
         ]
         
         return StudyStatsResponse(

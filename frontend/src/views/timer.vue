@@ -1068,7 +1068,7 @@ onUnmounted(() => { clearInterval(t) })
                     </template>
                   </v-combobox>
                   <div v-if="isMiscellaneousSelected" class="text-caption text-medium-emphasis mt-1">
-                    Optional for Miscellaneous sessions
+                    Restricted for miscellaneous sessions
                   </div>
                 </div>
 
@@ -1100,6 +1100,9 @@ onUnmounted(() => { clearInterval(t) })
                       </v-list-item>
                     </template>
                   </v-select>
+                  <div v-if="isMiscellaneousSelected" class="text-caption text-medium-emphasis mt-1">
+                    Restricted for miscellaneous sessions
+                  </div>
                 </div>
 
                 <div class="mb-4">

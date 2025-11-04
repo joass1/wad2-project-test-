@@ -51,9 +51,9 @@
           <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Study Timer</v-tooltip>
         </v-list-item>
         
-        <v-list-item to="/task-tracker" :prepend-icon="(!isMobile || modelValue) ? 'mdi-checkbox-marked-outline' : ''" :title="(!isMobile || modelValue) ? 'Tasks' : ''" rounded="lg">
+        <v-list-item to="/task-tracker" :prepend-icon="(!isMobile || modelValue) ? 'mdi-checkbox-marked-outline' : ''" :title="(!isMobile || modelValue) ? 'Task Tracker' : ''" rounded="lg">
           <v-icon v-if="isMobile && !modelValue">mdi-checkbox-marked-outline</v-icon>
-          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Tasks</v-tooltip>
+          <v-tooltip v-if="isMobile && !modelValue" activator="parent" location="end">Task Tracker</v-tooltip>
         </v-list-item>
         
         <v-list-item to="/progress" :prepend-icon="(!isMobile || modelValue) ? 'mdi-chart-line' : ''" :title="(!isMobile || modelValue) ? 'Progress' : ''" rounded="lg">
