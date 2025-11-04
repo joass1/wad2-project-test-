@@ -408,15 +408,62 @@ a {
 /* Global dropdown opacity/text visibility fix */
 .dropdown-opaque {
   background: var(--surface) !important;
+  opacity: 1 !important;
+  z-index: 9999 !important;
 }
 .dropdown-opaque .v-list,
 .dropdown-opaque .v-card,
 .dropdown-opaque .v-sheet {
   background: var(--surface) !important;
   opacity: 1 !important;
+  z-index: 9999 !important;
 }
 .dropdown-opaque .v-list-item,
 .dropdown-opaque .v-list-item-title,
 .dropdown-opaque .v-list-item-subtitle {
   opacity: 1 !important;
+  color: var(--text-primary) !important;
+}
+
+/* Global fix for ALL Vuetify select/combobox/autocomplete menus */
+.v-menu .v-overlay__content,
+.v-select__menu .v-overlay__content,
+.v-combobox__menu .v-overlay__content,
+.v-autocomplete__menu .v-overlay__content {
+  background: var(--surface) !important;
+  opacity: 1 !important;
+  z-index: 9999 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.v-menu .v-list,
+.v-select__menu .v-list,
+.v-combobox__menu .v-list,
+.v-autocomplete__menu .v-list {
+  background: var(--surface) !important;
+  opacity: 1 !important;
+}
+
+.v-menu .v-list-item,
+.v-select__menu .v-list-item,
+.v-combobox__menu .v-list-item,
+.v-autocomplete__menu .v-list-item {
+  opacity: 1 !important;
+  color: var(--text-primary) !important;
+}
+
+.v-menu .v-list-item-title,
+.v-select__menu .v-list-item-title,
+.v-combobox__menu .v-list-item-title,
+.v-autocomplete__menu .v-list-item-title {
+  opacity: 1 !important;
+  color: var(--text-primary) !important;
+}
+
+.v-menu .v-list-item-subtitle,
+.v-select__menu .v-list-item-subtitle,
+.v-combobox__menu .v-list-item-subtitle,
+.v-autocomplete__menu .v-list-item-subtitle {
+  opacity: 1 !important;
+  color: var(--text-muted) !important;
 }

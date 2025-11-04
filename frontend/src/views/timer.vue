@@ -952,6 +952,7 @@ onUnmounted(() => { clearInterval(t) })
               rounded="lg"
               class="mb-4"
               clearable
+              :menu-props="{ contentClass: 'dropdown-opaque' }"
             >
               <template v-slot:item="{ item, props }">
                 <v-list-item v-bind="props">
@@ -983,6 +984,7 @@ onUnmounted(() => { clearInterval(t) })
               variant="outlined"
               rounded="lg"
               class="mb-4"
+              :menu-props="{ contentClass: 'dropdown-opaque' }"
             />
             
             <v-textarea
@@ -1434,7 +1436,7 @@ li {
 /* UNSCOPED GLOBAL STYLES - CRITICAL FIXES  */
 /* ========================================= */
 
-/* 1. FORCE ALL DROPDOWN MENUS TO BE OPAQUE */
+/* 1. FORCE ALL DROPDOWN MENUS TO BE OPAQUE AND VISIBLE */
 /* Target every possible Vuetify menu selector */
 
 /* Main overlay content */
@@ -1442,31 +1444,39 @@ li {
 .v-overlay.v-menu .v-overlay__content .v-list,
 .v-overlay.v-menu .v-overlay__content .v-card,
 .v-overlay.v-menu .v-overlay__content .v-sheet {
-  background: white !important;
+  background: var(--surface) !important;
   opacity: 1 !important;
+  z-index: 10000 !important;
+  visibility: visible !important;
 }
 
 [data-theme="dark"] .v-overlay.v-menu .v-overlay__content,
 [data-theme="dark"] .v-overlay.v-menu .v-overlay__content .v-list,
 [data-theme="dark"] .v-overlay.v-menu .v-overlay__content .v-card,
 [data-theme="dark"] .v-overlay.v-menu .v-overlay__content .v-sheet {
-  background: #1e1e1e !important;
+  background: var(--surface) !important;
   opacity: 1 !important;
+  z-index: 10000 !important;
+  visibility: visible !important;
 }
 
 /* Select menus specifically */
 .v-menu.v-select__menu .v-overlay__content,
 .v-menu.v-combobox__menu .v-overlay__content,
 .v-menu.v-autocomplete__menu .v-overlay__content {
-  background: white !important;
+  background: var(--surface) !important;
   opacity: 1 !important;
+  z-index: 10000 !important;
+  visibility: visible !important;
 }
 
 [data-theme="dark"] .v-menu.v-select__menu .v-overlay__content,
 [data-theme="dark"] .v-menu.v-combobox__menu .v-overlay__content,
 [data-theme="dark"] .v-menu.v-autocomplete__menu .v-overlay__content {
-  background: #1e1e1e !important;
+  background: var(--surface) !important;
   opacity: 1 !important;
+  z-index: 10000 !important;
+  visibility: visible !important;
 }
 
 /* List items */
@@ -1474,16 +1484,20 @@ li {
 .v-select__menu .v-list,
 .v-combobox__menu .v-list,
 .v-autocomplete__menu .v-list {
-  background: white !important;
+  background: var(--surface) !important;
   opacity: 1 !important;
+  z-index: 10000 !important;
+  visibility: visible !important;
 }
 
 [data-theme="dark"] .v-menu .v-list,
 [data-theme="dark"] .v-select__menu .v-list,
 [data-theme="dark"] .v-combobox__menu .v-list,
 [data-theme="dark"] .v-autocomplete__menu .v-list {
-  background: #1e1e1e !important;
+  background: var(--surface) !important;
   opacity: 1 !important;
+  z-index: 10000 !important;
+  visibility: visible !important;
 }
 
 .v-menu .v-list-item,
@@ -1491,6 +1505,29 @@ li {
 .v-combobox__menu .v-list-item,
 .v-autocomplete__menu .v-list-item {
   background: transparent !important;
+  opacity: 1 !important;
+  color: var(--text-primary) !important;
+}
+
+.v-menu .v-list-item-title,
+.v-select__menu .v-list-item-title,
+.v-combobox__menu .v-list-item-title,
+.v-autocomplete__menu .v-list-item-title {
+  opacity: 1 !important;
+  color: var(--text-primary) !important;
+}
+
+.v-menu .v-list-item-subtitle,
+.v-select__menu .v-list-item-subtitle,
+.v-combobox__menu .v-list-item-subtitle,
+.v-autocomplete__menu .v-list-item-subtitle {
+  opacity: 1 !important;
+  color: var(--text-muted) !important;
+}
+
+/* Ensure dropdown overlays are above everything */
+.v-overlay.v-menu {
+  z-index: 10000 !important;
 }
 
 /* 2. FIX DIALOG BORDER RADIUS - NO MIXED EDGES */

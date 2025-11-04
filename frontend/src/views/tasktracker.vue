@@ -190,6 +190,7 @@
             hide-details
             class="filter-select"
             style="font-size: 0.875rem"
+            :menu-props="{ contentClass: 'dropdown-opaque' }"
           ></v-select>
           <v-select
             v-model="filterPriority"
@@ -200,6 +201,7 @@
             hide-details
             class="filter-select"
             style="font-size: 0.875rem"
+            :menu-props="{ contentClass: 'dropdown-opaque' }"
           ></v-select>
           <v-select
             v-model="sortBy"
@@ -210,6 +212,7 @@
             hide-details
             class="filter-select"
             style="font-size: 0.875rem"
+            :menu-props="{ contentClass: 'dropdown-opaque' }"
           ></v-select>
         </div>
       </v-card-text>
@@ -358,6 +361,7 @@
                     variant="outlined"
                     hide-details
                     style="font-size: 0.875rem"
+                    :menu-props="{ contentClass: 'dropdown-opaque' }"
                   ></v-select>
                 </v-card-text>
               </v-card>
@@ -481,6 +485,7 @@
                 variant="outlined"
                 hide-details
                 style="font-size: 0.875rem"
+                :menu-props="{ contentClass: 'dropdown-opaque' }"
               ></v-select>
             </v-card-text>
           </v-card>
@@ -625,6 +630,7 @@
                   variant="outlined"
                   hide-details
                   style="font-size: 0.875rem"
+                  :menu-props="{ contentClass: 'dropdown-opaque' }"
                 ></v-select>
               </v-card-text>
             </v-card>
