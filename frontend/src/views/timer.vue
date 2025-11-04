@@ -569,7 +569,8 @@ async function dispatchStudySessionCompleted() {
     ? totalPausedDurationMs.value + (Date.now() - pauseStartTime.value)
     : totalPausedDurationMs.value
   const actualDurationMs = totalDurationMs - totalPausedMs
-  const actualDurationMinutes = Math.floor(actualDurationMs / 60000)
+  // Ensure minimum duration of 1 minute (API requirement)
+  const actualDurationMinutes = Math.max(1, Math.floor(actualDurationMs / 60000))
 
   // Get subject name - handle Miscellaneous
   let subjectName = null
@@ -594,18 +595,23 @@ async function dispatchStudySessionCompleted() {
   try {
     if (currentSessionId.value) {
       // Update existing session to completed
+      // Ensure minimum duration of 1 minute
+      const validDuration = Math.max(1, actualDurationMinutes)
       await api.patch(`/api/study-sessions/${currentSessionId.value}`, {
         status: 'completed',
-        actual_duration_minutes: actualDurationMinutes,
+        actual_duration_minutes: validDuration,
         time_remaining_seconds: 0,
         pause_count: pauseCount.value,
         total_paused_duration_minutes: Math.round(totalPausedMs / 60000 * 10) / 10
       })
     } else {
       // Create new completed session (fallback if session wasn't started properly)
+      // Use planned duration if actual duration is invalid
+      const durationToUse = actualDurationMinutes > 0 ? actualDurationMinutes : minutes.value
       const taskId = isMiscellaneousSelected.value ? null : selectedTask.value
+      
       await api.post('/api/study-sessions/', {
-        duration_minutes: actualDurationMinutes,
+        duration_minutes: Math.max(1, durationToUse), // Ensure at least 1 minute
         subject: subjectName,
         task: taskDisplay,
         task_id: taskId,
@@ -615,6 +621,11 @@ async function dispatchStudySessionCompleted() {
     }
   } catch (error) {
     console.error('Error logging study session:', error)
+    // Log more details about the error
+    if (error.response) {
+      console.error('Error response:', error.response.data)
+      console.error('Error status:', error.response.status)
+    }
   }
 
   // Dispatch event for other components
