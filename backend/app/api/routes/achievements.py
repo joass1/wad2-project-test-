@@ -60,11 +60,11 @@ ACHIEVEMENTS_CONFIG = {
     },
     "streak_master": {
         "title": "Streak Master",
-        "description": "Maintain a 7-day study streak",
+        "description": "Complete 10 study sessions",
         "icon": "🔥",
         "category": "consistency",
-        "required": 7,
-        "check": lambda stats: stats.get("longest_streak", 0),
+        "required": 10,
+        "check": lambda stats: stats.get("total_study_sessions", 0),
     },
     "wellness_warrior": {
         "title": "Wellness Warrior",
