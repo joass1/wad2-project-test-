@@ -33,6 +33,7 @@ const pauseStartTime = ref(null)
 const currentSessionId = ref(null)
 const completionDialog = ref(false)
 const recentlyEarnedCoins = ref(0)
+const sessionJustCompleted = ref(false)
 
 // Session Details Data
 const selectedSubject = ref(null)
@@ -112,6 +113,20 @@ const potentialCoins = computed(() => {
     return Math.floor(minutes.value * 10)
   }
   return 0
+})
+
+// Computed property for session status message
+const sessionStatusMessage = computed(() => {
+  if (sessionJustCompleted.value) {
+    return 'Session has just been completed'
+  }
+  if (pauseStartTime.value && !running.value) {
+    return 'Session has been paused'
+  }
+  if (running.value) {
+    return 'Stay focused!'
+  }
+  return 'Set your timer'
 })
 
 // Computed properties for session subject and task names
@@ -348,6 +363,19 @@ async function markTaskAsComplete() {
 
 function dismissTaskCompletionDialog() {
   taskCompletionDialog.value = false
+  resetCompletionMessage()
+}
+
+function closeCompletionDialog() {
+  completionDialog.value = false
+  resetCompletionMessage()
+}
+
+function resetCompletionMessage() {
+  // Reset completion message after a short delay to allow user to see it
+  setTimeout(() => {
+    sessionJustCompleted.value = false
+  }, 2000)
 }
 
 // UPDATED: Open topic dialog - subject_id is now optional
@@ -437,6 +465,8 @@ function start(){
   
   // Reset coin message when starting a new session
   recentlyEarnedCoins.value = 0
+  // Reset completion message when starting/resuming
+  sessionJustCompleted.value = false
   
   // If resuming from pause, calculate pause duration
   if (pauseStartTime.value) {
@@ -465,6 +495,7 @@ function start(){
       timeLeft.value = 0
       
       if (mode.value === 'Focus') {
+        sessionJustCompleted.value = true
         dispatchStudySessionCompleted()
       }
     } 
@@ -726,6 +757,7 @@ async function reset(){
   pauseStartTime.value = null
   currentSessionId.value = null
   recentlyEarnedCoins.value = 0 // Reset coin message
+  sessionJustCompleted.value = false // Reset completion message
 }
 
 function openSettings() {
@@ -770,7 +802,7 @@ onUnmounted(() => { clearInterval(t) })
               <div class="d-flex justify-space-between align-center mb-4 mb-md-6">
                 <div>
                   <div class="text-subtitle-2 text-md-subtitle-2 text-medium-emphasis mb-1">Study Session</div>
-                  <div class="text-caption text-medium-emphasis">Set your timer</div>
+                  <div class="text-caption text-medium-emphasis">{{ sessionStatusMessage }}</div>
                 </div>
                 <!-- Session Info Badge (shown when running, top right) -->
                 <v-chip 
@@ -1397,7 +1429,7 @@ onUnmounted(() => { clearInterval(t) })
             variant="flat"
             size="large"
             rounded="lg"
-            @click="completionDialog = false"
+            @click="closeCompletionDialog"
             class="text-none px-8"
           >
             Awesome!
