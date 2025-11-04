@@ -447,8 +447,8 @@
                 <div class="message-icon">🌸</div>
                 <h4 class="message-title">Take a breath, {{ displayName || 'friend' }}</h4>
                 <p class="message-text">
-                  Take five minutes to breathe deeply. Go for a walk, or listen 
-                  to your favorite song. One step at a time. 
+                  One step at a time. Go for a walk, or listen 
+                  to your favorite song.
                 </p>
               </div>
             </div>
@@ -546,7 +546,7 @@
                 <h4 class="message-title">You're amazing, {{ displayName || 'friend' }}!</h4>
                 <p class="message-text">
                   In case no one told you today: YOU matter. 
-                  You're worthy of all the good things. You're more than enough. Keep shining! 
+                  You're worthy of all the good things. You're more than enough!
                 </p>
               </div>
             </div>
@@ -2308,7 +2308,7 @@ onMounted(async () => {
   z-index: 1;
   background: var(--surface);
   backdrop-filter: blur(8px);
-  padding: 1.75rem;
+  padding:  1.75rem 1.75rem 4rem 1.75rem;
   border-radius: 12px;
   max-height: 85%; /* Prevent overflow */
   /* overflow-y: auto; */
@@ -2331,13 +2331,13 @@ onMounted(async () => {
 .message-title {
   font-size: 1.3rem;
   font-weight: 700;
-  color: var(--primary);
+  color:#5a8a7a;
   margin: 0 0 1rem 0;
 }
 
 .message-text {
   font-size: 1rem;
-  color: var(--text-primary);
+  color:  #333;
   line-height: 1.7;
   margin: 0;
   overflow-wrap: break-word;
