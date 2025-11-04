@@ -44,31 +44,20 @@
 
         <!-- Progress Bars -->
         <div class="mt-4 mt-md-5">
-          <div class="d-flex align-center justify-space-between mb-1">
-            <div class="text-caption text-md-body-2">Health</div>
-            <div class="text-caption text-md-body-2">80%</div>
+          <div class="status-item">
+            <span class="status-label">Happy</span>
+            <div class="status-bar">
+              <div class="status-fill" :style="{ width: `${petStatus?.happiness || 70}%` }"></div>
+            </div>
+            <span class="status-value">{{ petStatus?.happiness || 70 }}%</span>
           </div>
-          <v-progress-linear
-            model-value="80"
-            :height="$vuetify.display.mobile ? 6 : 8"
-            rounded
-            color="primary"
-            class="progress-bar"
-          />
-
-          <div
-            class="d-flex align-center justify-space-between mt-3 mt-md-4 mb-1"
-          >
-            <div class="text-caption text-md-body-2">Happiness</div>
-            <div class="text-caption text-md-body-2">70%</div>
+          <div class="status-item" style="margin-bottom: 0;">
+            <span class="status-label">Health</span>
+            <div class="status-bar">
+              <div class="status-fill health" :style="{ width: `${petStatus?.health || 80}%` }"></div>
+            </div>
+            <span class="status-value">{{ petStatus?.health || 80 }}%</span>
           </div>
-          <v-progress-linear
-            model-value="70"
-            :height="$vuetify.display.mobile ? 6 : 8"
-            rounded
-            color="primary"
-            class="progress-bar"
-          />
         </div>
 
         <div class="mt-4 d-flex justify-end">
@@ -327,7 +316,7 @@ import { useGlobalPet } from "@/composables/useGlobalPet";
 import { api } from "@/lib/api";
 
 const { userProfile, loading } = useAuth();
-const { petName, selectedPet } = useGlobalPet();
+const { petName, selectedPet, petStatus } = useGlobalPet();
 const router = useRouter();
 const { mobile } = useDisplay();
 
@@ -858,6 +847,66 @@ onMounted(() => {
 
   .progress-bar {
     margin-top: 4px;
+  }
+}
+
+/* Status bars matching pet page */
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 960px) {
+  .status-item {
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+}
+
+.status-label {
+  width: 60px;
+  text-transform: capitalize;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+@media (max-width: 960px) {
+  .status-label {
+    width: 50px;
+    font-size: 12px;
+  }
+}
+
+.status-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-lighter);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.status-fill {
+  height: 100%;
+  background: var(--primary);
+}
+
+.status-fill.health {
+  background: #4ade80;
+}
+
+.status-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  min-width: 40px;
+  text-align: right;
+}
+
+@media (max-width: 960px) {
+  .status-value {
+    font-size: 12px;
+    min-width: 35px;
   }
 
   .feed-btn {
