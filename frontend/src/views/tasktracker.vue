@@ -291,7 +291,7 @@
                     <span
                       class="task-chip px-2 py-1 text-caption"
                       style="color: var(--text-muted)"
-                      >{{ task.category }}</span
+                      >{{ getTaskDisplayInfo(task) }}</span
                     >
                     <span
                       v-if="task.totalStudyMinutes > 0"
@@ -427,7 +427,7 @@
                 <span
                   class="task-chip px-2 py-1 text-caption"
                   style="color: var(--text-muted)"
-                  >{{ task.category }}</span
+                  >{{ getTaskDisplayInfo(task) }}</span
                 >
                 <span
                   v-if="isOverdue(task)"
@@ -637,7 +637,9 @@
           ></v-text-field>
           <v-select
             v-model="newTask.subjectId"
-            :items="subjects.map(s => ({ title: s.name, value: s.id }))"
+            :items="subjects"
+            item-title="name"
+            item-value="id"
             label="Subject"
             variant="outlined"
             density="compact"
@@ -646,7 +648,19 @@
             required
             :disabled="!subjects || subjects.length === 0"
             :menu-props="{ contentClass: 'dropdown-opaque' }"
-          />
+          >
+            <template v-slot:item="{ item, props }">
+              <v-list-item v-bind="props">
+                <template v-slot:prepend>
+                  <span class="text-h6 mr-2">{{ item.raw.icon }}</span>
+                </template>
+              </v-list-item>
+            </template>
+            <template v-slot:selection="{ item }">
+              <span class="text-h6 mr-2">{{ item.raw.icon }}</span>
+              <span>{{ item.raw.name }}</span>
+            </template>
+          </v-select>
           <v-select
             v-model="newTask.typeId"
             :items="typeSelectItems"
@@ -852,6 +866,28 @@ watch(recurringTypes, () => {
 
 const getFilteredTasks = () => tasks.value;
 
+// Helper function to get subject name from task
+const getTaskSubjectName = (task) => {
+  if (!task.subjectId) return null;
+  const subject = subjects.value.find(s => s.id === task.subjectId);
+  return subject ? subject.name : null;
+};
+
+// Helper function to get task display info (subject and type)
+const getTaskDisplayInfo = (task) => {
+  const subjectName = getTaskSubjectName(task);
+  const type = task.topic || null;
+  
+  if (subjectName && type) {
+    return `${subjectName} | ${type}`;
+  } else if (subjectName) {
+    return subjectName;
+  } else if (type) {
+    return type;
+  }
+  return 'No Subject';
+};
+
 // get upcoming tasks
 const getUpcomingTasks = () => {
   const today = new Date();
@@ -894,14 +930,25 @@ const startEditTask = (task) => {
   errorMessage.value = "";
   editingTaskId.value = task.id;
   isEditing.value = true;
+  
+  // Map topic string back to typeId if it matches a recurring topic
+  let typeIdValue = null;
+  if (task.topic && typeSelectItems.value.length > 0) {
+    const matchingType = typeSelectItems.value.find(item => item.title === task.topic);
+    if (matchingType) {
+      typeIdValue = matchingType.value;
+    }
+  }
+  
   newTask.value = {
     title: task.title ?? "",
     status: task.status ?? "todo",
     priority: task.priority ?? "medium",
     dueDate: task.dueDate ?? "",
-    subjectId: task.subjectId ?? null,
-    typeId: null,
+    subjectId: task.subjectId ?? null, // Ensure subjectId is properly set
+    typeId: typeIdValue,
   };
+  
   showAddTask.value = true;
 };
 
@@ -933,7 +980,7 @@ const handleSubmitTask = async () => {
     status: newTask.value.status,
     priority: newTask.value.priority,
     dueDate: newTask.value.dueDate || null,
-    subjectId: newTask.value.subjectId || null,
+    subjectId: newTask.value.subjectId || null, // Explicitly include subjectId (required field)
     topic: selectedType ? selectedType.title : null,
   };
 
@@ -944,8 +991,8 @@ const handleSubmitTask = async () => {
     } else {
       await api.post("/api/tasks/add-task", payload);
     }
+    await fetchTasks(); // Refresh tasks to show updated subject
     handleCloseAddTaskDialog();
-    await fetchTasks();
   } catch (error) {
     const fallback = isEditing.value ? "Failed to update task" : "Failed to add task";
     addTaskError.value = error.message || fallback;

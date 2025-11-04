@@ -46,6 +46,10 @@ const taskCompletionDialog = ref(false)
 const tasksFromTracker = ref([])
 const isMarkingTaskComplete = ref(false)
 
+// Timer stats
+const sessionsToday = ref(0)
+const focusScore = ref(0)
+
 // NEW: Store all topics (not filtered by subject)
 const allRecurringTopics = ref([])
 
@@ -141,9 +145,16 @@ const sessionTaskTitle = computed(() => {
   return tasksFromTracker.value.find(t => t.id === selectedTask.value)?.title
 })
 
-// Filter out completed tasks (status === 'done') from the dropdown
+// Filter out completed tasks and filter by selected subject
 const availableTasks = computed(() => {
-  return tasksFromTracker.value.filter(task => task.status !== 'done')
+  let filtered = tasksFromTracker.value.filter(task => task.status !== 'done')
+  
+  // Filter by selected subject if one is selected (and not Miscellaneous)
+  if (selectedSubject.value && selectedSubject.value !== 'MISCELLANEOUS') {
+    filtered = filtered.filter(task => task.subjectId === selectedSubject.value)
+  }
+  
+  return filtered
 })
 
 // Watch for changes in available tasks - clear selectedTask if it becomes unavailable
@@ -200,12 +211,22 @@ const isMiscellaneousSelected = computed(() => {
   return selectedSubject.value === 'MISCELLANEOUS'
 })
 
-// Watch for subject changes - clear topic and task when switching to Miscellaneous
-watch(selectedSubject, (newSubject) => {
+// Watch for subject changes - clear topic and task when switching to Miscellaneous or when task doesn't match new subject
+watch(selectedSubject, (newSubject, oldSubject) => {
   if (newSubject === 'MISCELLANEOUS') {
     // Clear topic and task when Miscellaneous is selected
     selectedTopic.value = ''
     selectedTask.value = null
+  } else if (newSubject && oldSubject && newSubject !== oldSubject) {
+    // Subject changed - clear task if it doesn't belong to the new subject
+    if (selectedTask.value) {
+      const task = tasksFromTracker.value.find(t => t.id === selectedTask.value)
+      if (task && task.subjectId !== newSubject) {
+        selectedTask.value = null
+      }
+    }
+    // Clear topic when subject changes (topics are subject-specific)
+    selectedTopic.value = ''
   }
 })
 
@@ -239,7 +260,37 @@ onMounted(async () => {
   await loadSubjects()
   await loadAllRecurringTopics()
   await fetchTasksFromTracker()
+  await loadTodayStats()
 })
+
+async function loadTodayStats() {
+  try {
+    const data = await api.get('/api/study-sessions/timer-stats')
+    sessionsToday.value = data.sessions_completed || 0
+    
+    // Calculate focus score based on paused minutes vs completed minutes
+    const completedMinutes = data.total_study_minutes || 0
+    const pausedMinutes = data.total_paused_minutes || 0
+    
+    if (completedMinutes > 0) {
+      // If paused minutes exceed or equal completed minutes, focus score is 0%
+      if (pausedMinutes >= completedMinutes) {
+        focusScore.value = 0
+      } else {
+        // Focus score = (completed_minutes - paused_minutes) / completed_minutes * 100
+        const score = ((completedMinutes - pausedMinutes) / completedMinutes) * 100
+        focusScore.value = Math.round(score * 10) / 10 // Round to 1 decimal place
+      }
+    } else {
+      // No completed sessions, show default or 100%
+      focusScore.value = 100
+    }
+  } catch (error) {
+    console.error('Error loading today stats:', error)
+    sessionsToday.value = 0
+    focusScore.value = 100
+  }
+}
 
 // ============================================================================
 // SUBJECTS FUNCTIONS (Unchanged)
@@ -679,6 +730,9 @@ async function dispatchStudySessionCompleted() {
     triggerCelebration()
   }
   
+  // Refresh today's stats after session completion
+  await loadTodayStats()
+  
   // Reset session tracking
   sessionStartTime.value = null
   pauseCount.value = 0
@@ -880,11 +934,11 @@ onUnmounted(() => { clearInterval(t) })
 
               <div v-if="!running" class="d-flex justify-space-around mt-6 mt-md-8 pt-4 pt-md-6 stats-divider">
                 <div class="text-center">
-                  <div class="text-h5 text-md-h4 font-weight-medium stat-number">0</div>
+                  <div class="text-h5 text-md-h4 font-weight-medium stat-number">{{ sessionsToday }}</div>
                   <div class="text-caption text-medium-emphasis">Sessions Today</div>
                 </div>
                 <div class="text-center">
-                  <div class="text-h5 text-md-h4 font-weight-medium stat-number">70%</div>
+                  <div class="text-h5 text-md-h4 font-weight-medium stat-number">{{ focusScore }}%</div>
                   <div class="text-caption text-medium-emphasis">Focus Score</div>
                 </div>
               </div>
@@ -1013,21 +1067,18 @@ onUnmounted(() => { clearInterval(t) })
                     item-value="id"
                     variant="outlined"
                     rounded="lg"
-                    :placeholder="isMiscellaneousSelected ? 'Select a task (optional)' : 'Select a task (optional)'"
+                    :placeholder="isMiscellaneousSelected ? 'Select a task (optional)' : selectedSubject ? 'Select a task for ' + (selectedSubject === 'MISCELLANEOUS' ? 'Miscellaneous' : subjects.find(s => s.id === selectedSubject)?.name) : 'Select a subject first'"
                     hide-details
                     density="comfortable"
                     clearable
-                    :disabled="isMiscellaneousSelected"
+                    :disabled="isMiscellaneousSelected || !selectedSubject"
                     :menu-props="{ contentClass: 'dropdown-opaque' }"
                   >
                     <template v-slot:item="{ props, item }">
                       <v-list-item v-bind="props">
                         <template v-slot:title>{{ item.raw.title }}</template>
                         <template v-slot:subtitle>
-                          <v-chip size="x-small" :color="item.raw.priority === 'high' ? 'error' : item.raw.priority === 'medium' ? 'warning' : 'success'" class="mr-1">
-                            {{ item.raw.priority }}
-                          </v-chip>
-                          {{ item.raw.category }}
+                          {{ item.raw.priority }} | {{ item.raw.subjectId ? (subjects.find(s => s.id === item.raw.subjectId)?.name || 'Unknown Subject') : 'No Subject' }}
                         </template>
                       </v-list-item>
                     </template>

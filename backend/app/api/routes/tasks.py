@@ -228,6 +228,15 @@ class TaskUpdate(BaseModel):
         max_length=120,
         description="Updated category label. Leave unset to keep current value.",
     )
+    subjectId: str | None = Field(
+        default=None,
+        description="Updated subject identifier. Leave unset to keep current value.",
+    )
+    topic: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Updated recurring topic/area label. Leave unset to keep current value.",
+    )
 
 
 class TaskResponse(TaskBase):
@@ -365,11 +374,16 @@ def update_task(
     if not snapshot.exists:
         raise HTTPException(status_code=404, detail="Task not found.")
 
-    update_fields = payload.model_dump(exclude_unset=True)
-    if "dueDate" in update_fields:
-        # Accept None to clear dueDate
-        update_fields["dueDate"] = update_fields["dueDate"]
-
+    # Get all fields from payload, including those explicitly set to None
+    payload_dict = payload.model_dump(exclude_unset=False)
+    update_fields = {}
+    
+    # Only include fields that were explicitly provided in the request
+    for field_name in ["title", "status", "priority", "dueDate", "subjectId", "topic"]:
+        if field_name in payload_dict:
+            update_fields[field_name] = payload_dict[field_name]
+    
+    # If no fields to update, return current task
     if not update_fields:
         return _to_task_response(_serialize_task_doc(snapshot))
 
