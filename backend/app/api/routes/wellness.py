@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import date, datetime, timezone, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Any, Dict, List, Tuple, cast, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -38,7 +39,7 @@ class CheckInPayload(BaseModel):
     sleep: int = Field(..., ge=0, le=10)
     stress: int = Field(..., ge=0, le=10)
     notes: str | None = None
-
+    timezone: str | None = Field(None, description="User's timezone (e.g., 'Asia/Singapore')")
 
 class OverviewResponse(BaseModel):
     streak: int = 0
@@ -351,6 +352,37 @@ def submit_checkin(payload: CheckInPayload, user: dict = Depends(require_user)):
     try:
         uid = user["uid"]
         new_date = _parse_date(payload.date)
+
+        # Validate timezone
+        try:
+            user_tz = ZoneInfo(payload.timezone or "UTC")
+            user_now = datetime.now(user_tz).date()
+            
+            # Prevent future date check-ins
+            if new_date > user_now:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot check in for future dates."
+                )
+        except ZoneInfoNotFoundError as tz_error:
+            print(f"DEBUG: Invalid timezone '{payload.timezone}': {tz_error}")
+            # If timezone is invalid, fall back to UTC
+            user_now = datetime.now(timezone.utc).date()
+            if new_date > user_now:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot check in for future dates."
+                )
+        except Exception as e:
+            print(f"DEBUG: Unexpected error during timezone validation: {e}")
+            # Fallback to UTC for any other unexpected errors
+            user_now = datetime.now(timezone.utc).date()
+            if new_date > user_now:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot check in for future dates."
+                )
+            
         timestamp = datetime.now(timezone.utc)
         print(f"DEBUG: Processing check-in for user {uid}, date {payload.date}")
 
@@ -368,6 +400,14 @@ def submit_checkin(payload: CheckInPayload, user: dict = Depends(require_user)):
     # Check if document exists before transaction
     existing_doc = checkin_doc.get()
     is_new_entry = not existing_doc.exists
+
+    # Prevent duplicate check-ins for the same date
+    if existing_doc.exists:
+        print(f"DEBUG: Check-in already exists for user {uid} on {payload.date}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"You've already checked in for {payload.date}. You can only check in once per day."
+        )
 
     @firestore.transactional
     def _perform(transaction: firestore.Transaction):
@@ -397,7 +437,7 @@ def submit_checkin(payload: CheckInPayload, user: dict = Depends(require_user)):
                 if delta_days == 1:
                     # Consecutive day - increment streak
                     current_streak = int(overview.get("streak") or 0) + 1
-                    overview["streak"] = current_streak
+                    overview["streak"] = min(current_streak, 7) 
                     
                     # Update longest streak if current streak is higher
                     longest_streak = int(overview.get("longestStreak") or 0)

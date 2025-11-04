@@ -40,11 +40,6 @@
             You've completed your check-in for {{ todayFormatted }}. {{ getNextCheckinMessage }}
           </p>
           <p class="coin-reward-message">🎉 You've collected your 20 coins for the day!</p>
-
-          <!-- TEMPORARY: Reset button for testing -->
-          <button @click="resetForTesting" class="reset-btn">
-            🔄 Reset (Testing Only)
-          </button>
         </div>
 
         <!-- Show check-in form if not checked in today -->
@@ -230,11 +225,6 @@
           <h3>Check-in completed!</h3>
           <p>Great job tracking your wellness today.</p>
           <p class="next-checkin-text">See you tomorrow!</p>
-
-          <!-- TEMPORARY: Reset button for testing -->
-          <button @click="resetForTesting" class="reset-btn">
-            🔄 Reset (Testing Only)
-          </button>
         </div>
       </div>
     </div>
@@ -847,7 +837,8 @@ const completeCheckIn = async () => {
       energy: energy.value,
       sleep: sleep.value,
       stress: stress.value,
-      notes: notes.value || null
+      notes: notes.value || null,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     }
 
     const response = await api.post('/api/wellness/checkin', checkInPayload)
@@ -1006,84 +997,10 @@ const getDateEmoji = (data) => {
   return '😔'
 }
 
-// TEMPORARY: Reset for testing purposes
-const resetForTesting = () => {
-  isCompleted.value = false
-  hasCheckedInToday.value = false
-  mood.value = 7
-  energy.value = 7
-  sleep.value = 7
-  stress.value = 3
-  notes.value = ''
-  
-  console.log('✅ Reset for testing - you can check in again!')
-}
-
-// TEMPORARY: Add test data
-const addTestData = async () => {
-  const user = auth.currentUser
-  if (!user) {
-    console.log('No user logged in')
-    return
-  }
-
-  const testDays = 20 // Add 20 days of test data
-  const promises = []
-
-  for (let i = 0; i < testDays; i++) {
-    const testDate = new Date()
-    testDate.setDate(testDate.getDate() - i)
-    
-    const dayOfWeek = testDate.getDay()
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-    
-    // Better moods on weekends, lower stress
-    const moodBoost = isWeekend ? 2 : 0
-    const stressReduction = isWeekend ? 3 : 0
-
-    const checkInData = {
-      userId: user.uid,
-      date: testDate,
-      mood: Math.min(10, Math.floor(Math.random() * 5) + 5 + moodBoost), // 5-10, higher on weekends
-      energy: Math.floor(Math.random() * 6) + 4, // 4-9
-      sleep: Math.floor(Math.random() * 5) + 5, // 5-9
-      stress: Math.max(0, Math.floor(Math.random() * 7) - stressReduction), // 0-6, lower on weekends
-      notes: isWeekend ? '🎉 Weekend vibes!' : `Check-in for ${testDate.toLocaleDateString()}`,
-      createdAt: new Date()
-    }
-
-    promises.push(addDoc(collection(db, 'wellnessCheckIns'), checkInData))
-  }
-
-  try {
-    await Promise.all(promises)
-    console.log(`✅ Added ${testDays} realistic test check-ins!`)
-    
-    // Reload data
-    await loadCheckIns()
-  } catch (error) {
-    console.error('Error adding test data:', error)
-  }
-}
-
-// Load data when component mounts 
 onMounted(async () => {
   await checkTodayCheckIn()
   await loadCheckIns()
-
-  // TEMPORARY: Auto-add test data if calendar is empty
-  if (totalCheckIns.value < 100) {
-    console.log('Adding test data to visualize calendar...')
-    await addTestData()
-  }
-
-  // DEBUG: Check if data loaded
-  console.log('Check-in history:', checkInHistory.value)
-  console.log('Total check-ins:', totalCheckIns.value)
-  console.log('Sample date check (2025-10-29):', checkInHistory.value['2025-10-29'])
 })
-
-
 </script>
 
 <style scoped>
