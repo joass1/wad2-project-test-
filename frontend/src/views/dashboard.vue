@@ -16,7 +16,6 @@
     <v-card
       class="mb-4 mb-md-6 rounded-xl mx-2 mx-md-0"
       elevation="0"
-      variant="outlined"
       :style="gradient"
     >
       <v-card-text class="py-4 py-md-6 px-4 px-md-6">
@@ -90,7 +89,7 @@
     <!-- Your Stats Section -->
     <v-row dense class="mb-4 px-2 px-md-0">
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl stat-card" elevation="0" variant="outlined">
+        <v-card class="rounded-xl stat-card" elevation="0">
           <v-card-text class="text-center py-4 py-md-6">
             <v-icon
               icon="mdi-clock-time-four-outline"
@@ -110,7 +109,7 @@
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl stat-card" elevation="0" variant="outlined">
+        <v-card class="rounded-xl stat-card" elevation="0">
           <v-card-text class="text-center py-4 py-md-6">
             <v-icon
               icon="mdi-target"
@@ -130,7 +129,7 @@
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl stat-card" elevation="0" variant="outlined">
+        <v-card class="rounded-xl stat-card" elevation="0">
           <v-card-text class="text-center py-4 py-md-6">
             <v-icon
               icon="mdi-fire"
@@ -148,7 +147,7 @@
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="rounded-xl stat-card" elevation="0" variant="outlined">
+        <v-card class="rounded-xl stat-card" elevation="0">
           <v-card-text class="text-center py-4 py-md-6">
             <v-icon
               icon="mdi-heart-outline"
@@ -171,7 +170,7 @@
     <!-- Google Calendar Integration -->
     <v-row dense class="px-2 px-md-0">
       <v-col cols="12">
-        <v-card class="rounded-xl mb-2" elevation="0" variant="outlined">
+        <v-card class="rounded-xl mb-2" elevation="0">
           <v-card-title class="pb-0 text-subtitle-1 text-md-h6 text-primary"
             >Google Calendar</v-card-title
           >
@@ -184,7 +183,6 @@
           >
             <v-btn
               color="primary"
-              variant="outlined"
               @click="connectGoogleCalendar"
               :loading="connectingCalendar"
             >
@@ -344,7 +342,6 @@ const displayPetName = computed(() => {
 const gradient = computed(() => ({
   background:
     "linear-gradient(135deg, rgba(170,196,188,.25), rgba(215,203,178,.15))",
-  border: "1px solid var(--opal)",
 }));
 
 // Dashboard data
@@ -704,7 +701,6 @@ function getEventStyle(event) {
       top: "0px",
       height: "40px",
       background: `linear-gradient(${allDayColor}, ${allDayColor}), var(--surface)`,
-      borderLeft: "3px solid #4285f4",
     };
   }
 
@@ -750,7 +746,6 @@ function getEventStyle(event) {
     top: `${topOffset}px`,
     height: `${height}px`,
     background: `linear-gradient(${timedColor}, ${timedColor}), var(--surface)`,
-    borderLeft: "3px solid #ea4335",
   };
 
   // Set positioning based on overlap
