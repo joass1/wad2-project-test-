@@ -32,7 +32,6 @@
           <transition name="slide-fade">
             <div v-show="!isMobile || modelValue" class="profile-info">
               <div class="profile-name">{{ displayName }}</div>
-              <div class="level-badge">Level {{ level }}</div>
             </div>
           </transition>
         </div>
@@ -139,7 +138,7 @@ watch(mobile, () => {
 const { coins, coinsLoading, coinsError, fetchCoins } = useCoins()
 
 // Use shared profile state
-const { displayName, displayAvatar, level } = useUserProfile()
+const { displayName, displayAvatar } = useUserProfile()
 
 // Use auth state to wait for authentication
 const { loading: authLoading, isAuthed } = useAuth()
@@ -323,23 +322,6 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
   background-clip: text;
 }
 
-.level-badge {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  color: white;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 600;
-  display: inline-block;
-  box-shadow: 0 2px 12px rgba(106, 122, 90, 0.3);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
-}
-
-.level-badge:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(106, 122, 90, 0.4);
-}
 
 /* Navigation Container */
 .nav-container {
@@ -624,11 +606,6 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
     font-size: 16px;
   }
   
-  .level-badge {
-    font-size: 11px;
-    padding: 4px 10px;
-  }
-  
   .nav-container {
     margin-bottom: 12px;
   }
@@ -675,11 +652,6 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
   
   .profile-name {
     font-size: 15px;
-  }
-  
-  .level-badge {
-    font-size: 10px;
-    padding: 3px 8px;
   }
   
   .nav-container {
@@ -729,11 +701,6 @@ watch([authLoading, isAuthed], ([loading, authed]) => {
   
   .profile-name {
     font-size: 14px;
-  }
-  
-  .level-badge {
-    font-size: 9px;
-    padding: 2px 6px;
   }
   
   .nav-container {

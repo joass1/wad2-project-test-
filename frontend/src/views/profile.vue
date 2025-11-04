@@ -71,7 +71,6 @@
                   style="display: none"
                   @change="handleAvatarChange"
                 />
-                <div class="level-badge">Level 1</div>
               </div>
               <div class="profile-info">
                 <h2 class="profile-name">{{ displayName || "User" }}</h2>
@@ -79,23 +78,6 @@
                   {{ displayEmail || "user@example.com" }}
                 </p>
                 <p class="profile-member-since">Member since October 2025</p>
-                <div class="experience-section">
-                  <div class="xp-header">
-                    <span class="xp-title">Experience Points</span>
-                    <span class="xp-counter">{{ stats.xp }} / 1000 XP</span>
-                  </div>
-                  <div class="xp-progress">
-                    <div class="progress-bar">
-                      <div
-                        class="progress-fill"
-                        :style="{ width: `${(stats.xp / 1000) * 100}%` }"
-                      ></div>
-                    </div>
-                    <div class="xp-until-next">
-                      {{ 1000 - stats.xp }} XP until next level
-                    </div>
-                  </div>
-                </div>
               </div>
               <button class="edit-profile-btn" @click="openEditModal">
                 <div class="btn-icon-wrapper">
@@ -150,7 +132,7 @@
                 <span v-if="isLoadingStudyData">...</span>
                 <span v-else>{{ stats.studyHours }}</span>
               </div>
-              <div class="stat-label">Study Hours</div>
+              <div class="stat-label">Study Minutes</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon green">🎯</div>
@@ -674,7 +656,6 @@ const stats = reactive({
   checkinStreak: 0,
   wellnessStreak: 0,
   achievements: 1,
-  xp: 0,
 });
 
 // Loading states for dynamic data
@@ -767,7 +748,8 @@ async function loadStudyData() {
   isLoadingStudyData.value = true;
   try {
     const studyStats = await api.get("/api/study-sessions/stats");
-    stats.studyHours = studyStats.total_hours || 0;
+    // Use total_minutes directly if available, otherwise fall back to converting hours
+    stats.studyHours = studyStats.total_minutes !== undefined ? studyStats.total_minutes : (studyStats.total_hours || 0) * 60;
   } catch (error) {
     console.error("Error loading study data:", error);
     stats.studyHours = 0;
@@ -1663,24 +1645,6 @@ async function saveSettings() {
   transform: scale(1.1);
 }
 
-.level-badge {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  color: white;
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-  margin-top: 12px;
-  align-self: center;
-  box-shadow: 0 2px 12px rgba(106, 122, 90, 0.3);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
-}
-
-.level-badge:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(106, 122, 90, 0.4);
-}
 
 .profile-info {
   flex: 1;
@@ -1702,74 +1666,7 @@ async function saveSettings() {
 .profile-member-since {
   font-size: 14px;
   color: var(--text-disabled);
-  margin: 0 0 16px 0;
-}
-
-.experience-section {
-  margin-top: 16px;
-}
-
-.xp-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.xp-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.xp-counter {
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.xp-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 12px;
-  background: linear-gradient(135deg, var(--surface-lighter), var(--surface-light));
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-  position: relative;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--secondary));
-  transition: width 0.6s ease;
-  position: relative;
-  border-radius: 8px;
-}
-
-.progress-fill::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.xp-until-next {
-  font-size: 12px;
-  color: var(--text-muted);
+  margin: 0;
 }
 
 .edit-profile-btn {
@@ -3563,23 +3460,6 @@ async function saveSettings() {
     justify-content: center;
   }
 
-  .experience-section {
-    margin-top: 12px;
-  }
-
-  .xp-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .xp-title {
-    font-size: 13px;
-  }
-
-  .xp-counter {
-    font-size: 12px;
-  }
 
   /* Stats Grid */
   .stats-grid {
