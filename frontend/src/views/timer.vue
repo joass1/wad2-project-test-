@@ -126,6 +126,19 @@ const sessionTaskTitle = computed(() => {
   return tasksFromTracker.value.find(t => t.id === selectedTask.value)?.title
 })
 
+// Filter out completed tasks (status === 'done') from the dropdown
+const availableTasks = computed(() => {
+  return tasksFromTracker.value.filter(task => task.status !== 'done')
+})
+
+// Watch for changes in available tasks - clear selectedTask if it becomes unavailable
+watch([availableTasks, selectedTask], ([available, selected]) => {
+  if (selected && !available.find(t => t.id === selected)) {
+    // Selected task is no longer available (was marked as done), clear it
+    selectedTask.value = null
+  }
+})
+
 // FIX: Added a safe default return to prevent 'Cannot read properties of undefined' errors on mount
 const blurredBackgroundStyle = computed(() => {
   // Depend on selectedBackgroundId to react to changes made in the gallery
@@ -313,6 +326,9 @@ async function markTaskAsComplete() {
     await api.patch(`/api/tasks/${selectedTask.value}`, {
       status: 'done'
     })
+    
+    // Clear the selected task since it's now completed and won't be in the dropdown
+    selectedTask.value = null
     
     // Refresh tasks list to reflect the update
     await fetchTasksFromTracker()
@@ -674,7 +690,7 @@ function triggerCelebration() {
 
 function stop(){ 
   running.value = false
-  clearInterval(t)
+  clearInterval(t) 
   
   // Track pause
   if (sessionStartTime.value && !pauseStartTime.value) {
@@ -949,7 +965,7 @@ onUnmounted(() => { clearInterval(t) })
                   </label>
                   <v-select
                     v-model="selectedTask"
-                    :items="tasksFromTracker"
+                    :items="availableTasks"
                     item-title="title"
                     item-value="id"
                     variant="outlined"

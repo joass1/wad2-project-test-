@@ -318,7 +318,8 @@
                     {{ index % 3 === 0 ? 'mdi-star-four-points' : 'mdi-chevron-right' }}
                   </v-icon>
                 </template>
-                <v-list-item-title class="text-body-2 text-md-body-1 font-weight-medium text-wrap" v-html="insight">
+                <v-list-item-title class="text-body-2 text-md-body-1 font-weight-medium text-wrap">
+                  <span v-html="insight"></span>
                 </v-list-item-title>
               </v-list-item>
 
