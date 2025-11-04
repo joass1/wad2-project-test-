@@ -44,7 +44,7 @@ def _serialize_task_doc(doc) -> Dict[str, Any]:
     data = doc.to_dict() or {}
     data["id"] = doc.id
 
-    for key in ("createdAt", "updatedAt"):
+    for key in ("createdAt", "updatedAt", "deletedAt"):
         if key in data and isinstance(data[key], datetime):
             data[key] = _isoformat(data[key])
 
@@ -54,6 +54,7 @@ def _serialize_task_doc(doc) -> Dict[str, Any]:
     data.setdefault("totalStudyMinutes", 0)
     data.setdefault("subjectId", None)
     data.setdefault("topic", None)
+    data.setdefault("deletedAt", None)
 
     return data
 
@@ -81,6 +82,7 @@ def _to_task_response(data: Dict[str, Any]) -> TaskResponse:
         "subjectId": data.get("subjectId"),
         "topic": data.get("topic"),
         "totalStudyMinutes": total_study_mins,
+        "deletedAt": data.get("deletedAt"),
     }
     
     return TaskResponse(**response_data)
@@ -211,6 +213,10 @@ class TaskBase(BaseModel):
         max_length=255,
         description="Optional recurring topic/area label (e.g., 'Practice Paper')",
     )
+    deletedAt: str | None = Field(
+        default=None,
+        description="ISO-8601 timestamp (UTC) when the task was archived/deleted, or null if active",
+    )
 
 
 class TaskCreate(TaskBase):
@@ -307,11 +313,40 @@ def list_tasks(
     ),
     user: dict = Depends(require_user),
 ):
-    """Return all tasks for the authenticated user optionally filtered by status and priority."""
+    """Return all active (non-archived) tasks for the authenticated user optionally filtered by status and priority."""
 
     uid = user["uid"]
     snapshots = _tasks_collection(uid).stream()
-    tasks_data = [_serialize_task_doc(doc) for doc in snapshots]
+    all_tasks_data = [_serialize_task_doc(doc) for doc in snapshots]
+    
+    # Auto-delete tasks older than 30 days
+    now = _utc_now()
+    cutoff_date = now - timedelta(days=30)
+    tasks_to_delete = []
+    for task in all_tasks_data:
+        deleted_at = task.get("deletedAt")
+        if deleted_at:
+            try:
+                deleted_dt = datetime.fromisoformat(deleted_at.replace("Z", "+00:00"))
+                if deleted_dt < cutoff_date:
+                    tasks_to_delete.append(task["id"])
+            except (ValueError, AttributeError):
+                continue
+    
+    # Permanently delete old archived tasks
+    if tasks_to_delete:
+        tasks_ref = _tasks_collection(uid)
+        for task_id in tasks_to_delete:
+            try:
+                tasks_ref.document(task_id).delete()
+            except Exception as e:
+                print(f"Error deleting old task {task_id}: {e}")
+    
+    # Filter out archived tasks (tasks with deletedAt set) and permanently deleted ones
+    tasks_data = [
+        task for task in all_tasks_data 
+        if not task.get("deletedAt") and task["id"] not in tasks_to_delete
+    ]
 
     status_norm = cast(
         StatusLiteral | None, _normalize_filter(status, ["todo", "inProgress", "done"])
@@ -376,11 +411,13 @@ def create_task(payload: TaskCreate, user: dict = Depends(require_user)):
     response_description="Counts of total, completed, due-today, and overdue tasks.",
 )
 def get_task_stats(user: dict = Depends(require_user)):
-    """Return aggregate statistics for the authenticated user's tasks."""
+    """Return aggregate statistics for the authenticated user's active (non-archived) tasks."""
 
     uid = user["uid"]
     snapshots = _tasks_collection(uid).stream()
     tasks = [_serialize_task_doc(doc) for doc in snapshots]
+    # Filter out archived tasks
+    tasks = [task for task in tasks if not task.get("deletedAt")]
     return _calculate_stats(tasks)
 
 
@@ -436,11 +473,94 @@ def update_task(
 @router.delete(
     "/{task_id}",
     response_model=Dict[str, bool],
-    summary="Delete task",
-    response_description="Confirmation that the task was successfully removed.",
+    summary="Archive task",
+    response_description="Confirmation that the task was successfully archived.",
 )
 def delete_task(task_id: str, user: dict = Depends(require_user)):
-    """Remove a task from the authenticated user's collection."""
+    """Archive a task by setting its deletedAt timestamp. Tasks are automatically permanently deleted after 30 days."""
+
+    uid = user["uid"]
+    doc_ref = _tasks_collection(uid).document(task_id)
+    snapshot = doc_ref.get()
+    if not snapshot.exists:
+        raise HTTPException(status_code=404, detail="Task not found.")
+    
+    # Archive the task by setting deletedAt timestamp
+    now = _utc_now()
+    doc_ref.update({"deletedAt": now, "updatedAt": now})
+    return {"success": True}
+
+class TaskDailyStatsResponse(BaseModel):
+    date: str
+    created: int
+    completed: int
+
+
+@router.get(
+    "/archived",
+    response_model=List[TaskResponse],
+    summary="Get archived tasks",
+    response_description="Returns all archived (deleted) tasks for the authenticated user.",
+)
+def get_archived_tasks(user: dict = Depends(require_user)):
+    """Return all archived tasks (tasks with deletedAt set) for the authenticated user."""
+
+    uid = user["uid"]
+    snapshots = _tasks_collection(uid).stream()
+    tasks_data = [_serialize_task_doc(doc) for doc in snapshots]
+    
+    # Filter to only archived tasks
+    archived_tasks = [task for task in tasks_data if task.get("deletedAt")]
+    
+    # Sort by deletedAt descending (most recently deleted first)
+    archived_tasks.sort(
+        key=lambda t: (t.get("deletedAt") is None, t.get("deletedAt") or ""),
+        reverse=True
+    )
+    
+    # Convert to TaskResponse objects
+    task_responses = []
+    for task_data in archived_tasks:
+        try:
+            task_responses.append(_to_task_response(task_data))
+        except Exception as e:
+            print(f"Error converting archived task to response: {e}")
+            print(traceback.format_exc())
+            continue
+    
+    return task_responses
+
+
+@router.post(
+    "/{task_id}/restore",
+    response_model=TaskResponse,
+    summary="Restore archived task",
+    response_description="Restore an archived task by clearing its deletedAt timestamp.",
+)
+def restore_task(task_id: str, user: dict = Depends(require_user)):
+    """Restore an archived task by removing its deletedAt timestamp."""
+
+    uid = user["uid"]
+    doc_ref = _tasks_collection(uid).document(task_id)
+    snapshot = doc_ref.get()
+    if not snapshot.exists:
+        raise HTTPException(status_code=404, detail="Task not found.")
+    
+    # Restore the task by clearing deletedAt
+    now = _utc_now()
+    doc_ref.update({"deletedAt": None, "updatedAt": now})
+    refreshed = doc_ref.get()
+    return _to_task_response(_serialize_task_doc(refreshed))
+
+
+@router.delete(
+    "/{task_id}/permanent",
+    response_model=Dict[str, bool],
+    summary="Permanently delete task",
+    response_description="Permanently delete a task from the database. This action cannot be undone.",
+)
+def permanent_delete_task(task_id: str, user: dict = Depends(require_user)):
+    """Permanently delete a task from the authenticated user's collection. This action cannot be undone."""
 
     uid = user["uid"]
     doc_ref = _tasks_collection(uid).document(task_id)
@@ -449,11 +569,6 @@ def delete_task(task_id: str, user: dict = Depends(require_user)):
         raise HTTPException(status_code=404, detail="Task not found.")
     doc_ref.delete()
     return {"success": True}
-
-class TaskDailyStatsResponse(BaseModel):
-    date: str
-    created: int
-    completed: int
 
 @router.get(
     "/weekly-activity",

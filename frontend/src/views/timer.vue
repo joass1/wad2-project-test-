@@ -266,25 +266,41 @@ onMounted(async () => {
 async function loadTodayStats() {
   try {
     const data = await api.get('/api/study-sessions/timer-stats')
+    console.log('DEBUG: Timer stats response:', data)
     sessionsToday.value = data.sessions_completed || 0
     
-    // Calculate focus score based on paused minutes vs completed minutes
-    const completedMinutes = data.total_study_minutes || 0
-    const pausedMinutes = data.total_paused_minutes || 0
+    // Use focus score from backend which calculates:
+    // (total_started_seconds - total_paused_seconds) / total_started_seconds * 100
+    // If paused seconds >= total session seconds, it returns 0
+    console.log('DEBUG: focus_score from backend:', data.focus_score)
+    console.log('DEBUG: total_started_minutes:', data.total_started_minutes)
+    console.log('DEBUG: total_paused_minutes:', data.total_paused_minutes)
     
-    if (completedMinutes > 0) {
-      // If paused minutes exceed or equal completed minutes, focus score is 0%
-      if (pausedMinutes >= completedMinutes) {
-        focusScore.value = 0
-      } else {
-        // Focus score = (completed_minutes - paused_minutes) / completed_minutes * 100
-        const score = ((completedMinutes - pausedMinutes) / completedMinutes) * 100
-        focusScore.value = Math.round(score * 10) / 10 // Round to 1 decimal place
-      }
+    if (data.focus_score !== undefined && data.focus_score !== null) {
+      console.log('DEBUG: Using backend focus_score:', data.focus_score)
+      focusScore.value = data.focus_score
     } else {
-      // No completed sessions, show default or 100%
-      focusScore.value = 100
+      console.log('DEBUG: Backend focus_score not available, using fallback calculation')
+      // Fallback calculation if backend doesn't provide focus_score
+      const totalStartedSeconds = (data.total_started_minutes || 0) * 60
+      const totalPausedSeconds = (data.total_paused_minutes || 0) * 60
+      
+      if (totalStartedSeconds > 0) {
+        // If paused seconds >= total session seconds, focus score is 0%
+        if (totalPausedSeconds >= totalStartedSeconds) {
+          focusScore.value = 0
+        } else {
+          // Focus score = (timer running seconds - paused seconds) / total session seconds * 100
+          const runningSeconds = totalStartedSeconds - totalPausedSeconds
+          const score = (runningSeconds / totalStartedSeconds) * 100
+          focusScore.value = Math.round(score * 10) / 10 // Round to 1 decimal place
+        }
+      } else {
+        // No sessions started, show default 100%
+        focusScore.value = 100
+      }
     }
+    console.log('DEBUG: Final focusScore.value:', focusScore.value)
   } catch (error) {
     console.error('Error loading today stats:', error)
     sessionsToday.value = 0

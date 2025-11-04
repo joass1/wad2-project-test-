@@ -886,6 +886,7 @@ def get_timer_stats(user: dict = Depends(require_user)):
     paused_count = 0
     
     # Process each session
+    print(f"DEBUG: Processing sessions for date: {today}")
     for doc in sessions_query.stream():
         data = doc.to_dict() or {}
         status = data.get("status")
@@ -893,10 +894,12 @@ def get_timer_stats(user: dict = Depends(require_user)):
         actual_minutes = data.get("actual_duration_minutes")
         total_paused_duration = data.get("total_paused_duration_minutes", 0.0)
         paused_at = data.get("paused_at")
+        session_id = doc.id
         
         # Sum all planned durations for sessions started today
         if isinstance(planned_minutes, (int, float)) and planned_minutes > 0:
-            total_started_minutes += int(planned_minutes)
+            total_started_minutes += planned_minutes  # Use float instead of int for precision
+            print(f"DEBUG: Session {session_id[:8]}...: status={status}, planned={planned_minutes} min ({planned_minutes*60:.0f} sec), adding to total_started")
         
         # Process based on status
         if status == "completed":
@@ -908,6 +911,8 @@ def get_timer_stats(user: dict = Depends(require_user)):
             # Use tracked paused duration for completed sessions
             if isinstance(total_paused_duration, (int, float)):
                 total_paused_minutes += total_paused_duration
+                paused_sec = total_paused_duration * 60
+                print(f"DEBUG: Completed session {session_id[:8]}...: paused={total_paused_duration:.2f} min ({paused_sec:.1f} sec)")
         
         elif status == "paused":
             paused_count += 1
@@ -916,6 +921,7 @@ def get_timer_stats(user: dict = Depends(require_user)):
             paused_duration_so_far = total_paused_duration if isinstance(total_paused_duration, (int, float)) else 0.0
             
             # Add current pause duration (from paused_at to now)
+            # But cap it at the planned duration to prevent unrealistic values from old paused sessions
             current_pause_minutes = 0.0
             if paused_at:
                 if isinstance(paused_at, datetime):
@@ -927,20 +933,59 @@ def get_timer_stats(user: dict = Depends(require_user)):
                         current_pause_minutes = (now - paused_dt).total_seconds() / 60
                     except (ValueError, AttributeError):
                         current_pause_minutes = 0.0
+                
+                # Cap current pause duration at planned duration to prevent unrealistic values
+                # (e.g., if session was paused days ago and never resumed)
+                original_current_pause = current_pause_minutes
+                if isinstance(planned_minutes, (int, float)) and planned_minutes > 0:
+                    current_pause_minutes = min(current_pause_minutes, float(planned_minutes))
+                    if original_current_pause > planned_minutes:
+                        print(f"DEBUG: Capped pause time for session {session_id}: {original_current_pause:.2f} -> {current_pause_minutes:.2f} (planned: {planned_minutes})")
             
-            total_paused_minutes += paused_duration_so_far + current_pause_minutes
+            session_paused_total = paused_duration_so_far + current_pause_minutes
+            total_paused_minutes += session_paused_total
+            paused_sec_total = session_paused_total * 60
+            print(f"DEBUG: Paused session {session_id[:8]}...: planned={planned_minutes} min, paused={session_paused_total:.2f} min ({paused_sec_total:.1f} sec)")
         
-        # Note: Active sessions don't contribute to paused time (unless they were paused and resumed, which is already tracked)
+        elif status == "active":
+            # Active sessions may have paused time if they were paused and resumed
+            # Include their tracked paused duration in the calculation
+            if isinstance(total_paused_duration, (int, float)) and total_paused_duration > 0:
+                total_paused_minutes += total_paused_duration
+                paused_sec = total_paused_duration * 60
+                print(f"DEBUG: Active session {session_id[:8]}...: paused={total_paused_duration:.2f} min ({paused_sec:.1f} sec)")
     
     # Get additional metrics from daily metrics
     metrics = _get_daily_metrics(uid, today)
     
-    # Calculate focus score: 100% - (paused_minutes / started_minutes * 100%)
+    # Calculate focus score: (timer running seconds - paused seconds) / total session seconds * 100
+    # Formula: (total_started_minutes - total_paused_minutes) / total_started_minutes * 100
+    # If paused seconds >= total session seconds, focus score is 0
     if total_started_minutes > 0:
-        pause_percentage = (total_paused_minutes / total_started_minutes) * 100
-        focus_score = max(0, round(100 - pause_percentage, 1))
+        # Convert to seconds for more precise calculation (especially for short sessions)
+        total_started_seconds = float(total_started_minutes) * 60
+        total_paused_seconds = float(total_paused_minutes) * 60
+        
+        # Debug logging (show both minutes and seconds)
+        print(f"DEBUG Focus Score Calculation:")
+        print(f"  total_started: {total_started_minutes} minutes ({total_started_seconds:.1f} seconds)")
+        print(f"  total_paused: {total_paused_minutes:.2f} minutes ({total_paused_seconds:.1f} seconds)")
+        print(f"  paused >= started: {total_paused_seconds >= total_started_seconds}")
+        
+        # Check if paused time exceeds or equals total session time
+        if total_paused_seconds >= total_started_seconds:
+            focus_score = 0.0
+            print(f"  Result: 0% (paused time >= total session time)")
+        else:
+            # Calculate: (running time - paused time) / total session time * 100
+            # Use seconds for precision, especially important for short sessions
+            running_seconds = total_started_seconds - total_paused_seconds
+            focus_score = round((running_seconds / total_started_seconds) * 100, 1)
+            print(f"  running: {running_seconds:.1f} seconds ({running_seconds/60:.2f} minutes)")
+            print(f"  Result: {focus_score}%")
     else:
         focus_score = 100.0  # No sessions started, perfect focus!
+        print(f"DEBUG Focus Score: 100% (no sessions started)")
     
     # Calculate hours from minutes
     total_study_hours = round(total_study_minutes / 60, 2)

@@ -162,6 +162,8 @@
             <v-select
               v-model="filterStatus"
               :items="statusOptions"
+              item-title="title"
+              item-value="value"
               label="Status"
               density="compact"
               variant="outlined"
@@ -273,11 +275,11 @@
                         icon
                         size="x-small"
                         variant="text"
-                        @click="handleDeleteTask(task.id)"
+                        @click="handleArchiveTask(task.id)"
                         style="color: var(--text-disabled)"
-                        :aria-label="`Delete ${task.title}`"
+                        :aria-label="`Archive ${task.title}`"
                       >
-                        <v-icon size="16">mdi-close</v-icon>
+                        <v-icon size="16">mdi-delete</v-icon>
                       </v-btn>
                     </div>
                   </div>
@@ -618,6 +620,95 @@
       </v-card>
     </div>
 
+    <!-- Archived Tasks Card (Bottom Right of Page) -->
+    <div class="d-flex justify-end mt-6 mb-4">
+      <v-card
+        v-if="archivedTasks.length > 0"
+        class="archived-tasks-card"
+        elevation="2"
+        rounded="xl"
+        style="background: var(--surface)"
+      >
+      <v-card-text class="pa-4">
+        <div class="d-flex align-center justify-space-between mb-3">
+          <div class="d-flex align-center ga-2">
+            <v-icon size="20" color="var(--text-muted)">mdi-delete</v-icon>
+            <h3 class="text-body-1 font-weight-medium" style="color: var(--text-primary)">
+              Deleted Tasks
+            </h3>
+            <span class="text-caption" style="color: var(--text-muted)">
+              ({{ archivedTasks.length }})
+            </span>
+          </div>
+          <v-btn
+            icon
+            size="x-small"
+            variant="text"
+            @click="showArchivedCard = !showArchivedCard"
+            style="color: var(--text-muted)"
+          >
+            <v-icon size="16">{{ showArchivedCard ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+          </v-btn>
+        </div>
+        <v-expand-transition>
+          <div v-if="showArchivedCard">
+            <div v-if="loadingArchived" class="text-center py-4">
+              <v-progress-circular indeterminate size="24" color="primary"></v-progress-circular>
+            </div>
+            <div v-else-if="archivedTasks.length === 0" class="text-center py-4 text-caption" style="color: var(--text-muted)">
+              No deleted tasks
+            </div>
+            <div v-else class="archived-tasks-list">
+              <v-card
+                v-for="task in archivedTasks"
+                :key="task.id"
+                class="mb-2"
+                elevation="0"
+                rounded="lg"
+                style="background: var(--surface-light)"
+              >
+                <v-card-text class="pa-3">
+                  <div class="d-flex justify-space-between align-start">
+                    <div class="flex-grow-1">
+                      <div class="text-body-2 mb-1" style="color: var(--text-primary)">
+                        {{ task.title }}
+                      </div>
+                      <div class="text-caption" style="color: var(--text-muted)">
+                        Deleted {{ formatArchiveDate(task.deletedAt) }}
+                      </div>
+                    </div>
+                    <div class="d-flex align-center ga-1">
+                      <v-btn
+                        icon
+                        size="x-small"
+                        variant="text"
+                        @click="handleRestoreTask(task.id)"
+                        style="color: var(--success)"
+                        :aria-label="`Restore ${task.title}`"
+                      >
+                        <v-icon size="16">mdi-restore</v-icon>
+                      </v-btn>
+                      <v-btn
+                        icon
+                        size="x-small"
+                        variant="text"
+                        @click="handlePermanentDeleteTask(task.id)"
+                        style="color: var(--error)"
+                        :aria-label="`Permanently delete ${task.title}`"
+                      >
+                        <v-icon size="16">mdi-delete-forever</v-icon>
+                      </v-btn>
+                    </div>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </div>
+          </div>
+        </v-expand-transition>
+      </v-card-text>
+      </v-card>
+    </div>
+
     <!-- Add Task Dialog -->
     <v-dialog v-model="showAddTask" max-width="500">
       <v-card rounded="lg" elevation="0" style="background: var(--surface)">
@@ -753,7 +844,12 @@ const filterStatus = ref("all");
 const filterPriority = ref("all");
 const sortBy = ref("dueDate");
 
-const statusOptions = ["all", "todo", "inProgress", "done"];
+const statusOptions = [
+  { title: "All", value: "all" },
+  { title: "To Do", value: "todo" },
+  { title: "In Progress", value: "inProgress" },
+  { title: "Done", value: "done" },
+];
 const priorityOptions = ["all", "high", "medium", "low"];
 const sortOptions = [
   { title: "Sort by Due Date", value: "dueDate" },
@@ -773,6 +869,9 @@ const prioritySelectItems = [
 ];
 
 const tasks = ref([]);
+const archivedTasks = ref([]);
+const showArchivedCard = ref(false);
+const loadingArchived = ref(false);
 const { subjects, fetchSubjects } = useSubjects();
 const { topics: recurringTypes, fetchTopics } = useRecurringTopics();
 const stats = ref({ total: 0, completed: 0, dueToday: 0, overdue: 0 });
@@ -841,8 +940,25 @@ const fetchTasks = async () => {
   }
 };
 
+const fetchArchivedTasks = async () => {
+  loadingArchived.value = true;
+  try {
+    const response = await api.get("/api/tasks/archived");
+    archivedTasks.value = Array.isArray(response) ? response : [];
+    // Auto-show archived card if there are archived tasks
+    if (archivedTasks.value.length > 0) {
+      showArchivedCard.value = true;
+    }
+  } catch (error) {
+    console.error("Failed to load archived tasks:", error);
+    archivedTasks.value = [];
+  } finally {
+    loadingArchived.value = false;
+  }
+};
+
 onMounted(async () => {
-  await Promise.all([fetchTasks(), fetchSubjects(), fetchTopics()]);
+  await Promise.all([fetchTasks(), fetchSubjects(), fetchTopics(), fetchArchivedTasks()]);
   typeSelectItems.value = (recurringTypes.value || []).map(t => ({ title: t.title, value: t.id }));
 });
 
@@ -1009,14 +1125,15 @@ const handleCloseAddTaskDialog = () => {
   newTask.value = { ...newTaskDefaults };
 };
 
-// delete task
-const handleDeleteTask = async (id) => {
+// archive task
+const handleArchiveTask = async (id) => {
   try {
     loading.value = true;
     await api.del(`/api/tasks/${id}`);
     await fetchTasks();
+    await fetchArchivedTasks();
   } catch (error) {
-    errorMessage.value = error.message || "Failed to delete task";
+    errorMessage.value = error.message || "Failed to archive task";
   } finally {
     loading.value = false;
   }
@@ -1091,6 +1208,52 @@ const isOverdue = (task) => {
   dueDate.setHours(0, 0, 0, 0);
   return dueDate < today && task.status !== "done";
 };
+
+const formatArchiveDate = (dateString) => {
+  if (!dateString) return "recently";
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "recently";
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+  }
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
+const handleRestoreTask = async (id) => {
+  try {
+    loading.value = true;
+    await api.post(`/api/tasks/${id}/restore`);
+    await fetchTasks();
+    await fetchArchivedTasks();
+  } catch (error) {
+    errorMessage.value = error.message || "Failed to restore task";
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handlePermanentDeleteTask = async (id) => {
+  if (!confirm("Are you sure you want to permanently delete this task? This action cannot be undone.")) {
+    return;
+  }
+  try {
+    loading.value = true;
+    await api.del(`/api/tasks/${id}/permanent`);
+    await fetchArchivedTasks();
+  } catch (error) {
+    errorMessage.value = error.message || "Failed to permanently delete task";
+  } finally {
+    loading.value = false;
+  }
+};
 </script>
 
 <style scoped>
@@ -1150,6 +1313,22 @@ const isOverdue = (task) => {
 .view-tabs :deep(.v-tab) {
   min-width: auto;
   padding: 0 16px;
+  transition: background-color 0.2s ease;
+}
+
+/* Active tab - darker shade */
+.view-tabs :deep(.v-tab.v-tab--selected) {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Hover state on tabs - even darker */
+.view-tabs :deep(.v-tab:hover) {
+  background-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Active tab on hover - darkest */
+.view-tabs :deep(.v-tab.v-tab--selected:hover) {
+  background-color: rgba(0, 0, 0, 0.15) !important;
 }
 
 .add-task-btn {
@@ -1193,6 +1372,26 @@ const isOverdue = (task) => {
   :deep(.v-col) {
     padding-left: 4px;
     padding-right: 4px;
+  }
+}
+
+/* Archived Tasks Card - At bottom right of page */
+.archived-tasks-card {
+  width: 320px;
+  max-width: 100%;
+  max-height: 500px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.archived-tasks-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+  .archived-tasks-card {
+    width: 100%;
+    float: none;
   }
 }
 </style>
