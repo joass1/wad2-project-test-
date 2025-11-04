@@ -353,36 +353,6 @@ def submit_checkin(payload: CheckInPayload, user: dict = Depends(require_user)):
         uid = user["uid"]
         new_date = _parse_date(payload.date)
 
-        # Validate timezone
-        try:
-            user_tz = ZoneInfo(payload.timezone or "UTC")
-            user_now = datetime.now(user_tz).date()
-            
-            # Prevent future date check-ins
-            if new_date > user_now:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Cannot check in for future dates."
-                )
-        except ZoneInfoNotFoundError as tz_error:
-            print(f"DEBUG: Invalid timezone '{payload.timezone}': {tz_error}")
-            # If timezone is invalid, fall back to UTC
-            user_now = datetime.now(timezone.utc).date()
-            if new_date > user_now:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Cannot check in for future dates."
-                )
-        except Exception as e:
-            print(f"DEBUG: Unexpected error during timezone validation: {e}")
-            # Fallback to UTC for any other unexpected errors
-            user_now = datetime.now(timezone.utc).date()
-            if new_date > user_now:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Cannot check in for future dates."
-                )
-            
         timestamp = datetime.now(timezone.utc)
         print(f"DEBUG: Processing check-in for user {uid}, date {payload.date}")
 
@@ -393,6 +363,9 @@ def submit_checkin(payload: CheckInPayload, user: dict = Depends(require_user)):
 
         transaction = db.transaction()
         print(f"DEBUG: Created transaction")
+
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is  
     except Exception as e:
         print(f"DEBUG: Error in setup: {e}")
         raise HTTPException(status_code=500, detail=f"Setup error: {str(e)}")

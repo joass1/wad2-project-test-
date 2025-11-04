@@ -1044,6 +1044,8 @@ const completeCheckIn = async () => {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     }
 
+    console.log('Sending check-in payload:', checkInPayload) 
+
     const response = await api.post('/api/wellness/checkin', checkInPayload)
 
     // Update local state
