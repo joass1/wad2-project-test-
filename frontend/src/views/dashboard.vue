@@ -29,7 +29,10 @@
                 {{ displayPetName }}
               </div>
               <div class="text-caption text-md-body-2 text-muted">
-                Doing well
+                <span v-if="isPetDead" style="color: var(--error);">Has died</span>
+                <span v-else-if="petHappiness < 20 || petHealth < 20" style="color: var(--warning);">Starving</span>
+                <span v-else-if="petHappiness < 40 || petHealth < 40" style="color: var(--warning);">Getting hungry</span>
+                <span v-else>Doing well</span>
               </div>
             </div>
           </div>
@@ -44,19 +47,24 @@
 
         <!-- Progress Bars -->
         <div class="mt-4 mt-md-5">
+          <div v-if="isPetDead" class="pet-dead-message mb-3">
+            <div class="text-caption text-md-body-2 text-center" style="color: var(--error);">
+              Your pet has died! Feed it to revive it.
+            </div>
+          </div>
           <div class="status-item">
             <span class="status-label">Happy</span>
             <div class="status-bar">
-              <div class="status-fill" :style="{ width: `${petStatus?.happiness || 70}%` }"></div>
+              <div class="status-fill" :style="{ width: `${petHappiness}%` }"></div>
             </div>
-            <span class="status-value">{{ petStatus?.happiness || 70 }}%</span>
+            <span class="status-value">{{ petHappiness }}%</span>
           </div>
           <div class="status-item" style="margin-bottom: 0;">
             <span class="status-label">Health</span>
             <div class="status-bar">
-              <div class="status-fill health" :style="{ width: `${petStatus?.health || 80}%` }"></div>
+              <div class="status-fill health" :style="{ width: `${petHealth}%` }"></div>
             </div>
-            <span class="status-value">{{ petStatus?.health || 80 }}%</span>
+            <span class="status-value">{{ petHealth }}%</span>
           </div>
         </div>
 
@@ -319,6 +327,21 @@ const { userProfile, loading } = useAuth();
 const { petName, selectedPet, petStatus } = useGlobalPet();
 const router = useRouter();
 const { mobile } = useDisplay();
+
+// Computed values for pet status, clamped to 0-100
+const petHappiness = computed(() => {
+  const value = petStatus.value?.happiness ?? 70;
+  return Math.max(0, Math.min(100, value));
+});
+
+const petHealth = computed(() => {
+  const value = petStatus.value?.health ?? 80;
+  return Math.max(0, Math.min(100, value));
+});
+
+const isPetDead = computed(() => {
+  return petStatus.value?.isDead || petStatus.value?.is_dead || petHappiness.value === 0 || petHealth.value === 0;
+});
 
 const navigateToPetPage = () => {
   router.push({ name: "PetPage" });
