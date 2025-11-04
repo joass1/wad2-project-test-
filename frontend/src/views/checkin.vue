@@ -2315,7 +2315,7 @@ onMounted(async () => {
 .envelope-back .message-content {
   position: relative;
   z-index: 1;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
   padding:  1.75rem 1.75rem 4rem 1.75rem;
   border-radius: 12px;
