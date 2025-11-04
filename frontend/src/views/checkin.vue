@@ -522,7 +522,7 @@
                 <p class="message-text">
                   Try the 5-4-3-2-1 technique: 
                   name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, and 1 you 
-                  taste. You're going to be okay! 
+                  taste. 
                 </p>
               </div>
             </div>
@@ -1200,9 +1200,19 @@ const getDateEmoji = (data) => {
   return '😔'
 }
 
-// Flip envelope card
+// Flip envelope card - only one card can be open at a time
 const flipEnvelope = (type) => {
-  flippedEnvelopes.value[type] = !flippedEnvelopes.value[type]
+  // If the clicked card is already open, just close it
+  if (flippedEnvelopes.value[type]) {
+    flippedEnvelopes.value[type] = false
+  } else {
+    // Close all other cards first
+    Object.keys(flippedEnvelopes.value).forEach(key => {
+      flippedEnvelopes.value[key] = false
+    })
+    // Then open the clicked card
+    flippedEnvelopes.value[type] = true
+  }
 }
 
 onMounted(async () => {
