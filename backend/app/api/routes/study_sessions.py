@@ -80,6 +80,7 @@ class SubjectHours(BaseModel):
 
 class StudyStatsResponse(BaseModel):
     total_hours: float
+    total_minutes: int = 0  # Add total_minutes for precise minute calculations
     total_sessions: int
     average_session_length: float
     sessions_this_week: int
@@ -1125,28 +1126,32 @@ def get_study_stats(user: dict = Depends(require_user)):
             session_data = session.to_dict()
             total_sessions += 1
             
-            duration = session_data.get("actual_duration_minutes")
-            # Fall back to duration_minutes for legacy sessions
-            if duration is None:
-                duration = session_data.get("duration_minutes", 0)
+            # Get actual_duration_minutes from all sessions for total study hours
+            actual_duration = session_data.get("actual_duration_minutes")
+            # Fall back to duration_minutes for legacy sessions that don't have actual_duration_minutes
+            if actual_duration is None:
+                actual_duration = session_data.get("duration_minutes", 0)
+            
+            # Sum actual_duration_minutes from ALL sessions for total study hours
+            if actual_duration is not None and isinstance(actual_duration, (int, float)) and actual_duration > 0:
+                total_minutes += actual_duration
             
             session_date = session_data.get("date", "").strip() if session_data.get("date") else ""
             status = session_data.get("status")
             
-            # Only count completed sessions with actual duration for total study hours
-            if status == "completed" and duration is not None and isinstance(duration, (int, float)) and duration > 0:
-                total_minutes += duration 
+            # Track completed sessions for streak and other metrics
+            if status == "completed" and actual_duration is not None and isinstance(actual_duration, (int, float)) and actual_duration > 0:
                 completed_sessions += 1
                 if session_date:
                     completed_study_dates.add(session_date) 
                 if session_date >= week_ago: 
                     if session_date in daily_minutes:
-                        daily_minutes[session_date] += duration
+                        daily_minutes[session_date] += actual_duration
                         
                     # Only count sessions with a valid subject (filter out Uncategorized/legacy data)
                     subject = session_data.get("subject")
                     if subject and subject.strip():  # Only add if subject exists and is not empty
-                        subject_minutes_past_week[subject] += duration
+                        subject_minutes_past_week[subject] += actual_duration
             elif status == "paused":
                 paused_sessions += 1
             elif status == "active":
@@ -1192,6 +1197,7 @@ def get_study_stats(user: dict = Depends(require_user)):
         
         return StudyStatsResponse(
             total_hours=round(total_minutes / 60, 2),
+            total_minutes=int(total_minutes),  # Return precise total minutes
             total_sessions=total_sessions,
             average_session_length=round(total_minutes / total_sessions, 2) if total_sessions > 0 else 0,
             sessions_this_week=sessions_this_week,
@@ -1284,3 +1290,22 @@ def delete_study_session(
     
     session_ref.delete()
     return {"message": "Study session deleted successfully"}
+
+
+@router.delete("/reset")
+def reset_study_sessions(user: dict = Depends(require_user)):
+    """Reset all study sessions - delete all sessions for the authenticated user"""
+    uid = user["uid"]
+    
+    print(f"DEBUG: Resetting study sessions for user {uid}")
+    
+    # Delete all study sessions
+    sessions_ref = _study_sessions_collection(uid)
+    sessions = sessions_ref.stream()
+    session_count = 0
+    for session in sessions:
+        session.reference.delete()
+        session_count += 1
+    print(f"DEBUG: Deleted {session_count} study sessions")
+    
+    return {"message": f"All study sessions have been reset successfully. Deleted {session_count} session(s)."}

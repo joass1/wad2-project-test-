@@ -772,6 +772,54 @@ def select_pet(payload: dict, user: dict = Depends(require_user)):
     return {"ok": True, "message": "Pet selected successfully", "selected_pet": pet_key, "pet_name": pet_name}
 
 
+@router.post("/switch-pet")
+def switch_pet(payload: dict, user: dict = Depends(require_user)):
+    """Switch user's pet to a different species (costs 10,000 coins)"""
+    uid = user["uid"]
+    pet_key = payload.get("pet_key")
+
+    if not pet_key:
+        return {"ok": False, "message": "Missing 'pet_key' field"}
+
+    # Validate pet key
+    valid_pets = ["catBlack", "catGrey", "catNew", "dogBlonde", "dogGrey", "dogLight"]
+    if pet_key not in valid_pets:
+        return {"ok": False, "message": "Invalid pet selection"}
+
+    # Get current user data
+    doc_snapshot = db.collection("users").document(uid).get()
+    if not doc_snapshot.exists:
+        return {"ok": False, "message": "User profile not found"}
+
+    user_data = doc_snapshot.to_dict() or {}
+    pet_settings = user_data.get("pet_settings", {})
+
+    # Check if user is trying to switch to the same pet
+    current_pet = pet_settings.get("selected_pet")
+    if current_pet == pet_key:
+        return {"ok": False, "message": "You already have this pet"}
+
+    # Update pet settings (keep the existing pet name)
+    updated_pet_settings = {
+        "selected_pet": pet_key,
+        "has_selected_pet": True,
+        "pet_name": pet_settings.get("pet_name", "Pet"),  # Keep existing name
+        "switched_at": datetime.now(timezone.utc),
+    }
+
+    db.collection("users").document(uid).set(
+        {"pet_settings": updated_pet_settings},
+        merge=True,
+    )
+
+    return {
+        "ok": True,
+        "message": "Pet switched successfully",
+        "selected_pet": pet_key,
+        "pet_name": updated_pet_settings["pet_name"],
+    }
+
+
 @router.put("/pet-name")
 def update_pet_name(payload: dict, user: dict = Depends(require_user)):
     """Update user's pet name"""
