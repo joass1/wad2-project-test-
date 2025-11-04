@@ -5,342 +5,371 @@
       <p class="subtitle">Track your wellness and mood</p>
     </div>
 
-    <div class="main-content">
-      <div class="wellness-overview">
-        <h3 class="section-title">
-          <span class="icon">📊</span> Wellness Overview
-        </h3>
-
-        <!-- Coin Reward Badge -->
-        <div v-if="!hasCheckedInToday" class="coin-reward-badge">
-          <AnimatedCoin :scale="1.5" :speed="8" />
-          <span class="coin-text">Earn 20 coins today!</span>
-        </div>
-
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Streak</div>
-            <div class="stat-value">{{ streak }}/7</div>
-            <div class="stat-sublabel">This week</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Total</div>
-            <div class="stat-value">{{ totalCheckIns }}</div>
-            <div class="stat-sublabel">Check-ins</div>
-          </div>
-        </div>
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'checkin' }"
+        @click="activeTab = 'checkin'"
+      >
+        Today's Check-in
       </div>
-
-      <div class="check-in-card">
-        <!-- Show message if already checked in today -->
-        <div v-if="hasCheckedInToday" class="completion-message">
-          <div class="success-icon">✓</div>
-          <h3 class="completion-title">{{ getMotivationalMessage }}</h3>
-          <p class="completion-subtitle">
-            You've completed your check-in for {{ todayFormatted }}. {{ getNextCheckinMessage }}
-          </p>
-          <p class="coin-reward-message">🎉 You've collected your 20 coins for the day!</p>
-        </div>
-
-        <!-- Show check-in form if not checked in today -->
-        <div v-else-if="!isCompleted">
-          <h3 class="section-title">Today's Check-in</h3>
-          <p class="section-subtitle">How are you feeling today?</p>
-
-          <div class="slider-group">
-            <div class="slider-header">
-              <span class="slider-label">
-                <span class="emoji">😊</span> Mood
-              </span>
-              <span class="slider-value">{{ mood }}/10</span>
-            </div>
-
-            <!-- Animated emoji display -->
-            <div class="emoji-display">
-              <span class="big-emoji" :key="mood">{{ getMoodEmoji }}</span>
-            </div>
-            
-            <!-- Particle container -->
-            <div class="particle-container">
-              <div 
-                v-for="particle in moodParticles" 
-                :key="particle.id"
-                class="particle"
-                :style="{ 
-                  left: particle.x + '%',
-                  animationDelay: particle.delay + 's'
-                }"
-              >
-                {{ particle.emoji }}
-              </div>
-            </div>
-
-            <input 
-              type="range" 
-              v-model.number="mood" 
-              min="0" 
-              max="10" 
-              class="slider"
-              :style="{ '--fill-percent': (mood / 10 * 100) + '%' }"
-            />
-            <p class="slider-feedback">{{ getMoodFeedback }}</p>
-          </div>
-  
-          <div class="slider-group">
-            <div class="slider-header">
-              <span class="slider-label">
-                <span class="emoji">⚡</span> Energy
-              </span>
-              <span class="slider-value">{{ energy }}/10</span>
-            </div>
-
-            <div class="emoji-display">
-              <span class="big-emoji" :key="energy">{{ getEnergyEmoji }}</span>
-            </div>
-            
-            <!-- Particle container -->
-            <div class="particle-container">
-              <div 
-                v-for="particle in energyParticles" 
-                :key="particle.id"
-                class="particle"
-                :style="{ 
-                  left: particle.x + '%',
-                  animationDelay: particle.delay + 's'
-                }"
-              >
-                {{ particle.emoji }}
-              </div>
-            </div>
-
-            <input 
-              type="range" 
-              v-model.number="energy" 
-              min="0" 
-              max="10" 
-              class="slider"
-              :style="{ '--fill-percent': (energy / 10 * 100) + '%' }"
-            />
-            <p class="slider-feedback">{{ getEnergyFeedback }}</p>
-          </div>
-
-          <div class="slider-group">
-            <div class="slider-header">
-              <span class="slider-label">
-                <span class="emoji">😴</span> Sleep
-              </span>
-              <span class="slider-value">{{ sleep }}/10</span>
-            </div>
-
-            <div class="emoji-display">
-              <span class="big-emoji" :key="sleep">{{ getSleepEmoji }}</span>
-            </div>
-            
-            <!-- Particle container -->
-            <div class="particle-container">
-              <div 
-                v-for="particle in sleepParticles" 
-                :key="particle.id"
-                class="particle"
-                :style="{ 
-                  left: particle.x + '%',
-                  animationDelay: particle.delay + 's'
-                }"
-              >
-                {{ particle.emoji }}
-              </div>
-            </div>
-
-            <input 
-              type="range" 
-              v-model.number="sleep" 
-              min="0" 
-              max="10" 
-              class="slider"
-              :style="{ '--fill-percent': (sleep / 10 * 100) + '%' }"
-            />
-            <p class="slider-feedback">{{ getSleepFeedback }}</p>
-          </div>
-
-          <div class="slider-group">
-            <div class="slider-header">
-              <span class="slider-label">
-                <span class="emoji">😰</span> Stress
-              </span>
-              <span class="slider-value">{{ stress }}/10</span>
-            </div>
-
-            <div class="emoji-display">
-              <span class="big-emoji" :key="stress">{{ getStressEmoji }}</span>
-            </div>
-            
-            <!-- Particle container -->
-            <div class="particle-container">
-              <div 
-                v-for="particle in stressParticles" 
-                :key="particle.id"
-                class="particle"
-                :style="{ 
-                  left: particle.x + '%',
-                  animationDelay: particle.delay + 's'
-                }"
-              >
-                {{ particle.emoji }}
-              </div>
-            </div>
-
-            <input 
-              type="range" 
-              v-model.number="stress" 
-              min="0" 
-              max="10" 
-              class="slider"
-              :style="{ '--fill-percent': (stress / 10 * 100) + '%' }"
-            />
-            <p class="slider-feedback">{{ getStressFeedback }}</p>
-          </div>
-
-          <div class="notes-section">
-            <label class="notes-label">Notes (optional)</label>
-            <textarea 
-              v-model="notes" 
-              class="notes-textarea"
-              placeholder="How was your day? Any thoughts or reflections..."
-              rows="4"
-            ></textarea>
-          </div>
-
-          <button 
-            @click="completeCheckIn" 
-            :disabled="isSubmitting"
-            class="complete-btn"
-          >
-            {{ isSubmitting ? 'Saving...' : 'Complete Check-in' }}
-          </button>
-        </div>
-
-        <!-- Show completion message immediately after submitting -->
-        <div v-else class="completion-message">
-          <div class="success-icon">✓</div>
-          <h3>Check-in completed!</h3>
-          <p>Great job tracking your wellness today.</p>
-          <p class="next-checkin-text">See you tomorrow!</p>
-        </div>
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'history' }"
+        @click="activeTab = 'history'"
+      >
+        History
+      </div>
+      <div
+        class="tab-item"
+        :class="{ active: activeTab === 'openwhen' }"
+        @click="activeTab = 'openwhen'"
+      >
+        Open When
       </div>
     </div>
 
-    <div class="history-section">
-      <h3 class="section-title">Check-in History</h3>
-      <p class="section-subtitle">Click on any date to view your check-in</p>
-      
-      <div class="history-grid">
-        <div class="calendar">
-            <div class="calendar-header">
-            <button @click="previousMonth" class="nav-btn">‹</button>
-            <span class="month-year">{{ currentMonthYear }}</span>
-            <button @click="nextMonth" class="nav-btn">›</button>
-            </div>
-            
-            <div class="calendar-grid">
-            <div v-for="day in weekDays" :key="day" class="calendar-day-header">
-                {{ day }}
-            </div>
-            <div 
-                v-for="date in calendarDates" 
-                :key="date.key"
-                @click="selectDate(date)"
-                :class="['calendar-date', {
-                'other-month': date.isOtherMonth,
-                'today': date.isToday,
-                'selected': date.isSelected,
-                'has-checkin': date.hasCheckIn
-                }]"
-                :style="getDateStyle(date)"
-            >
-            <span class="date-number">{{ date.day }}</span>
-  
-            <!-- Hover tooltip -->
-            <div v-if="date.hasCheckIn && date.checkInData" class="date-tooltip">
-              <div class="tooltip-emoji">{{ getDateEmoji(date.checkInData) }}</div>
-              <div class="tooltip-stats">
-                <div class="tooltip-row">
-                  <span>Mood:</span>
-                  <span>{{ date.checkInData.mood }}/10</span>
-                </div>
-                <div class="tooltip-row">
-                  <span>Energy:</span>
-                  <span>{{ date.checkInData.energy }}/10</span>
-                </div>
-              </div>
-            </div>
+    <div v-if="activeTab === 'checkin'" class="tab-content">
+      <div class="main-content">
+        <div class="wellness-overview">
+          <h3 class="section-title">
+            <span class="icon">📊</span> Wellness Overview
+          </h3>
 
-            <!-- Ripple effect container -->
-            <span class="ripple"></span>
+          <!-- Coin Reward Badge -->
+          <div v-if="!hasCheckedInToday" class="coin-reward-badge">
+            <AnimatedCoin :scale="1.5" :speed="8" />
+            <span class="coin-text">Earn 20 coins today!</span>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Streak</div>
+              <div class="stat-value">{{ streak }}/7</div>
+              <div class="stat-sublabel">This week</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total</div>
+              <div class="stat-value">{{ totalCheckIns }}</div>
+              <div class="stat-sublabel">Check-ins</div>
             </div>
           </div>
         </div>
 
-        <div class="right-sidebar">
-          <!-- Legend -->
-          <div class="calendar-legend">
-            <h4 class="legend-title">Wellness Score</h4>
-            <div class="legend-items">
-              <div class="legend-item">
-                <div class="legend-color legend-green"></div>
-                <span class="legend-label">Great (8-10)</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-color legend-blue"></div>
-                <span class="legend-label">Good (6-7.9)</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-color legend-yellow"></div>
-                <span class="legend-label">Okay (4-5.9)</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-color legend-red"></div>
-                <span class="legend-label">Needs Care (&lt;4)</span>
-              </div>
-            </div>
+        <div class="check-in-card">
+          <!-- Show message if already checked in today -->
+          <div v-if="hasCheckedInToday" class="completion-message">
+            <div class="success-icon">✓</div>
+            <h3 class="completion-title">{{ getMotivationalMessage }}</h3>
+            <p class="completion-subtitle">
+              You've completed your check-in for {{ todayFormatted }}. {{ getNextCheckinMessage }}
+            </p>
+            <p class="coin-reward-message">🎉 You've collected your 20 coins for the day!</p>
           </div>
 
-        <div class="pet-stats-panel" v-if="selectedCheckInData">
-            <h3 class="section-title">Check-in for {{ selectedDateFormatted }}</h3>
+          <!-- Show check-in form if not checked in today -->
+          <div v-else-if="!isCompleted">
+            <h3 class="section-title">Today's Check-in</h3>
+            <p class="section-subtitle">How are you feeling today?</p>
 
-                <div class="pet-stat">
-                    <span class="label">Mood:</span>
-                    <span class="value">{{ selectedCheckInData.mood }}/10</span>
-                </div>
+            <div class="slider-group">
+              <div class="slider-header">
+                <span class="slider-label">
+                  <span class="emoji">😊</span> Mood
+                </span>
+                <span class="slider-value">{{ mood }}/10</span>
+              </div>
 
-                <div class="pet-stat">
-                    <span class="label">Energy:</span>
-                    <span class="value">{{ selectedCheckInData.energy }}/10</span>
+              <!-- Animated emoji display -->
+              <div class="emoji-display">
+                <span class="big-emoji" :key="mood">{{ getMoodEmoji }}</span>
+              </div>
+              
+              <!-- Particle container -->
+              <div class="particle-container">
+                <div 
+                  v-for="particle in moodParticles" 
+                  :key="particle.id"
+                  class="particle"
+                  :style="{ 
+                    left: particle.x + '%',
+                    animationDelay: particle.delay + 's'
+                  }"
+                >
+                  {{ particle.emoji }}
                 </div>
+              </div>
 
-                <div class="pet-stat">
-                    <span class="label">Sleep:</span>
-                    <span class="value">{{ selectedCheckInData.sleep }}/10</span>
-                </div>
-
-                <div class="pet-stat">
-                    <span class="label">Stress:</span>
-                    <span class="value">{{ selectedCheckInData.stress }}/10</span>
-                </div>
-
-                <div v-if="selectedCheckInData.notes" class="notes-display">
-                    <span class="label">Notes:</span>
-                    <p class="notes-content">{{ selectedCheckInData.notes }}</p>
-                </div>
+              <input 
+                type="range" 
+                v-model.number="mood" 
+                min="0" 
+                max="10" 
+                class="slider"
+                :style="{ '--fill-percent': (mood / 10 * 100) + '%' }"
+              />
+              <p class="slider-feedback">{{ getMoodFeedback }}</p>
             </div>
-
-            <div v-else class="pet-stats-empty">
-                <p>No check-in recorded for this date</p>
-            </div>
-        </div>
-      </div>
-    </div>
     
-    <div class="wellness-tips">
+            <div class="slider-group">
+              <div class="slider-header">
+                <span class="slider-label">
+                  <span class="emoji">⚡</span> Energy
+                </span>
+                <span class="slider-value">{{ energy }}/10</span>
+              </div>
+
+              <div class="emoji-display">
+                <span class="big-emoji" :key="energy">{{ getEnergyEmoji }}</span>
+              </div>
+              
+              <!-- Particle container -->
+              <div class="particle-container">
+                <div 
+                  v-for="particle in energyParticles" 
+                  :key="particle.id"
+                  class="particle"
+                  :style="{ 
+                    left: particle.x + '%',
+                    animationDelay: particle.delay + 's'
+                  }"
+                >
+                  {{ particle.emoji }}
+                </div>
+              </div>
+
+              <input 
+                type="range" 
+                v-model.number="energy" 
+                min="0" 
+                max="10" 
+                class="slider"
+                :style="{ '--fill-percent': (energy / 10 * 100) + '%' }"
+              />
+              <p class="slider-feedback">{{ getEnergyFeedback }}</p>
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-header">
+                <span class="slider-label">
+                  <span class="emoji">😴</span> Sleep
+                </span>
+                <span class="slider-value">{{ sleep }}/10</span>
+              </div>
+
+              <div class="emoji-display">
+                <span class="big-emoji" :key="sleep">{{ getSleepEmoji }}</span>
+              </div>
+              
+              <!-- Particle container -->
+              <div class="particle-container">
+                <div 
+                  v-for="particle in sleepParticles" 
+                  :key="particle.id"
+                  class="particle"
+                  :style="{ 
+                    left: particle.x + '%',
+                    animationDelay: particle.delay + 's'
+                  }"
+                >
+                  {{ particle.emoji }}
+                </div>
+              </div>
+
+              <input 
+                type="range" 
+                v-model.number="sleep" 
+                min="0" 
+                max="10" 
+                class="slider"
+                :style="{ '--fill-percent': (sleep / 10 * 100) + '%' }"
+              />
+              <p class="slider-feedback">{{ getSleepFeedback }}</p>
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-header">
+                <span class="slider-label">
+                  <span class="emoji">😰</span> Stress
+                </span>
+                <span class="slider-value">{{ stress }}/10</span>
+              </div>
+
+              <div class="emoji-display">
+                <span class="big-emoji" :key="stress">{{ getStressEmoji }}</span>
+              </div>
+              
+              <!-- Particle container -->
+              <div class="particle-container">
+                <div 
+                  v-for="particle in stressParticles" 
+                  :key="particle.id"
+                  class="particle"
+                  :style="{ 
+                    left: particle.x + '%',
+                    animationDelay: particle.delay + 's'
+                  }"
+                >
+                  {{ particle.emoji }}
+                </div>
+              </div>
+
+              <input 
+                type="range" 
+                v-model.number="stress" 
+                min="0" 
+                max="10" 
+                class="slider"
+                :style="{ '--fill-percent': (stress / 10 * 100) + '%' }"
+              />
+              <p class="slider-feedback">{{ getStressFeedback }}</p>
+            </div>
+
+            <div class="notes-section">
+              <label class="notes-label">Notes (optional)</label>
+              <textarea 
+                v-model="notes" 
+                class="notes-textarea"
+                placeholder="How was your day? Any thoughts or reflections..."
+                rows="4"
+              ></textarea>
+            </div>
+
+            <button 
+              @click="completeCheckIn" 
+              :disabled="isSubmitting"
+              class="complete-btn"
+            >
+              {{ isSubmitting ? 'Saving...' : 'Complete Check-in' }}
+            </button>
+          </div>
+
+          <!-- Show completion message immediately after submitting -->
+          <div v-else class="completion-message">
+            <div class="success-icon">✓</div>
+            <h3>Check-in completed!</h3>
+            <p>Great job tracking your wellness today.</p>
+            <p class="next-checkin-text">See you tomorrow!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div v-if="activeTab === 'history'" class="tab-content">
+      <div class="history-section">
+        <h3 class="section-title">Check-in History</h3>
+        <p class="section-subtitle">Click on any date to view your check-in</p>
+        
+        <div class="history-grid">
+          <div class="calendar">
+              <div class="calendar-header">
+              <button @click="previousMonth" class="nav-btn">‹</button>
+              <span class="month-year">{{ currentMonthYear }}</span>
+              <button @click="nextMonth" class="nav-btn">›</button>
+              </div>
+              
+              <div class="calendar-grid">
+              <div v-for="day in weekDays" :key="day" class="calendar-day-header">
+                  {{ day }}
+              </div>
+              <div 
+                  v-for="date in calendarDates" 
+                  :key="date.key"
+                  @click="selectDate(date)"
+                  :class="['calendar-date', {
+                  'other-month': date.isOtherMonth,
+                  'today': date.isToday,
+                  'selected': date.isSelected,
+                  'has-checkin': date.hasCheckIn
+                  }]"
+                  :style="getDateStyle(date)"
+              >
+              <span class="date-number">{{ date.day }}</span>
+    
+              <!-- Hover tooltip -->
+              <div v-if="date.hasCheckIn && date.checkInData" class="date-tooltip">
+                <div class="tooltip-emoji">{{ getDateEmoji(date.checkInData) }}</div>
+                <div class="tooltip-stats">
+                  <div class="tooltip-row">
+                    <span>Mood:</span>
+                    <span>{{ date.checkInData.mood }}/10</span>
+                  </div>
+                  <div class="tooltip-row">
+                    <span>Energy:</span>
+                    <span>{{ date.checkInData.energy }}/10</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ripple effect container -->
+              <span class="ripple"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="right-sidebar">
+            <!-- Legend -->
+            <div class="calendar-legend">
+              <h4 class="legend-title">Wellness Score</h4>
+              <div class="legend-items">
+                <div class="legend-item">
+                  <div class="legend-color legend-green"></div>
+                  <span class="legend-label">Great (8-10)</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color legend-blue"></div>
+                  <span class="legend-label">Good (6-7.9)</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color legend-yellow"></div>
+                  <span class="legend-label">Okay (4-5.9)</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color legend-red"></div>
+                  <span class="legend-label">Needs Care (&lt;4)</span>
+                </div>
+              </div>
+            </div>
+
+          <div class="pet-stats-panel" v-if="selectedCheckInData">
+              <h3 class="section-title">Check-in for {{ selectedDateFormatted }}</h3>
+
+                  <div class="pet-stat">
+                      <span class="label">Mood:</span>
+                      <span class="value">{{ selectedCheckInData.mood }}/10</span>
+                  </div>
+
+                  <div class="pet-stat">
+                      <span class="label">Energy:</span>
+                      <span class="value">{{ selectedCheckInData.energy }}/10</span>
+                  </div>
+
+                  <div class="pet-stat">
+                      <span class="label">Sleep:</span>
+                      <span class="value">{{ selectedCheckInData.sleep }}/10</span>
+                  </div>
+
+                  <div class="pet-stat">
+                      <span class="label">Stress:</span>
+                      <span class="value">{{ selectedCheckInData.stress }}/10</span>
+                  </div>
+
+                  <div v-if="selectedCheckInData.notes" class="notes-display">
+                      <span class="label">Notes:</span>
+                      <p class="notes-content">{{ selectedCheckInData.notes }}</p>
+                  </div>
+              </div>
+
+              <div v-else class="pet-stats-empty">
+                  <p>No check-in recorded for this date</p>
+              </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wellness-tips">
       <h3 class="section-title">Wellness Tips</h3>
       
       <div class="tips-grid">
@@ -366,6 +395,170 @@
       </div>
     </div>
   </div>
+
+  <!-- Open When Tab -->
+  <div v-if="activeTab === 'openwhen'" class="tab-content">
+    <div class="open-when-section">
+      <div class="open-when-header">
+        <h2 class="open-when-title">Open When Messages</h2>
+        <p class="open-when-subtitle">Click an envelope to reveal a personalized message for when you need it most</p>
+      </div>
+
+      <div class="envelopes-grid">
+        <!-- Envelope 1: Sad -->
+        <div 
+          class="envelope-card" 
+          :class="{ flipped: flippedEnvelopes.sad }"
+          @click="flipEnvelope('sad')"
+        >
+          <div class="envelope-inner">
+            <!-- Front of card -->
+            <div class="envelope-front">
+              <div class="envelope-icon">📧</div>
+              <h3 class="envelope-title">OPEN WHEN<br/>you're sad</h3>
+            </div>
+            <!-- Back of card -->
+            <div class="envelope-back">
+              <div class="message-content">
+                <div class="message-icon">💙</div>
+                <h4 class="message-title">Hey {{ displayName || 'friend' }},</h4>
+                <p class="message-text">
+                  Remember that storms don't last forever, 
+                  and brighter days are ahead. You've overcome challenges before, and you'll 
+                  get through this too. Take a deep breath and be gentle with yourself!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Envelope 2: Stressed -->
+        <div 
+          class="envelope-card" 
+          :class="{ flipped: flippedEnvelopes.stressed }"
+          @click="flipEnvelope('stressed')"
+        >
+          <div class="envelope-inner">
+            <div class="envelope-front">
+              <div class="envelope-icon">📧</div>
+              <h3 class="envelope-title">OPEN WHEN<br/>you're stressed</h3>
+            </div>
+            <div class="envelope-back">
+              <div class="message-content">
+                <div class="message-icon">🌸</div>
+                <h4 class="message-title">Take a breath, {{ displayName || 'friend' }}</h4>
+                <p class="message-text">
+                  Take five minutes to breathe deeply, go for a walk, or listen 
+                  to your favorite song. You don't have to handle everything at once. One step 
+                  at a time. 
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Envelope 3: Tired -->
+        <div 
+          class="envelope-card" 
+          :class="{ flipped: flippedEnvelopes.tired }"
+          @click="flipEnvelope('tired')"
+        >
+          <div class="envelope-inner">
+            <div class="envelope-front">
+              <div class="envelope-icon">📧</div>
+              <h3 class="envelope-title">OPEN WHEN<br/>you're tired</h3>
+            </div>
+            <div class="envelope-back">
+              <div class="message-content">
+                <div class="message-icon">🌙</div>
+                <h4 class="message-title">Rest well, {{ displayName || 'friend' }}</h4>
+                <p class="message-text">
+                  It's okay to rest and slow down. Rest isn't lazy, it's necessary. Give yourself permission to 
+                  recharge. Tomorrow is a new day, sleep tight. 
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Envelope 4: Need Motivation -->
+        <div 
+          class="envelope-card" 
+          :class="{ flipped: flippedEnvelopes.motivation }"
+          @click="flipEnvelope('motivation')"
+        >
+          <div class="envelope-inner">
+            <div class="envelope-front">
+              <div class="envelope-icon">📧</div>
+              <h3 class="envelope-title">OPEN WHEN<br/> you need motivation</h3>
+            </div>
+            <div class="envelope-back">
+              <div class="message-content">
+                <div class="message-icon">🚀</div>
+                <h4 class="message-title">You've got this, {{ displayName || 'friend' }}!</h4>
+                <p class="message-text">
+                  Look how far you've come! Every small step counts, you're making progress 
+                  even when it doesn't feel like it. Keep pushing and keep believing.
+                  Let's go! 
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Envelope 5: Anxious -->
+        <div 
+          class="envelope-card" 
+          :class="{ flipped: flippedEnvelopes.anxious }"
+          @click="flipEnvelope('anxious')"
+        >
+          <div class="envelope-inner">
+            <div class="envelope-front">
+              <div class="envelope-icon">📧</div>
+              <h3 class="envelope-title">OPEN WHEN<br/>you're anxious</h3>
+            </div>
+            <div class="envelope-back">
+              <div class="message-content">
+                <div class="message-icon">🌿</div>
+                <h4 class="message-title">Ground yourself, {{ displayName || 'friend' }}</h4>
+                <p class="message-text">
+                  Try the 5-4-3-2-1 technique: 
+                  name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, and 1 you 
+                  taste. You're safe and you're going to be okay. This feeling is 
+                  temporary. 
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Envelope 6: Proud -->
+        <div 
+          class="envelope-card" 
+          :class="{ flipped: flippedEnvelopes.proud }"
+          @click="flipEnvelope('proud')"
+        >
+          <div class="envelope-inner">
+            <div class="envelope-front">
+              <div class="envelope-icon">📧</div>
+              <h3 class="envelope-title">OPEN WHEN<br/> you need a reminder</h3>
+            </div>
+            <div class="envelope-back">
+              <div class="message-content">
+                <div class="message-icon">⭐</div>
+                <h4 class="message-title">You're amazing, {{ displayName || 'friend' }}!</h4>
+                <p class="message-text">
+                  In case no one told you today: you matter. 
+                  You're worthy of love, happiness, and all good things. You're more than enough. Keep shining! 
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 </template>
 
 <script setup>
@@ -406,6 +599,19 @@ const totalCheckIns = ref(0)
 const isSubmitting = ref(false)
 const hasCheckedInToday = ref(false)
 const checkInHistory = ref({})
+
+// Tab state
+const activeTab = ref('checkin')
+
+// Flipped envelopes state
+const flippedEnvelopes = ref({
+  sad: false,
+  stressed: false,
+  tired: false,
+  motivation: false,
+  anxious: false,
+  proud: false
+})
 
 // Sliders for particle generation
 watch(mood, (newVal, oldVal) => {
@@ -995,6 +1201,11 @@ const getDateEmoji = (data) => {
   if (average >= 6) return '😊'
   if (average >= 4) return '😐'
   return '😔'
+}
+
+// Flip envelope card
+const flipEnvelope = (type) => {
+  flippedEnvelopes.value[type] = !flippedEnvelopes.value[type]
 }
 
 onMounted(async () => {
@@ -1912,5 +2123,215 @@ onMounted(async () => {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-weight: 500;
+}
+
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 2rem;
+  background: var(--surface-lighter);
+  border-radius: 12px;
+  padding: 4px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.tab-item {
+  flex: 1;
+  padding: 12px 24px;
+  text-align: center;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.tab-item:hover {
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--text-primary);
+}
+
+.tab-item.active {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Tab Content */
+.tab-content {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Open When Section */
+.open-when-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.open-when-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.open-when-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.open-when-subtitle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Envelopes Grid */
+.envelopes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  perspective: 1000px;
+}
+
+/* Envelope Card */
+.envelope-card {
+  height: 380px;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.3s ease;
+}
+
+.envelope-card:hover {
+  transform: translateY(-8px);
+}
+
+.envelope-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s;
+  transform-style: preserve-3d;
+}
+
+.envelope-card.flipped .envelope-inner {
+  transform: rotateY(180deg);
+}
+
+/* Front and Back of Card */
+.envelope-front,
+.envelope-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* Envelope Front */
+.envelope-front {
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
+  border: 2px solid var(--surface-lighter);
+}
+
+.envelope-icon {
+  font-size: 5rem;
+  margin-bottom: 1.5rem;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+  animation: floatEnvelope 3s ease-in-out infinite;
+}
+
+@keyframes floatEnvelope {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.envelope-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Envelope Back */
+.envelope-back {
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+  border: 2px solid var(--primary);
+  transform: rotateY(180deg);
+}
+
+[data-theme="dark"] .envelope-back {
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
+}
+
+.message-content {
+  text-align: center;
+  max-width: 100%;
+}
+
+.message-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.message-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0 0 1rem 0;
+}
+
+.message-text {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tab-navigation {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-item {
+    min-width: 120px;
+  }
+
+  .envelopes-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .envelope-card {
+    height: 350px;
+  }
+
+  .open-when-header {
+    margin-bottom: 2rem;
+  }
+
+  .open-when-title {
+    font-size: 1.5rem;
+  }
 }
 </style>
