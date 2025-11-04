@@ -340,32 +340,6 @@
             <div class="settings-list">
               <div class="setting-item">
                 <div class="setting-info">
-                  <div class="setting-title">Study Reminders</div>
-                  <div class="setting-desc">
-                    Get reminded to start your study sessions.
-                  </div>
-                </div>
-                <div
-                  class="toggle-switch"
-                  :class="{ active: notificationSettings.studyReminders }"
-                  @click="toggleNotification('studyReminders')"
-                ></div>
-              </div>
-              <div class="setting-item">
-                <div class="setting-info">
-                  <div class="setting-title">Daily Check-in</div>
-                  <div class="setting-desc">
-                    Reminder for daily wellness check-in.
-                  </div>
-                </div>
-                <div
-                  class="toggle-switch"
-                  :class="{ active: notificationSettings.dailyCheckin }"
-                  @click="toggleNotification('dailyCheckin')"
-                ></div>
-              </div>
-              <div class="setting-item">
-                <div class="setting-info">
                   <div class="setting-title">Achievement Notifications</div>
                   <div class="setting-desc">
                     Get notified when you unlock achievements.
@@ -377,19 +351,6 @@
                     active: notificationSettings.achievementNotifications,
                   }"
                   @click="toggleNotification('achievementNotifications')"
-                ></div>
-              </div>
-              <div class="setting-item">
-                <div class="setting-info">
-                  <div class="setting-title">Social Updates</div>
-                  <div class="setting-desc">
-                    Notifications from friends and challenges.
-                  </div>
-                </div>
-                <div
-                  class="toggle-switch"
-                  :class="{ active: notificationSettings.socialUpdates }"
-                  @click="toggleNotification('socialUpdates')"
                 ></div>
               </div>
             </div>
@@ -718,10 +679,7 @@ const achievementsData = ref({
 });
 
 const defaultNotificationSettings = {
-  studyReminders: true,
-  dailyCheckin: true,
   achievementNotifications: false,
-  socialUpdates: false,
 };
 
 const defaultPreferences = {
@@ -1673,15 +1631,9 @@ async function loadNotificationSettings() {
   try {
     const settings = await api.get("/api/notifications/settings");
     const mappedSettings = {
-      studyReminders:
-        settings.study_reminders ?? defaultNotificationSettings.studyReminders,
-      dailyCheckin:
-        settings.daily_checkin ?? defaultNotificationSettings.dailyCheckin,
       achievementNotifications:
         settings.achievement_notifications ??
         defaultNotificationSettings.achievementNotifications,
-      socialUpdates:
-        settings.social_updates ?? defaultNotificationSettings.socialUpdates,
     };
 
     Object.assign(notificationSettings, mappedSettings);
@@ -1719,10 +1671,7 @@ async function loadUserPreferences() {
 async function saveSettings() {
   try {
     const notificationPayload = {
-      study_reminders: notificationSettings.studyReminders,
-      daily_checkin: notificationSettings.dailyCheckin,
       achievement_notifications: notificationSettings.achievementNotifications,
-      social_updates: notificationSettings.socialUpdates,
     };
 
     const preferencesPayload = {
