@@ -75,10 +75,10 @@ def _to_task_response(data: Dict[str, Any]) -> TaskResponse:
     if priority is None or priority not in ["high", "medium", "low"]:
         priority = "medium"
     
-    # Handle title: if None, use empty string (not the string "None")
+    # Handle title: if None or empty, use placeholder (title requires min_length=1)
     title = data.get("title")
-    if title is None:
-        title = ""
+    if title is None or (isinstance(title, str) and len(title.strip()) == 0):
+        title = "Untitled Task"
     
     response_data = {
         "id": str(data.get("id", "")),
@@ -598,6 +598,10 @@ def get_weekly_activity(user: dict = Depends(require_user)):
     snapshots = _tasks_collection(uid).stream()
     for doc in snapshots:
         data = _serialize_task_doc(doc)
+        
+        # Skip soft-deleted tasks (tasks with deletedAt set)
+        if data.get("deletedAt"):
+            continue
 
         # count created tasks
         created_at = data.get("createdAt")
