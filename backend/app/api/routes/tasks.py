@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone, timedelta
 from typing import Any, Dict, Iterable, List, Literal, Optional, cast
 from collections import defaultdict
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -57,16 +58,32 @@ def _serialize_task_doc(doc) -> Dict[str, Any]:
     return data
 
 def _to_task_response(data: Dict[str, Any]) -> TaskResponse:
-    return TaskResponse(
-        id=str(data.get("id", "")),
-        title=str(data.get("title", "")),
-        status=data.get("status", "todo"),
-        priority=data.get("priority", "medium"),
-        dueDate=data.get("dueDate"),
-        category=data.get("category", "General"),
-        createdAt=data.get("createdAt"),
-        updatedAt=data.get("updatedAt"),
-    )
+    # Ensure totalStudyMinutes is an int, defaulting to 0 if None or invalid
+    total_study_mins = data.get("totalStudyMinutes")
+    if total_study_mins is None:
+        total_study_mins = 0
+    else:
+        try:
+            total_study_mins = int(total_study_mins)
+        except (ValueError, TypeError):
+            total_study_mins = 0
+    
+    # Build response data dict, ensuring all required fields are present
+    response_data = {
+        "id": str(data.get("id", "")),
+        "title": str(data.get("title", "")),
+        "status": data.get("status", "todo"),
+        "priority": data.get("priority", "medium"),
+        "dueDate": data.get("dueDate"),
+        "category": data.get("category", "General"),
+        "createdAt": data.get("createdAt"),
+        "updatedAt": data.get("updatedAt"),
+        "subjectId": data.get("subjectId"),
+        "topic": data.get("topic"),
+        "totalStudyMinutes": total_study_mins,
+    }
+    
+    return TaskResponse(**response_data)
 
 
 def _filter_tasks(
@@ -294,7 +311,7 @@ def list_tasks(
 
     uid = user["uid"]
     snapshots = _tasks_collection(uid).stream()
-    tasks = [_to_task_response(_serialize_task_doc(doc)) for doc in snapshots]
+    tasks_data = [_serialize_task_doc(doc) for doc in snapshots]
 
     status_norm = cast(
         StatusLiteral | None, _normalize_filter(status, ["todo", "inProgress", "done"])
@@ -303,15 +320,27 @@ def list_tasks(
         PriorityLiteral | None, _normalize_filter(priority, ["high", "medium", "low"])
     )
 
-    tasks = _filter_tasks(
-        [task.model_dump() for task in tasks],
+    tasks_data = _filter_tasks(
+        tasks_data,
         status=status_norm,
         priority=priority_norm,
     )
-    _sort_tasks(tasks, sortBy)
+    _sort_tasks(tasks_data, sortBy)
 
+    # Convert tasks to TaskResponse objects, with error handling
+    task_responses = []
+    for task_data in tasks_data:
+        try:
+            task_responses.append(_to_task_response(task_data))
+        except Exception as e:
+            # Log the error and skip this task to prevent 500 errors
+            print(f"Error converting task to response: {e}")
+            print(f"Task data: {task_data}")
+            print(traceback.format_exc())
+            continue
+    
     return TaskListResponse(
-        tasks=[_to_task_response(task) for task in tasks], stats=_calculate_stats(tasks)
+        tasks=task_responses, stats=_calculate_stats(tasks_data)
     )
 
 
@@ -374,8 +403,8 @@ def update_task(
     if not snapshot.exists:
         raise HTTPException(status_code=404, detail="Task not found.")
 
-    # Get all fields from payload, including those explicitly set to None
-    payload_dict = payload.model_dump(exclude_unset=False)
+    # Get all fields from payload that were explicitly set
+    payload_dict = payload.model_dump(exclude_unset=True)
     update_fields = {}
     
     # Only include fields that were explicitly provided in the request
@@ -385,13 +414,23 @@ def update_task(
     
     # If no fields to update, return current task
     if not update_fields:
-        return _to_task_response(_serialize_task_doc(snapshot))
+        try:
+            return _to_task_response(_serialize_task_doc(snapshot))
+        except Exception as e:
+            print(f"Error returning current task: {e}")
+            print(traceback.format_exc())
+            raise HTTPException(status_code=500, detail=f"Error processing task: {str(e)}")
 
     update_fields["updatedAt"] = _utc_now()
-    doc_ref.update(update_fields)
-
-    refreshed = doc_ref.get()
-    return _to_task_response(_serialize_task_doc(refreshed))
+    
+    try:
+        doc_ref.update(update_fields)
+        refreshed = doc_ref.get()
+        return _to_task_response(_serialize_task_doc(refreshed))
+    except Exception as e:
+        print(f"Error updating task: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Error updating task: {str(e)}")
 
 
 @router.delete(

@@ -406,7 +406,8 @@ async function markTaskAsComplete() {
     console.log('Task marked as completed successfully!')
   } catch (error) {
     console.error('Error updating task:', error)
-    alert('Failed to update task status. Please try again.')
+    const errorMessage = error?.message || error?.detail || 'Failed to update task status. Please try again.'
+    alert(errorMessage)
   } finally {
     isMarkingTaskComplete.value = false
   }

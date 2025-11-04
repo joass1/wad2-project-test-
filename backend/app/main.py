@@ -31,7 +31,8 @@ cors_allowed_origins = os.environ.get("CORS_ALLOWED_ORIGINS")
 if cors_allowed_origins is None:
     # raise error if the CORS_ALLOWED_ORIGINS environment variable is not set
     raise ValueError("CORS_ALLOWED_ORIGINS environment variable is not set")
-cors_origins = cors_allowed_origins.split(",")
+# Strip quotes and whitespace from each origin
+cors_origins = [origin.strip().strip('"').strip("'") for origin in cors_allowed_origins.split(",")]
 
 # Add CORS middleware
 app.add_middleware(
