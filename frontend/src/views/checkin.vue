@@ -35,10 +35,11 @@
         <!-- Show message if already checked in today -->
         <div v-if="hasCheckedInToday" class="completion-message">
           <div class="success-icon">✓</div>
-          <h3>Already Checked In Today!</h3>
-          <p>You've completed your wellness check-in for {{ todayFormatted }}.</p>
+          <h3 class="completion-title">{{ getMotivationalMessage }}</h3>
+          <p class="completion-subtitle">
+            You've completed your check-in for {{ todayFormatted }}. {{ getNextCheckinMessage }}
+          </p>
           <p class="coin-reward-message">🎉 You've collected your 20 coins for the day!</p>
-          <p class="next-checkin-text">Come back tomorrow!</p>
 
           <!-- TEMPORARY: Reset button for testing -->
           <button @click="resetForTesting" class="reset-btn">
@@ -385,6 +386,7 @@ import { useCoins } from '@/composables/useCoins.js'
 import { api } from '@/lib/api.js'
 import confetti from 'canvas-confetti'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
+import { useUserProfile } from '@/composables/useUserProfile.js' 
 
 // Initialize Firebase instances
 const db = getFirestore()
@@ -392,6 +394,9 @@ const auth = getAuth()
 
 // Coins composable (shared state with sidebar)
 const { coins, updateCoins } = useCoins()
+
+// User Profile composable
+const { displayName } = useUserProfile()
 
 // State
 const mood = ref(7)
@@ -779,6 +784,39 @@ const calendarDates = computed(() => {
   return dates
 })
 
+const motivationalMessages = [
+  "Amazing work, {name}! 🌟",
+  "You're crushing it, {name}! 💪",
+  "Fantastic, {name}! Keep it up! 🎉",
+  "Way to go, {name}! ✨",
+  "Awesome job, {name}! 🚀",
+  "You're on fire, {name}! 🔥",
+  "Brilliant, {name}! 🌈",
+  "Outstanding, {name}! 💫",
+  "Keep shining, {name}! ⭐",
+  "You're unstoppable, {name}! 🎯"
+]
+
+const getMotivationalMessage = computed(() => {
+  const today = new Date().toDateString()
+  // Use date as seed for consistent message per day
+  const index = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % motivationalMessages.length
+  return motivationalMessages[index].replace('{name}', displayName.value || 'there')
+})
+
+const getNextCheckinMessage = computed(() => {
+  const messages = [
+    "Come back tomorrow to keep your streak going!",
+    "See you tomorrow for another check-in!",
+    "Your wellness journey continues tomorrow!",
+    "Can't wait to see you again tomorrow!",
+    "Tomorrow brings another opportunity!"
+  ]
+  const today = new Date().toDateString()
+  const index = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % messages.length
+  return messages[index]
+})
+
 // Methods
 const completeCheckIn = async () => {
   if (hasCheckedInToday.value) {
@@ -1033,11 +1071,11 @@ onMounted(async () => {
   await checkTodayCheckIn()
   await loadCheckIns()
 
-  // // TEMPORARY: Auto-add test data if calendar is empty
-  // if (totalCheckIns.value < 100) {
-  //   console.log('Adding test data to visualize calendar...')
-  //   await addTestData()
-  // }
+  // TEMPORARY: Auto-add test data if calendar is empty
+  if (totalCheckIns.value < 100) {
+    console.log('Adding test data to visualize calendar...')
+    await addTestData()
+  }
 
   // DEBUG: Check if data loaded
   console.log('Check-in history:', checkInHistory.value)
