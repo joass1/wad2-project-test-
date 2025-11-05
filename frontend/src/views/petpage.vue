@@ -803,12 +803,50 @@ watch(isPetDead, (newIsDead) => {
   setPetDead(newIsDead)
   console.log('Pet dead state synced to global:', newIsDead)
 })
+
+// Daily tasks state
+const showDailyTasks = ref(false)
+const dailyTasks = ref([
+  { id: 'pet', label: 'Pet your pet', completed: false },
+  { id: 'study', label: 'Complete one 25 min study session', completed: false },
+  { id: 'checkin', label: "Do today's wellness check-in", completed: false }
+])
+
+function getTodayKey() {
+  const d = new Date()
+  return `dailyTasks-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+function loadDailyTasks() {
+  try {
+    const saved = localStorage.getItem(getTodayKey())
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      dailyTasks.value = dailyTasks.value.map(t => ({ ...t, completed: !!parsed[t.id] }))
+    }
+  } catch {}
+}
+
+function saveDailyTasks() {
+  const map = dailyTasks.value.reduce((acc, t) => { acc[t.id] = !!t.completed; return acc }, {})
+  try { localStorage.setItem(getTodayKey(), JSON.stringify(map)) } catch {}
+}
+
+function toggleTask(task) {
+  task.completed = !task.completed
+  saveDailyTasks()
+}
+
+onMounted(() => {
+  loadDailyTasks()
+})
 </script>
 
 <template>
   <div class="pet-page-container">
     <!-- Main Content -->
     <div class="main-content">
+
       <div
         class="pet-stage"
         @drop="onDrop"
@@ -888,6 +926,24 @@ watch(isPetDead, (newIsDead) => {
           <span class="status-value">{{ petStatus.health }}%</span>
         </div>
         
+      </div>
+
+      <!-- Daily Tasks (moved from floating dialog into sidebar) -->
+      <div class="panel-section">
+        <h4 class="section-title">Daily Tasks</h4>
+        <v-list density="compact" class="daily-task-list">
+          <v-list-item
+            v-for="task in dailyTasks"
+            :key="task.id"
+            @click="toggleTask(task)"
+            class="daily-task-item"
+          >
+            <template #prepend>
+              <v-checkbox-btn :model-value="task.completed" color="primary"></v-checkbox-btn>
+            </template>
+            <v-list-item-title class="wrap-text">{{ task.label }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
       </div>
 
       <!-- Minigame Section -->
@@ -2507,4 +2563,8 @@ watch(isPetDead, (newIsDead) => {
     font-size: 14px;
   }
 }
+
+.daily-task-item { cursor: pointer; }
+.wrap-text { white-space: normal; overflow: visible; text-overflow: initial; }
+:deep(.daily-task-list .v-list-item__content) { white-space: normal; }
 </style>

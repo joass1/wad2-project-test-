@@ -1987,7 +1987,7 @@ onMounted(async () => {
     width: 100%;
     max-width: 100%;
     padding: 3px;
-    gap: 3px;
+    gap: 6px;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none; /* Firefox */
@@ -2002,6 +2002,7 @@ onMounted(async () => {
   .tab-item {
     padding: 10px 16px;
     font-size: 0.85rem;
+    white-space: nowrap;
     flex: 0 0 auto;
     min-width: fit-content;
   }
@@ -2336,37 +2337,30 @@ onMounted(async () => {
 
 /* Tab Navigation */
 .tab-navigation {
-  display: inline-flex;
-  justify-content: center;
-  gap: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
   background: var(--surface-lighter);
   border-radius: 12px;
-  padding: 4px;
+  padding: 6px;
   box-sizing: border-box;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  position: relative;
-}
-
-.tab-navigation::-webkit-scrollbar {
-  display: none; /* Chrome, Safari */
+  width: 100%;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .tab-item {
-  flex: 0 0 auto;
-  padding: 12px 24px;
+  flex: 1 1 0;
+  padding: 14px 20px;
   text-align: center;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-muted);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
   box-sizing: border-box;
-  min-width: fit-content;
-  flex-shrink: 0;
 }
 
 .tab-item:hover {
@@ -2377,8 +2371,9 @@ onMounted(async () => {
 .tab-item.active {
   background: var(--surface);
   color: var(--text-primary);
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-weight: 700;
+  border: 1px solid var(--surface-lighter);
+  box-shadow: none;
 }
 
 /* Tab Content */
@@ -2560,7 +2555,7 @@ onMounted(async () => {
     width: 100%;
     max-width: 100%;
     padding: 3px;
-    gap: 3px;
+    gap: 6px;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none; /* Firefox */
