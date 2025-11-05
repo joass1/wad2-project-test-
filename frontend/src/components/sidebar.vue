@@ -27,14 +27,14 @@
         <div class="profile-avatar-container" @click="navigateToProfile">
           <div class="profile-avatar" :class="{ 'premium-border': allAchievementsCompleted }">
             <img v-if="displayAvatar" :src="displayAvatar" alt="Profile Avatar" class="avatar-image" />
-            <span v-else class="avatar-text">{{ displayName.charAt(0).toUpperCase() }}</span>
+            <span v-else class="avatar-text">{{ (displayName || 'U').charAt(0).toUpperCase() }}</span>
             <div v-if="allAchievementsCompleted" class="premium-badge">
               <span>⭐</span>
             </div>
           </div>
           <transition name="slide-fade">
             <div v-show="!isMobile || modelValue" class="profile-info">
-              <div class="profile-name">{{ displayName }}</div>
+              <div class="profile-name">{{ displayName || 'Guest' }}</div>
             </div>
           </transition>
         </div>
