@@ -20,7 +20,7 @@ const props = defineProps({
   sojuEmoteType: { type: String, default: 'happy' }  // 'happy' or 'drunk'
 })
 
-const emit = defineEmits(['item-eaten', 'border-warning'])
+const emit = defineEmits(['item-eaten', 'border-warning', 'petted'])
 
 /* Refs / state */
 const actor = ref(null)
@@ -493,6 +493,7 @@ function handleMouseUp(event) {
       }
 
       console.log('Pet received love!')
+      try { emit('petted') } catch (e) {}
 
       // Hide heart after 1.5 seconds (animation duration)
       heartTimer = setTimeout(() => {

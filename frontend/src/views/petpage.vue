@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import AnimatedPet from '@/components/AnimatedPet.vue'
 import AnimatedCoin from '@/components/AnimatedCoin.vue'
 import TMXTileBackground from '@/components/TMXTileBackground.vue'
@@ -804,41 +804,89 @@ watch(isPetDead, (newIsDead) => {
   console.log('Pet dead state synced to global:', newIsDead)
 })
 
-// Daily tasks state
-const showDailyTasks = ref(false)
-const dailyTasks = ref([
-  { id: 'pet', label: 'Pet your pet', completed: false },
-  { id: 'study', label: 'Complete one 25 min study session', completed: false },
-  { id: 'checkin', label: "Do today's wellness check-in", completed: false }
-])
+// Daily tasks: derived from activity and refreshed daily
+const completedPet = ref(false)
+const completedStudy = ref(false)
+const completedCheckin = ref(false)
 
-function getTodayKey() {
+const dailyTasks = computed(() => ([
+  { id: 'pet', label: 'Pet your pet', reward: 50, completed: completedPet.value },
+  { id: 'study', label: 'Study at least 25 minutes today', reward: 50, completed: completedStudy.value },
+  { id: 'checkin', label: "Do today's wellness check-in", reward: 20, completed: completedCheckin.value }
+]))
+
+function todayKeySuffix() {
   const d = new Date()
-  return `dailyTasks-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 
-function loadDailyTasks() {
+// Mark pet task when happiness increases during the day (feed/pet)
+let baselineHappiness = petStatus.happiness
+watch(() => petStatus.happiness, (val) => {
+  if (val > baselineHappiness) {
+    completedPet.value = true
+    try { localStorage.setItem(`pet-done-${todayKeySuffix()}`, '1') } catch {}
+  }
+})
+
+async function loadDailyStatuses() {
+  // Pet
+  try { completedPet.value = localStorage.getItem(`pet-done-${todayKeySuffix()}`) === '1' } catch {}
+
+  // Study: complete if total minutes for today >= 25
   try {
-    const saved = localStorage.getItem(getTodayKey())
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      dailyTasks.value = dailyTasks.value.map(t => ({ ...t, completed: !!parsed[t.id] }))
+    const today = await api.get('/api/study-sessions/today-summary')
+    completedStudy.value = (today.total_minutes || 0) >= 25
+  } catch (e) {
+    console.error('Study summary load failed', e)
+  }
+
+  // Check-in: complete if overview shows today's date
+  try {
+    const overview = await api.get('/api/wellness/overview')
+    const d = new Date()
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+    completedCheckin.value = overview.lastCheckInDate === key
+  } catch (e) {
+    console.error('Wellness overview load failed', e)
+  }
+}
+
+function scheduleMidnightReset() {
+  const now = new Date()
+  const midnight = new Date(now)
+  midnight.setHours(24, 0, 0, 0)
+  const wait = Math.max(1000, midnight.getTime() - now.getTime())
+  setTimeout(async () => {
+    try { localStorage.removeItem(`pet-done-${todayKeySuffix()}`) } catch {}
+    baselineHappiness = petStatus.happiness
+    await loadDailyStatuses()
+    scheduleMidnightReset()
+  }, wait)
+}
+
+onMounted(async () => {
+  await loadDailyStatuses()
+  scheduleMidnightReset()
+  // Live update when a study session completes elsewhere
+  window.addEventListener('study-session-completed', loadDailyStatuses)
+})
+
+async function handlePetPetted() {
+  if (!completedPet.value) {
+    completedPet.value = true
+    try { localStorage.setItem(`pet-done-${todayKeySuffix()}`, '1') } catch {}
+    try {
+      const current = playerGold.value || 0
+      await updateCoins(current + 50)
+    } catch (e) {
+      console.error('Failed to award petting coins', e)
     }
-  } catch {}
+  }
 }
 
-function saveDailyTasks() {
-  const map = dailyTasks.value.reduce((acc, t) => { acc[t.id] = !!t.completed; return acc }, {})
-  try { localStorage.setItem(getTodayKey(), JSON.stringify(map)) } catch {}
-}
-
-function toggleTask(task) {
-  task.completed = !task.completed
-  saveDailyTasks()
-}
-
-onMounted(() => {
-  loadDailyTasks()
+onUnmounted(() => {
+  window.removeEventListener('study-session-completed', loadDailyStatuses)
 })
 </script>
 
@@ -876,6 +924,7 @@ onMounted(() => {
           :soju-emote-type="sojuEmoteType"
           @item-eaten="removeDroppedItem"
           @border-warning="handleBorderWarning"
+          @petted="handlePetPetted"
         />
 
         <!-- Dropped items on background -->
@@ -930,18 +979,23 @@ onMounted(() => {
 
       <!-- Daily Tasks (moved from floating dialog into sidebar) -->
       <div class="panel-section">
-        <h4 class="section-title">Daily Tasks</h4>
+        <div class="section-title-row">
+          <h4 class="section-title" style="margin: 0;">Daily Tasks</h4>
+          <span class="reset-note">Resets at 12:00 AM</span>
+        </div>
         <v-list density="compact" class="daily-task-list">
           <v-list-item
             v-for="task in dailyTasks"
             :key="task.id"
-            @click="toggleTask(task)"
             class="daily-task-item"
           >
             <template #prepend>
-              <v-checkbox-btn :model-value="task.completed" color="primary"></v-checkbox-btn>
+              <v-checkbox-btn :model-value="task.completed" color="primary" :disabled="true"></v-checkbox-btn>
             </template>
-            <v-list-item-title class="wrap-text">{{ task.label }}</v-list-item-title>
+            <v-list-item-title class="wrap-text">
+              {{ task.label }}
+              <span class="task-reward">+{{ task.reward }} coins</span>
+            </v-list-item-title>
           </v-list-item>
         </v-list>
       </div>
@@ -2565,6 +2619,9 @@ onMounted(() => {
 }
 
 .daily-task-item { cursor: pointer; }
-.wrap-text { white-space: normal; overflow: visible; text-overflow: initial; }
+.wrap-text { white-space: normal; overflow: visible; text-overflow: initial; word-break: keep-all; hyphens: none; }
 :deep(.daily-task-list .v-list-item__content) { white-space: normal; }
+.section-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.reset-note { color: var(--text-muted); font-size: 12px; }
+.task-reward { margin-left: 8px; font-size: 12px; color: var(--warning); font-weight: 600; }
 </style>
