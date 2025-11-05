@@ -811,8 +811,8 @@ const completedCheckin = ref(false)
 
 const dailyTasks = computed(() => ([
   { id: 'pet', label: 'Pet your pet', reward: 50, completed: completedPet.value },
-  { id: 'study', label: 'Study at least 25 minutes today', reward: 50, completed: completedStudy.value },
-  { id: 'checkin', label: "Do today's wellness check-in", reward: 20, completed: completedCheckin.value }
+  { id: 'study', label: 'Study for 25 mins', reward: 50, completed: completedStudy.value },
+  { id: 'checkin', label: "Wellness check-in", reward: 20, completed: completedCheckin.value }
 ]))
 
 function todayKeySuffix() {
@@ -938,11 +938,14 @@ onUnmounted(() => {
           <img :src="item.icon" :alt="item.name" class="dropped-food-image" />
         </div>
       </div>
-      
+
               <!-- Shop Button -->
-              <button class="shop-button" @click="toggleShop">
-                <img src="/shopkeeper/shop_cart_sized.png" alt="Shop" class="shop-icon" />
-              </button>
+              <div class="shop-button-container">
+                <button class="shop-button" @click="toggleShop">
+                  <img src="/shopkeeper/shop_cart_sized.png" alt="Shop" class="shop-icon" />
+                </button>
+                <span class="shop-label">Shop</span>
+              </div>
 
               <!-- Border Warning Popup -->
               <div v-if="showBorderWarning" class="border-warning">
@@ -981,7 +984,7 @@ onUnmounted(() => {
       <div class="panel-section">
         <div class="section-title-row">
           <h4 class="section-title" style="margin: 0;">Daily Tasks</h4>
-          <span class="reset-note">Resets at 12:00 AM</span>
+          <span class="reset-note">Resets daily</span>
         </div>
         <v-list density="compact" class="daily-task-list">
           <v-list-item
@@ -993,8 +996,11 @@ onUnmounted(() => {
               <v-checkbox-btn :model-value="task.completed" color="primary" :disabled="true"></v-checkbox-btn>
             </template>
             <v-list-item-title class="wrap-text">
-              {{ task.label }}
-              <span class="task-reward">+{{ task.reward }} coins</span>
+              <span class="task-label-text">{{ task.label }}</span>
+              <span class="task-reward-container">
+                <AnimatedCoin :scale="0.8" :speed="6" />
+                <span class="task-reward-text">+{{ task.reward }}</span>
+              </span>
             </v-list-item-title>
           </v-list-item>
         </v-list>
@@ -1621,26 +1627,40 @@ onUnmounted(() => {
   100%{transform:scale(1) translateY(0);opacity:1;}
 }
 
-/* Shop Button */
-.shop-button{
+/* Shop Button Container */
+.shop-button-container{
   position:absolute;
   top:20px;
   right:20px;
-  background:transparent;
-  border:none;
-  border-radius:8px;
-  padding:8px;
-  cursor:pointer;
-  box-shadow:0 2px 8px rgba(0,0,0,0.2);
-  transition:all 0.3s ease;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
   z-index:100;
 }
 
 @media (max-width: 960px) {
-  .shop-button {
+  .shop-button-container {
     top: 10px;
     right: 10px;
-    padding: 6px;
+  }
+}
+
+/* Shop Button */
+.shop-button{
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4), 0 2px 4px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+@media (max-width: 960px) {
+  .shop-button {
+    padding: 8px;
   }
 
   .shop-icon {
@@ -1648,14 +1668,44 @@ onUnmounted(() => {
     height: 32px;
   }
 }
+
 .shop-button:hover{
-  transform:translateY(-2px);
-  box-shadow:0 4px 12px rgba(0,0,0,0.3);
+  transform:translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6), 0 4px 8px rgba(0,0,0,0.3);
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
 }
+
+.shop-button:active{
+  transform:translateY(-1px) scale(1.02);
+}
+
 .shop-icon{
-  width:40px;
-  height:40px;
+  width:48px;
+  height:48px;
   object-fit:contain;
+  display:block;
+}
+
+/* Shop Label */
+.shop-label{
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+@media (max-width: 960px) {
+  .shop-label {
+    font-size: 11px;
+    padding: 4px 12px;
+  }
 }
 
 /* Shop Popup */
@@ -2619,9 +2669,72 @@ onUnmounted(() => {
 }
 
 .daily-task-item { cursor: pointer; }
-.wrap-text { white-space: normal; overflow: visible; text-overflow: initial; word-break: keep-all; hyphens: none; }
-:deep(.daily-task-list .v-list-item__content) { white-space: normal; }
+.wrap-text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: initial;
+  word-break: keep-all;
+  hyphens: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+:deep(.daily-task-list .v-list-item__content) {
+  white-space: normal;
+  width: 100%;
+}
+:deep(.daily-task-list .v-list-item-title) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+.task-label-text {
+  flex: 1;
+  min-width: 0;
+  word-wrap: break-word;
+}
 .section-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .reset-note { color: var(--text-muted); font-size: 12px; }
-.task-reward { margin-left: 8px; font-size: 12px; color: var(--warning); font-weight: 600; }
+
+/* Task Reward Styling */
+.task-reward-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.15));
+  border: 1.5px solid rgba(245, 158, 11, 0.4);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.task-reward-container:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.25));
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+  transform: translateY(-1px);
+}
+
+.task-reward-text {
+  font-size: 13px;
+  color: #f59e0b;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+@media (max-width: 960px) {
+  .task-reward-container {
+    padding: 3px 6px;
+    gap: 3px;
+  }
+
+  .task-reward-text {
+    font-size: 12px;
+  }
+}
 </style>
