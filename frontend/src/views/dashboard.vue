@@ -29,9 +29,19 @@
                 {{ displayPetName }}
               </div>
               <div class="text-caption text-md-body-2 text-muted">
-                <span v-if="isPetDead" style="color: var(--error);">Has died</span>
-                <span v-else-if="petHappiness < 20 || petHealth < 20" style="color: var(--warning);">Starving</span>
-                <span v-else-if="petHappiness < 40 || petHealth < 40" style="color: var(--warning);">Getting hungry</span>
+                <span v-if="isPetDead" style="color: var(--error)"
+                  >Has died</span
+                >
+                <span
+                  v-else-if="petHappiness < 20 || petHealth < 20"
+                  style="color: var(--warning)"
+                  >Starving</span
+                >
+                <span
+                  v-else-if="petHappiness < 40 || petHealth < 40"
+                  style="color: var(--warning)"
+                  >Getting hungry</span
+                >
                 <span v-else>Doing well</span>
               </div>
             </div>
@@ -48,21 +58,30 @@
         <!-- Progress Bars -->
         <div class="mt-4 mt-md-5">
           <div v-if="isPetDead" class="pet-dead-message mb-3">
-            <div class="text-caption text-md-body-2 text-center" style="color: var(--error);">
+            <div
+              class="text-caption text-md-body-2 text-center"
+              style="color: var(--error)"
+            >
               Your pet has died! Feed it to revive it.
             </div>
           </div>
           <div class="status-item">
             <span class="status-label">Happy</span>
             <div class="status-bar">
-              <div class="status-fill" :style="{ width: `${petHappiness}%` }"></div>
+              <div
+                class="status-fill"
+                :style="{ width: `${petHappiness}%` }"
+              ></div>
             </div>
             <span class="status-value">{{ petHappiness }}%</span>
           </div>
-          <div class="status-item" style="margin-bottom: 0;">
+          <div class="status-item" style="margin-bottom: 0">
             <span class="status-label">Health</span>
             <div class="status-bar">
-              <div class="status-fill health" :style="{ width: `${petHealth}%` }"></div>
+              <div
+                class="status-fill health"
+                :style="{ width: `${petHealth}%` }"
+              ></div>
             </div>
             <span class="status-value">{{ petHealth }}%</span>
           </div>
@@ -340,7 +359,12 @@ const petHealth = computed(() => {
 });
 
 const isPetDead = computed(() => {
-  return petStatus.value?.isDead || petStatus.value?.is_dead || petHappiness.value === 0 || petHealth.value === 0;
+  return (
+    petStatus.value?.isDead ||
+    petStatus.value?.is_dead ||
+    petHappiness.value === 0 ||
+    petHealth.value === 0
+  );
 });
 
 const navigateToPetPage = () => {
@@ -744,29 +768,45 @@ function getEventStyle(event) {
 
   const height = Math.max((adjustedDurationMinutes / 60) * hourHeight, 20); // Minimum 20px height
 
-  // Handle overlapping events - position them side by side
+  // Handle overlapping events - position them in a staggered display
   const overlapIndex = event._overlapIndex || 0;
   const overlapCount = event._overlapCount || 1;
 
-  // Calculate width and left position for overlapping events
+  // Base margin for events
   const margin = 4; // px margin on each side
-  const widthPercent = 100 / overlapCount;
-  const leftPercent = overlapIndex * widthPercent;
 
   const timedColor = "rgba(234, 67, 53, 0.1)";
   const style = {
     top: `${topOffset}px`,
     height: `${height}px`,
     background: `linear-gradient(${timedColor}, ${timedColor}), var(--surface)`,
+    borderLeft: "3px solid #ea4335",
+    zIndex: 2 + overlapIndex,
   };
 
   // Set positioning based on overlap
-  if (overlapCount > 1) {
-    // Multiple events - position side by side with gaps
-    style.left = `calc(${leftPercent}% + ${margin}px)`;
-    style.width = `calc(${widthPercent}% - ${margin * 2}px)`;
+  if (mobile.value && overlapCount > 1) {
+    // MOBILE: Staggered layout - each overlapping event is offset slightly to the right
+    const staggerOffset = 12; // pixels to stagger each event
+    const maxStaggerDepth = 5; // Limit stagger depth to prevent events going off-screen
+    const staggerIndex = overlapIndex % maxStaggerDepth;
+
+    style.left = `${staggerOffset * staggerIndex + margin}px`;
+    style.right = `${margin}px`;
+  } else if (overlapCount > 1) {
+    // DESKTOP: Side-by-side layout for overlapping events
+    const widthPercent = 100 / overlapCount;
+    const leftPercent = overlapIndex * widthPercent;
+    const gap = 2; // gap between side-by-side events
+    const isFirst = overlapIndex === 0;
+    const isLast = overlapIndex === overlapCount - 1;
+
+    style.left = `calc(${leftPercent}% + ${isFirst ? margin : gap / 2}px)`;
+    style.right = `calc(${100 - leftPercent - widthPercent}% + ${
+      isLast ? margin : gap / 2
+    }px)`;
   } else {
-    // Single event - full width with margins
+    // Single event - full width with margins (both mobile and desktop)
     style.left = `${margin}px`;
     style.right = `${margin}px`;
   }
