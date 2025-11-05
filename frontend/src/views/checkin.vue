@@ -1239,16 +1239,20 @@ onMounted(async () => {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--background);
   min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .header {
   margin-bottom: 2rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .header h1 {
   font-size: 2rem;
   font-weight: 600;
-  color: (--text-primary);
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
 }
 
@@ -1264,6 +1268,8 @@ onMounted(async () => {
   gap: 1.5rem;
   margin-bottom: 2rem;
   align-items: start;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Wellness Overview */
@@ -1395,6 +1401,9 @@ onMounted(async () => {
   border: 1.5px solid rgba(170,196,188,0.4);
   border-radius: 12px;
   padding: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .section-subtitle {
@@ -1470,6 +1479,8 @@ onMounted(async () => {
   position: relative;
   transition: all 0.3s ease;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .slider::-webkit-slider-thumb {
@@ -1548,6 +1559,8 @@ onMounted(async () => {
   resize: vertical;
   background: var(--surface);
   color: var(--text-primary);
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .notes-textarea:focus {
@@ -1626,11 +1639,16 @@ onMounted(async () => {
   border-radius: 12px;
   padding: 2rem;
   margin-bottom: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .calendar {
   max-width: 500px;
   margin-top: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .calendar-header {
@@ -1663,6 +1681,8 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 0.25rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .calendar-day-header {
@@ -1926,12 +1946,160 @@ onMounted(async () => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .check-in-page {
+    padding: 1rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .header {
+    margin-bottom: 1.5rem;
+  }
+
+  .header h1 {
+    font-size: 1.5rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .subtitle {
+    font-size: 0.85rem;
+  }
+
   .main-content {
     grid-template-columns: 1fr;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .tab-navigation {
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 3px;
+    gap: 3px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+
+  .tab-item {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    flex: 0 0 auto;
+    min-width: fit-content;
   }
   
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .wellness-overview {
+    padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .check-in-card {
+    padding: 1.5rem;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .slider-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .emoji-display {
+    height: 60px;
+    margin-bottom: 0.25rem;
+  }
+
+  .big-emoji {
+    font-size: 3rem;
+  }
+
+  .particle-container {
+    top: 110px;
+    height: 50px;
+  }
+
+  .complete-btn {
+    padding: 0.875rem;
+    font-size: 0.95rem;
+  }
+
+  .completion-message {
+    padding: 1.5rem;
+  }
+
+  .success-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+  }
+
+  .history-section {
+    padding: 1rem;
+  }
+
+  .calendar {
+    max-width: 100%;
+  }
+
+  .calendar-grid {
+    gap: 0.15rem;
+  }
+
+  .calendar-date {
+    font-size: 0.8rem;
+  }
+
+  .calendar-day-header {
+    font-size: 0.7rem;
+    padding: 0.4rem;
+  }
+
+  .pet-stats-panel, .pet-stats-empty {
+    padding: 1rem;
+  }
+
+  .wellness-tips {
+    padding: 1rem;
+  }
+
+  .tips-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .tip-card {
+    padding: 1rem;
+  }
+
+  .calendar-legend {
+    padding: 0.75rem 1rem;
+  }
+
+  .legend-items {
+    gap: 1rem;
+  }
+
+  .legend-color {
+    width: 20px;
+    height: 20px;
   }
 }
 
@@ -1939,11 +2107,22 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 1fr 1fr; /* two equal columns */
   gap: 1.5rem; /* spacing between columns */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
   .history-grid {
     grid-template-columns: 1fr; /* stack vertically on small screens */
+    gap: 1rem;
+  }
+
+  .right-sidebar {
+    order: -1; /* Show legend and stats above calendar on mobile */
+  }
+
+  .calendar {
+    margin-top: 0;
   }
 }
 
@@ -2154,10 +2333,21 @@ onMounted(async () => {
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  position: relative;
+}
+
+.tab-navigation::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
 }
 
 .tab-item {
-  flex: 1;
+  flex: 0 0 auto;
   padding: 12px 24px;
   text-align: center;
   border-radius: 8px;
@@ -2166,6 +2356,8 @@ onMounted(async () => {
   color: var(--text-muted);
   transition: all 0.3s ease;
   white-space: nowrap;
+  box-sizing: border-box;
+  min-width: fit-content;
 }
 
 .tab-item:hover {
@@ -2352,15 +2544,36 @@ onMounted(async () => {
   overflow-wrap: break-word;
 }
 
-/* Responsive */
+/* Responsive - Open When Tab */
 @media (max-width: 768px) {
   .tab-navigation {
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 3px;
+    gap: 3px;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow-y: hidden;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
   }
 
   .tab-item {
-    min-width: 120px;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    min-width: fit-content;
+  }
+
+  .open-when-section {
+    padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+    max-width: 100%;
   }
 
   .envelopes-grid {
@@ -2378,6 +2591,162 @@ onMounted(async () => {
 
   .open-when-title {
     font-size: 1.5rem;
+  }
+
+  .open-when-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .envelope-front, .envelope-back {
+    padding: 1.5rem;
+  }
+
+  .envelope-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+  }
+
+  .envelope-title {
+    font-size: 1.1rem;
+  }
+
+  .message-content {
+    padding: 1.5rem 1.5rem 3rem 1.5rem;
+  }
+
+  .message-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .message-title {
+    font-size: 1.1rem;
+    margin: 0 0 0.75rem 0;
+  }
+
+  .message-text {
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+}
+
+@media (max-width: 480px) {
+  .check-in-page {
+    padding: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .header {
+    margin-bottom: 1rem;
+  }
+
+  .header h1 {
+    font-size: 1.25rem;
+    line-height: 1.3;
+    padding: 0;
+  }
+
+  .tab-navigation {
+    padding: 2px;
+    gap: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+
+  .tab-item {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    flex: 0 0 auto;
+    min-width: fit-content;
+    white-space: nowrap;
+  }
+
+  .stats-grid {
+    gap: 0.5rem;
+  }
+
+  .stat-card {
+    padding: 0.75rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .check-in-card {
+    padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .slider-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .slider-label {
+    font-size: 0.9rem;
+  }
+
+  .slider-value {
+    font-size: 0.85rem;
+  }
+
+  .emoji-display {
+    height: 50px;
+  }
+
+  .big-emoji {
+    font-size: 2.5rem;
+  }
+
+  .particle-container {
+    top: 95px;
+    height: 40px;
+  }
+
+  .calendar-date {
+    font-size: 0.75rem;
+  }
+
+  .calendar-day-header {
+    font-size: 0.65rem;
+    padding: 0.3rem;
+  }
+
+  .envelope-card {
+    height: 320px;
+  }
+
+  .envelope-icon {
+    font-size: 3.5rem;
+  }
+
+  .envelope-title {
+    font-size: 1rem;
+  }
+
+  .message-content {
+    padding: 1.25rem;
+  }
+
+  .message-icon {
+    font-size: 2rem;
+  }
+
+  .message-title {
+    font-size: 1rem;
+  }
+
+  .message-text {
+    font-size: 0.85rem;
   }
 }
 
