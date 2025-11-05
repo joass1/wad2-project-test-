@@ -46,13 +46,7 @@
               </div>
             </div>
           </div>
-          <v-chip
-            color="primary"
-            variant="tonal"
-            size="small"
-            class="level-chip"
-            >Level 1</v-chip
-          >
+          <!-- Level chip removed -->
         </div>
 
         <!-- Progress Bars -->
