@@ -2,7 +2,9 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useCoins } from '@/composables/useCoins.js'
 import { useGlobalPet } from '@/composables/useGlobalPet.js'
+import { useMinigameProgress } from '@/composables/useMinigameProgress.js'
 import { PET_CATALOG } from '@/data/petCatalog.js'
+import AnimatedCoin from '@/components/AnimatedCoin.vue'
 
 const props = defineProps({
   petSpriteUrl: {
@@ -29,9 +31,9 @@ const CANVAS_HEIGHT = 600
 const WORLD_WIDTH = 1600
 const WORLD_HEIGHT = 1200
 const FPS = 60
-const GAME_DURATION = 2.5 * 60 * 1000 // 5 minutes
+const GAME_DURATION = 2.5 * 60 * 1000 // 2.5 minutes
 const WAVE_DURATION = 30 * 1000 // 0.5 minute per wave
-const BASE_ENEMY_SPAWN_INTERVAL = 2000 // Base spawn interval (4 seconds for wave 1)
+const BASE_ENEMY_SPAWN_INTERVAL = 4000 // Base spawn interval (4 seconds for wave 1)
 const GOLD_DROP_CHANCE = 1 // 15% chance to drop gold
 
 // Game state
@@ -45,14 +47,60 @@ const showStartButton = ref(true)
 const showLevelUp = ref(false)
 const levelUpOptions = ref([])
 
-// Daily play restriction
-const lastPlayedDate = ref(localStorage.getItem('petMinigameLastPlayed'))
-const canPlayToday = computed(() => {
-  if (!lastPlayedDate.value) return true
-  const lastPlayed = new Date(lastPlayedDate.value)
-  const today = new Date()
-  return lastPlayed.toDateString() !== today.toDateString()
-})
+// Daily play restriction - check if player has played for 2.5 minutes today
+const remainingTimeToday = ref(GAME_DURATION) // Track remaining play time for today
+const diedToday = ref(false) // Track if player died today
+const deathStateLoading = ref(true) // Loading state for death check
+const canPlayToday = computed(() => remainingTimeToday.value > 0 && !diedToday.value)
+
+// Load today's remaining time from progress
+async function loadDailyPlayTime() {
+  console.log('=== LOAD DAILY PLAY TIME ===')
+  deathStateLoading.value = true
+
+  const savedProgress = await loadProgress()
+  console.log('Loaded progress:', JSON.stringify(savedProgress, null, 2))
+
+  if (savedProgress && savedProgress.last_played) {
+    const lastPlayed = new Date(savedProgress.last_played)
+    const today = new Date()
+
+    console.log('Last played:', lastPlayed.toDateString())
+    console.log('Today:', today.toDateString())
+
+    // Check if last played was today
+    if (lastPlayed.toDateString() === today.toDateString()) {
+      // Calculate time already played today
+      const timePlayedToday = savedProgress.time_played_today || 0
+      remainingTimeToday.value = Math.max(0, GAME_DURATION - timePlayedToday)
+
+      // Check if player died today
+      diedToday.value = savedProgress.died_today || false
+
+      console.log('Same day - Time played today:', timePlayedToday)
+      console.log('Remaining time:', remainingTimeToday.value)
+      console.log('Died today:', diedToday.value)
+    } else {
+      // New day, reset remaining time and death state
+      remainingTimeToday.value = GAME_DURATION
+      diedToday.value = false
+
+      console.log('New day - Reset remaining time and death state')
+    }
+  } else {
+    remainingTimeToday.value = GAME_DURATION
+    diedToday.value = false
+
+    console.log('No saved progress - Using defaults')
+  }
+
+  deathStateLoading.value = false
+  console.log('=== LOAD DAILY PLAY TIME COMPLETE ===')
+}
+
+// Track time played in current session
+const sessionStartTimeMs = ref(0)
+const totalTimePlayed = ref(0)
 
 // Game entities
 const player = ref({
@@ -84,6 +132,7 @@ const currentWave = ref(1)
 const enemiesKilled = ref(0)
 const gameTime = ref(0)
 const startTime = ref(0)
+const coinsEarned = ref(0) // Track coins earned during this game session
 
 // Input state
 const keys = ref({
@@ -99,6 +148,10 @@ const keys = ref({
 
 // Coin integration
 const { coins, updateCoins } = useCoins()
+const startingCoins = ref(0) // Track coins at start of game
+
+// Backend progress integration
+const { progress, loadProgress, saveProgress, clearProgress } = useMinigameProgress()
 
 // Images
 const images = ref({
@@ -120,8 +173,9 @@ let enemySpawnId = null
 let nextEnemyId = 0
 
 // Load images
-onMounted(() => {
+onMounted(async () => {
   loadImages()
+  await loadDailyPlayTime()
 })
 
 function loadImages() {
@@ -206,36 +260,60 @@ function loadImages() {
 }
 
 // Start game
-function startGame() {
+async function startGame() {
+  console.log('=== START GAME ===')
+
   if (!canPlayToday.value) {
-    alert('You have already played today! Come back tomorrow or use the reset button.')
+    if (diedToday.value) {
+      alert('You died today! Come back tomorrow to try again.')
+    } else {
+      alert('You have reached your 2.5 minute daily play limit! Come back tomorrow.')
+    }
     return
   }
 
-  // Reset game state
+  // Load saved progress from backend
+  const savedProgress = await loadProgress()
+  console.log('Loaded progress when starting game:', JSON.stringify(savedProgress, null, 2))
+
+  // Initialize player with saved progress or defaults
+  const startingWave = savedProgress?.wave || 1
+  const startingLevel = savedProgress?.level || 1
+  const startingWeapons = savedProgress?.weapons || [{
+    type: 'shuriken',
+    damage: 1,
+    fireRate: 1000,
+    lastFired: 0,
+    projectileSpeed: 5,
+    range: 400
+  }]
+  const startingMaxHealth = savedProgress?.max_health || 100
+  const startingSpeed = savedProgress?.speed || 3
+
+  console.log('Starting values:')
+  console.log('  - Wave:', startingWave)
+  console.log('  - Level:', startingLevel)
+  console.log('  - Max Health:', startingMaxHealth)
+  console.log('  - Speed:', startingSpeed)
+  console.log('  - Weapons:', startingWeapons)
+
+  // Reset game state with saved progress - ALWAYS START WITH FULL HEALTH
   player.value = {
     x: CANVAS_WIDTH / 2,
     y: CANVAS_HEIGHT / 2,
     width: 32 * 2,
     height: 32 * 2,
-    health: 100,
-    maxHealth: 100,
-    speed: 3,
-    level: 1,
+    health: startingMaxHealth, // FULL HEALTH on start
+    maxHealth: startingMaxHealth,
+    speed: startingSpeed,
+    level: startingLevel,
     exp: 0,
-    nextLevelExp: 10,
+    nextLevelExp: 10 * Math.pow(1.5, startingLevel - 1), // Scale exp requirement
     direction: 'down',
     moving: false,
     currentFrame: 0,
     frameTimer: 0,
-    weapons: [{
-      type: 'shuriken',
-      damage: 1,
-      fireRate: 1000,
-      lastFired: 0,
-      projectileSpeed: 5,
-      range: 400
-    }]
+    weapons: startingWeapons.map(w => ({ ...w, lastFired: 0 }))
   }
 
   enemies.value = []
@@ -243,16 +321,27 @@ function startGame() {
   enemyProjectiles.value = []
   gems.value = []
   goldCoins.value = []
-  currentWave.value = 1
+  currentWave.value = startingWave
   enemiesKilled.value = 0
-  gameTime.value = 0
-  startTime.value = Date.now()
+  // Adjust startTime to account for starting wave so gameTime calculation is correct
+  // gameTime = Date.now() - startTime, so to start at wave N, startTime must be in the past
+  const now = Date.now()
+  startTime.value = now - ((startingWave - 1) * WAVE_DURATION)
+  sessionStartTimeMs.value = now
+  gameTime.value = 0 // Will be calculated from startTime in gameLoop
+  totalTimePlayed.value = 0
   gameActive.value = true
   gamePaused.value = false
   gameOver.value = false
   gameWon.value = false
   showStartButton.value = false
   showLevelUp.value = false
+
+  // Track starting coins and reset coins earned
+  startingCoins.value = coins.value || 0
+  coinsEarned.value = 0
+
+  console.log(`Starting game at Wave ${startingWave}, Level ${startingLevel} with FULL HEALTH (${startingMaxHealth})`)
 
   // Set canvas context
   ctx.value = canvas.value.getContext('2d')
@@ -263,16 +352,76 @@ function startGame() {
 
   // Start enemy spawning with dynamic interval
   startEnemySpawning()
-
-  // Record play date
-  localStorage.setItem('petMinigameLastPlayed', new Date().toISOString())
-  lastPlayedDate.value = new Date().toISOString()
 }
 
 // Reset daily timer (for testing)
-function resetDailyTimer() {
-  localStorage.removeItem('petMinigameLastPlayed')
-  lastPlayedDate.value = null
+async function resetDailyTimer() {
+  console.log('=== RESET DAILY TIMER ===')
+  // Clear backend progress so it starts fresh
+  await clearProgress()
+  // Reset local state
+  remainingTimeToday.value = GAME_DURATION
+  diedToday.value = false
+  console.log('Daily timer reset - you have full time available!')
+}
+
+// Reset death state (for testing)
+async function resetDeathState() {
+  console.log('=== RESET DEATH STATE START ===')
+
+  // Load current progress
+  const savedProgress = await loadProgress()
+  console.log('1. Loaded progress:', JSON.stringify(savedProgress, null, 2))
+
+  if (!savedProgress) {
+    console.error('No saved progress found!')
+    diedToday.value = false
+    await loadDailyPlayTime()
+    return
+  }
+
+  // Re-save the same progress but with died_today=false
+  // Note: Backend returns snake_case, we need to use camelCase for saveProgress
+  const progressData = {
+    wave: savedProgress.wave || 1,
+    level: savedProgress.level || 1,
+    weapons: savedProgress.weapons || [{
+      type: 'shuriken',
+      damage: 1,
+      fireRate: 1000,
+      projectileSpeed: 5,
+      range: 400
+    }],
+    maxHealth: savedProgress.max_health || 100,
+    speed: savedProgress.speed || 3
+  }
+
+  console.log('2. Prepared data to save:', JSON.stringify(progressData, null, 2))
+
+  // Save with died_today=false to allow playing again (keep existing time played)
+  const result = await saveProgress(progressData, savedProgress.time_played_today || 0, false)
+  console.log('3. Save result:', result)
+
+  if (!result.success) {
+    console.error('Failed to save progress:', result.error)
+    alert('Failed to reset death state. Check console for details.')
+    return
+  }
+
+  // IMPORTANT: Reload progress from backend to verify it was saved correctly
+  const reloadedProgress = await loadProgress()
+  console.log('4. Reloaded progress after save:', JSON.stringify(reloadedProgress, null, 2))
+  console.log('   - Wave:', reloadedProgress?.wave)
+  console.log('   - Level:', reloadedProgress?.level)
+  console.log('   - Max Health:', reloadedProgress?.max_health)
+  console.log('   - Died Today:', reloadedProgress?.died_today)
+
+  // Reset local state
+  diedToday.value = false
+  await loadDailyPlayTime()
+
+  console.log('=== RESET DEATH STATE COMPLETE ===')
+  console.log('Death state reset - you can play again with your saved progress!')
 }
 
 // Game loop
@@ -281,19 +430,21 @@ function gameLoop() {
 
   // Update game time
   gameTime.value = Date.now() - startTime.value
+  totalTimePlayed.value = Date.now() - sessionStartTimeMs.value
 
-  // Check if game is won
-  if (gameTime.value >= GAME_DURATION) {
-    endGame(true)
+  // Check if daily time limit reached
+  if (totalTimePlayed.value >= remainingTimeToday.value) {
+    endGame(true, 'timeLimit')
     return
   }
 
-  // Update wave
+  // Update wave - NO CAP, infinite progression
   const newWave = Math.floor(gameTime.value / WAVE_DURATION) + 1
-  if (newWave !== currentWave.value && newWave <= 5) {
+  if (newWave !== currentWave.value) {
     currentWave.value = newWave
     // Restart spawning with new wave interval
     startEnemySpawning()
+    console.log(`Wave ${currentWave.value} started!`)
   }
 
   // Update player
@@ -440,7 +591,7 @@ function spawnEnemy() {
       currentFrame: 0,
       frameTimer: 0,
       attackCooldown: 0,
-      attackRange: 400, // Stop 200px away from player
+      attackRange: 400, // Stop 400px away from player
       state: 'flying', // flying, attacking, hurt, dying, dead
       stateTimer: 0,
       animationComplete: false,
@@ -470,57 +621,6 @@ function spawnEnemy() {
   }
 }
 
-// DEBUG: Spawn flying monster for testing
-function debugSpawnFlying() {
-  if (!gameActive.value) return
-
-  const side = Math.floor(Math.random() * 4)
-  let x, y
-
-  switch (side) {
-    case 0: // Top
-      x = Math.random() * CANVAS_WIDTH
-      y = -50
-      break
-    case 1: // Right
-      x = CANVAS_WIDTH + 50
-      y = Math.random() * CANVAS_HEIGHT
-      break
-    case 2: // Bottom
-      x = Math.random() * CANVAS_WIDTH
-      y = CANVAS_HEIGHT + 50
-      break
-    case 3: // Left
-      x = -50
-      y = Math.random() * CANVAS_HEIGHT
-      break
-  }
-
-  enemies.value.push({
-    id: nextEnemyId++,
-    type: 'flying',
-    x,
-    y,
-    width: 96,
-    height: 96,
-    health: 3 + Math.floor(currentWave.value / 2),
-    maxHealth: 3 + Math.floor(currentWave.value / 2),
-    speed: 1.0 + currentWave.value * 0.1,
-    damage: 8 + currentWave.value * 2,
-    currentFrame: 0,
-    frameTimer: 0,
-    attackCooldown: 0,
-    attackRange: 200,
-    state: 'flying',
-    stateTimer: 0,
-    animationComplete: false,
-    projectileTimer: 0,
-    fadeOpacity: 1.0,
-    facingLeft: true // Flying monster sprite faces left by default
-  })
-
-  console.log('DEBUG: Spawned flying monster')
-}
 
 // Update enemies
 function updateEnemies() {
@@ -941,6 +1041,9 @@ function updateGoldCoins() {
       const newCoinAmount = (coins.value || 0) + gold.value
       updateCoins(newCoinAmount)
 
+      // Track coins earned this session
+      coinsEarned.value += gold.value
+
       goldCoins.value.splice(i, 1)
     } else if (dist < 150) {
       // Attract towards player
@@ -964,7 +1067,7 @@ function levelUp() {
 
   // Generate level up options (placeholder for now)
   levelUpOptions.value = [
-    { name: 'Increase Attack Speed', description: 'Fire weapons 20% faster' },
+    { name: 'Increase Attack Speed', description: 'Fire weapons 30% faster' },
     { name: 'Increase Damage', description: 'Deal 1 more damage' },
     { name: 'Heal', description: 'Restore 30 health' }
   ]
@@ -974,7 +1077,7 @@ function levelUp() {
 function selectLevelUpOption(option) {
   if (option.name === 'Increase Attack Speed') {
     for (const weapon of player.value.weapons) {
-      weapon.fireRate *= 0.8
+      weapon.fireRate *= 1.3
     }
   } else if (option.name === 'Increase Damage') {
     for (const weapon of player.value.weapons) {
@@ -989,7 +1092,7 @@ function selectLevelUpOption(option) {
 }
 
 // End game
-function endGame(won) {
+async function endGame(won, reason = 'death') {
   gameActive.value = false
   gameOver.value = true
   gameWon.value = won
@@ -1003,6 +1106,71 @@ function endGame(won) {
     clearInterval(enemySpawnId)
     enemySpawnId = null
   }
+
+  // Save progress to backend (whether died or time limit reached)
+  const progressData = {
+    wave: currentWave.value,
+    level: player.value.level,
+    weapons: player.value.weapons.map(w => ({
+      type: w.type,
+      damage: w.damage,
+      fireRate: w.fireRate,
+      projectileSpeed: w.projectileSpeed,
+      range: w.range
+    })),
+    maxHealth: player.value.maxHealth,
+    speed: player.value.speed
+  }
+
+  // Calculate total time played today (existing + this session)
+  const savedProgress = await loadProgress()
+  const existingTimeToday = savedProgress?.time_played_today || 0
+  const todayCheck = savedProgress?.last_played ? new Date(savedProgress.last_played).toDateString() : null
+  const isToday = todayCheck === new Date().toDateString()
+
+  // If last played was today, add to existing time; otherwise, reset to just this session
+  const totalTimePlayedToday = isToday ? existingTimeToday + totalTimePlayed.value : totalTimePlayed.value
+
+  console.log(`Game ended (${reason}). Saving progress:`, progressData)
+  console.log(`Time played this session: ${totalTimePlayed.value}ms, Total today: ${totalTimePlayedToday}ms`)
+
+  // Pass died_today flag if player died
+  const playerDied = reason === 'death'
+  const saveResult = await saveProgress(progressData, totalTimePlayedToday, playerDied)
+
+  // Verify the save was successful (especially important for death state)
+  if (saveResult && saveResult.success) {
+    console.log('Progress saved successfully')
+  } else {
+    console.error('Failed to save progress:', saveResult?.error)
+  }
+
+  // IMPORTANT: If player died, verify the death state was saved by reloading
+  if (playerDied) {
+    console.log('Player died - verifying death state was saved...')
+    const verifyProgress = await loadProgress()
+    console.log('Verified saved progress:', verifyProgress)
+
+    if (verifyProgress && verifyProgress.died_today) {
+      console.log('✓ Death state confirmed saved in backend')
+      diedToday.value = true
+    } else {
+      console.error('✗ Death state NOT saved in backend! Retrying...')
+      // Retry save once more
+      await saveProgress(progressData, totalTimePlayedToday, true)
+      diedToday.value = true
+    }
+
+    remainingTimeToday.value = Math.max(0, remainingTimeToday.value - totalTimePlayed.value)
+  } else if (reason === 'timeLimit') {
+    remainingTimeToday.value = 0
+  } else {
+    // Other reasons (if any)
+    remainingTimeToday.value = Math.max(0, remainingTimeToday.value - totalTimePlayed.value)
+  }
+
+  console.log(`Remaining play time today: ${Math.floor(remainingTimeToday.value / 1000)}s`)
+  console.log(`Died today: ${diedToday.value}`)
 }
 
 // Restart game
@@ -1333,7 +1501,7 @@ function drawUI() {
   ctx.value.fillText(`Level ${player.value.level}`, 220, 26)
 
   // Wave
-  ctx.value.fillText(`Wave ${currentWave.value}/5`, 220, 50)
+  ctx.value.fillText(`Wave ${currentWave.value}`, 220, 50)
 
   // Timer
   const minutes = Math.floor(gameTime.value / 60000)
@@ -1393,24 +1561,48 @@ function formatTime(ms) {
     <!-- Start screen -->
     <div v-if="showStartButton" class="start-screen">
       <h2>Pet Survival Challenge</h2>
-      <p>Survive for 5 minutes against waves of enemies!</p>
+      <p>Survive endless waves of enemies! Your progress is saved.</p>
       <p class="controls-hint">Use WASD or Arrow Keys to move</p>
       <p class="controls-hint">Your pet will automatically attack nearby enemies</p>
+      <p class="controls-hint">2.5 minutes of play time per day - Continue from where you left off!</p>
 
-      <div v-if="!canPlayToday" class="daily-restriction">
-        <p class="warning">You've already played today!</p>
-        <p>Come back tomorrow for another round</p>
+      <!-- Loading death state -->
+      <div v-if="deathStateLoading" class="loading-state">
+        <p>⏳ Checking game status...</p>
+      </div>
+
+      <!-- Show death message if player died today -->
+      <div v-else-if="diedToday" class="daily-restriction death-restriction">
+        <p class="warning">💀 You died today!</p>
+        <p>Come back tomorrow to try again</p>
+        <button class="reset-button" @click="resetDeathState">
+          Reset Death State (Testing)
+        </button>
+      </div>
+
+      <!-- Show time limit message if time ran out -->
+      <div v-else-if="!canPlayToday" class="daily-restriction">
+        <p class="warning">⏱️ You've used your 2.5 minutes today!</p>
+        <p>Come back tomorrow to continue your adventure</p>
         <button class="reset-button" @click="resetDailyTimer">
           Reset Timer (Testing)
         </button>
       </div>
 
+      <!-- Show remaining time if player can play -->
+      <div v-else class="remaining-time-display">
+        <p>⏱️ Remaining play time today: {{ Math.floor(remainingTimeToday / 1000) }}s</p>
+      </div>
+
       <button
         class="start-button"
         @click="startGame"
-        :disabled="!canPlayToday"
+        :disabled="deathStateLoading || !canPlayToday"
       >
-        {{ canPlayToday ? 'Start Game' : 'Already Played Today' }}
+        <template v-if="deathStateLoading">⏳ Loading...</template>
+        <template v-else-if="diedToday">💀 Died Today - Try Tomorrow</template>
+        <template v-else-if="!canPlayToday">⏱️ Time's Up - Try Tomorrow</template>
+        <template v-else>Start Game</template>
       </button>
     </div>
 
@@ -1422,16 +1614,6 @@ function formatTime(ms) {
         :height="CANVAS_HEIGHT"
         class="game-canvas"
       />
-
-      <!-- DEBUG: Spawn flying monster button -->
-      <button
-        v-if="gameActive"
-        class="debug-spawn-btn"
-        @click="debugSpawnFlying"
-        title="Debug: Spawn Flying Monster"
-      >
-        🦇 Spawn Flying
-      </button>
     </div>
 
     <!-- Level up screen -->
@@ -1461,6 +1643,14 @@ function formatTime(ms) {
         <p><strong>Enemies Killed:</strong> {{ enemiesKilled }}</p>
         <p><strong>Level Reached:</strong> {{ player.level }}</p>
         <p><strong>Final Wave:</strong> {{ currentWave }}</p>
+
+        <!-- Coins Earned Display -->
+        <div class="coins-earned">
+          <AnimatedCoin :scale="2" :speed="8" />
+          <span class="coins-earned-text">
+            <strong>Coins Earned:</strong> {{ coinsEarned }}
+          </span>
+        </div>
       </div>
 
       <button class="restart-button" @click="restartGame">
@@ -1571,11 +1761,61 @@ function formatTime(ms) {
   margin: 20px 0;
 }
 
+.death-restriction {
+  background: rgba(139, 92, 246, 0.2);
+  border: 2px solid #8b5cf6;
+}
+
+.death-restriction .warning {
+  color: #c4b5fd;
+}
+
 .warning {
   color: #fca5a5;
   font-weight: bold;
   font-size: 18px;
   margin-bottom: 8px;
+}
+
+.remaining-time-display {
+  background: rgba(74, 222, 128, 0.2);
+  border: 2px solid #4ade80;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 20px 0;
+}
+
+.remaining-time-display p {
+  color: #86efac;
+  font-weight: bold;
+  font-size: 16px;
+  margin: 0;
+}
+
+.loading-state {
+  background: rgba(59, 130, 246, 0.2);
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.loading-state p {
+  color: #93c5fd;
+  font-weight: bold;
+  font-size: 16px;
+  margin: 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .game-canvas-container {
@@ -1589,34 +1829,27 @@ function formatTime(ms) {
   image-rendering: crisp-edges;
 }
 
-.debug-spawn-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(139, 69, 19, 0.9);
-  color: white;
-  border: 2px solid #8b4513;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 100;
-}
-
-.debug-spawn-btn:hover {
-  background: rgba(139, 69, 19, 1);
-  transform: scale(1.05);
-}
-
-.debug-spawn-btn:active {
-  transform: scale(0.95);
-}
-
 .stats {
   margin: 20px 0;
   text-align: left;
+}
+
+.coins-earned {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+  border: 2px solid rgba(255, 215, 0, 0.5);
+  border-radius: 12px;
+}
+
+.coins-earned-text {
+  font-size: 18px;
+  color: #FFD700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
 .stats p {

@@ -22,6 +22,7 @@ from app.api.routes import (
     study_sessions,
     achievements,
     google_oauth,
+    minigame,
 )
 from app.core.firebase import db
 
@@ -72,6 +73,7 @@ app.include_router(study_sessions.router, prefix="/api")
 app.include_router(achievements.router, prefix="/api")
 app.include_router(pet.router)
 app.include_router(google_oauth.router, prefix="/api")
+app.include_router(minigame.router, prefix="/api")
 
 # Pet update loop
 pet_update_task = None
