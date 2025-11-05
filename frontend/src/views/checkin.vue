@@ -6,6 +6,7 @@
     </div>
 
     <!-- Tab Navigation -->
+    <div class="tab-navigation-wrapper">
     <div class="tab-navigation">
       <div
         class="tab-item"
@@ -28,6 +29,7 @@
       >
         Open When
       </div>
+    </div>
     </div>
 
     <div v-if="activeTab === 'checkin'" class="tab-content">
@@ -1247,6 +1249,14 @@ onMounted(async () => {
   margin-bottom: 2rem;
   width: 100%;
   box-sizing: border-box;
+  text-align: left;
+}
+
+.tab-navigation-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 2rem;
 }
 
 .header h1 {
@@ -1973,14 +1983,16 @@ onMounted(async () => {
   }
 
   .tab-navigation {
+    display: flex;
+    width: 100%;
     max-width: 100%;
-    margin-left: 0;
-    margin-right: 0;
     padding: 3px;
     gap: 3px;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none; /* Firefox */
+    -webkit-overflow-scrolling: touch;
+    justify-content: center;
   }
 
   .tab-navigation::-webkit-scrollbar {
@@ -2324,16 +2336,12 @@ onMounted(async () => {
 
 /* Tab Navigation */
 .tab-navigation {
-  display: flex;
+  display: inline-flex;
+  justify-content: center;
   gap: 4px;
-  margin-bottom: 2rem;
   background: var(--surface-lighter);
   border-radius: 12px;
   padding: 4px;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-  width: 100%;
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
@@ -2358,6 +2366,7 @@ onMounted(async () => {
   white-space: nowrap;
   box-sizing: border-box;
   min-width: fit-content;
+  flex-shrink: 0;
 }
 
 .tab-item:hover {
@@ -2547,14 +2556,16 @@ onMounted(async () => {
 /* Responsive - Open When Tab */
 @media (max-width: 768px) {
   .tab-navigation {
+    display: flex;
+    width: 100%;
     max-width: 100%;
-    margin-left: 0;
-    margin-right: 0;
     padding: 3px;
     gap: 3px;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none; /* Firefox */
+    -webkit-overflow-scrolling: touch;
+    justify-content: center;
   }
 
   .tab-navigation::-webkit-scrollbar {
@@ -2648,11 +2659,15 @@ onMounted(async () => {
   }
 
   .tab-navigation {
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
     padding: 2px;
     gap: 2px;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none; /* Firefox */
+    -webkit-overflow-scrolling: touch;
   }
 
   .tab-navigation::-webkit-scrollbar {
