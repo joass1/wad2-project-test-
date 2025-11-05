@@ -1014,7 +1014,7 @@ onUnmounted(() => {
 
       <!-- Inventory -->
       <div class="panel-section">
-        <h4 class="section-title">Inventory</h4>
+        <h4 class="section-title">Inventory (Click or Drag to feed)</h4>
         <div class="inventory-grid">
           <div
             v-for="(item, index) in inventory"
